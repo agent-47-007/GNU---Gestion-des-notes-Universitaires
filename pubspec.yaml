@@ -1,0 +1,18 @@
+name: gnu_frontend
+description: Client Flutter GNU - Gestion des notes
+publish_to: none
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+  flutter_riverpod: ^2.5.1
+  web: ^1.1.1
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/logo_gnu.png

@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+
+<html lang="fr"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&amp;family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&amp;family=Space+Mono:ital,wght@0,400;0,700;1,400&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "encre": "#1B2942",
+          "error-container": "#ffdad6",
+          "on-tertiary-fixed": "#2a1800",
+          "surface-container-highest": "#e7e2d3",
+          "surface": "#fef9ea",
+          "primary-fixed-dim": "#ffb3af",
+          "on-surface": "#1d1c13",
+          "papier": "#DEDACB",
+          "on-secondary-fixed": "#0c1b34",
+          "on-primary-fixed": "#410005",
+          "on-error-container": "#93000a",
+          "ardoise": "#5B5F66",
+          "background": "#fef9ea",
+          "on-primary": "#ffffff",
+          "or-sceau": "#A9762C",
+          "on-error": "#ffffff",
+          "tertiary-fixed-dim": "#f8bb6a",
+          "on-primary-container": "#ffaba7",
+          "rouge-encre": "#8C2F2F",
+          "inverse-on-surface": "#f5f1e1",
+          "on-secondary": "#ffffff",
+          "secondary": "#515f7a",
+          "statut-manquant": "#8C2F2F",
+          "surface-container-lowest": "#ffffff",
+          "outline-variant": "#dcc0be",
+          "secondary-container": "#cfddfe",
+          "surface-container-low": "#f8f4e4",
+          "surface-variant": "#e7e2d3",
+          "inverse-surface": "#323126",
+          "on-tertiary-fixed-variant": "#643f00",
+          "statut-en-attente": "#C4841F",
+          "primary": "#6d181b",
+          "on-secondary-container": "#53617d",
+          "outline": "#897270",
+          "error": "#ba1a1a",
+          "on-surface-variant": "#564241",
+          "surface-container-high": "#ece8d9",
+          "secondary-fixed": "#d7e2ff",
+          "primary-container": "#8c2f2f",
+          "surface-dim": "#dedacb",
+          "papier-clair": "#F1EEE2",
+          "secondary-fixed-dim": "#b9c7e7",
+          "on-primary-fixed-variant": "#812728",
+          "on-tertiary": "#ffffff",
+          "surface-tint": "#a03e3d",
+          "on-tertiary-container": "#f2b665",
+          "primary-fixed": "#ffdad7",
+          "tertiary-container": "#6f4600",
+          "surface-container": "#f2eede",
+          "tertiary": "#503100",
+          "statut-valide": "#3C6E52",
+          "tertiary-fixed": "#ffddb5",
+          "inverse-primary": "#ffb3af",
+          "on-secondary-fixed-variant": "#394761",
+          "on-background": "#1d1c13",
+          "surface-bright": "#fef9ea"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.125rem",
+          "lg": "0.25rem",
+          "xl": "0.5rem",
+          "full": "0.75rem"
+        },
+        "spacing": {
+          "space-xl": "2rem",
+          "space-3xl": "4rem",
+          "space-2xs": "0.125rem",
+          "space-lg": "1.5rem",
+          "space-sm": "0.5rem",
+          "margin-mobile": "1rem",
+          "space-xs": "0.25rem",
+          "col-gutter": "1rem",
+          "margin-desktop": "2.5rem",
+          "space-2xl": "3rem",
+          "space-md": "1rem"
+        },
+        "fontFamily": {
+          "label-sm": [
+            "Space Mono"
+          ],
+          "body-sm": [
+            "IBM Plex Sans"
+          ],
+          "body-lg": [
+            "IBM Plex Sans"
+          ],
+          "data-tabular": [
+            "Space Mono"
+          ],
+          "label-md": [
+            "Space Mono"
+          ],
+          "body-md": [
+            "IBM Plex Sans"
+          ],
+          "headline-sm": [
+            "EB Garamond"
+          ],
+          "headline-xl": [
+            "EB Garamond"
+          ],
+          "headline-xl-mobile": [
+            "EB Garamond"
+          ],
+          "headline-lg": [
+            "EB Garamond"
+          ],
+          "headline-md": [
+            "EB Garamond"
+          ]
+        },
+        "fontSize": {
+          "label-sm": [
+            "12px",
+            {
+              "lineHeight": "16px",
+              "letterSpacing": "0.04em",
+              "fontWeight": "400"
+            }
+          ],
+          "body-sm": [
+            "14px",
+            {
+              "lineHeight": "20px",
+              "fontWeight": "400"
+            }
+          ],
+          "body-lg": [
+            "18px",
+            {
+              "lineHeight": "28px",
+              "fontWeight": "400"
+            }
+          ],
+          "data-tabular": [
+            "15px",
+            {
+              "lineHeight": "20px",
+              "fontWeight": "500"
+            }
+          ],
+          "label-md": [
+            "14px",
+            {
+              "lineHeight": "20px",
+              "letterSpacing": "0.02em",
+              "fontWeight": "400"
+            }
+          ],
+          "body-md": [
+            "16px",
+            {
+              "lineHeight": "24px",
+              "fontWeight": "400"
+            }
+          ],
+          "headline-sm": [
+            "20px",
+            {
+              "lineHeight": "28px",
+              "fontWeight": "500"
+            }
+          ],
+          "headline-xl": [
+            "48px",
+            {
+              "lineHeight": "56px",
+              "fontWeight": "500"
+            }
+          ],
+          "headline-xl-mobile": [
+            "32px",
+            {
+              "lineHeight": "40px",
+              "fontWeight": "500"
+            }
+          ],
+          "headline-lg": [
+            "32px",
+            {
+              "lineHeight": "40px",
+              "fontWeight": "500"
+            }
+          ],
+          "headline-md": [
+            "24px",
+            {
+              "lineHeight": "32px",
+              "fontWeight": "500"
+            }
+          ]
+        }
+      },
+    },
+  }</script></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-72 bg-papier z-50 flex flex-col justify-between border-r border-ardoise"><div class="flex flex-col"><div class="h-16 px-space-md border-b border-ardoise flex items-center gap-space-sm bg-papier-clair"><span class="material-symbols-outlined text-encre text-[20px]">account_balance</span><div><div class="font-label-sm text-label-sm text-encre font-bold uppercase tracking-wider">RÉPERTOIRE RÉGALIEN</div><div class="font-label-sm text-[10px] text-ardoise">MINESUP · ARCHITECTURE LMD</div></div></div><div class="px-space-md py-space-sm border-b border-ardoise bg-papier/60"><div class="font-label-sm text-[11px] text-ardoise uppercase tracking-widest">Navigation Magistrale</div></div><nav class="flex flex-col py-space-xs" data-active-classes="bg-primary-container text-on-primary font-semibold border-l-4 border-rouge-encre pl-3"><a aria-current="page" class="flex items-center gap-space-sm px-space-md py-space-sm transition-colors bg-primary-container text-on-primary font-semibold border-l-4 border-rouge-encre pl-3" data-path="tableau-de-bord" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">dashboard</span><span>Tableau de Bord Régalien</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors" data-path="structure-universitaire" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">domain</span><span>Structure Universitaire</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors" data-path="etudiants-et-comptes" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">badge</span><span>Étudiants &amp; Comptes</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors" data-path="matieres-et-ues" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">menu_book</span><span>Matières, UEs &amp; Cours</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors" data-path="saisie-et-numerisation-des-notes" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">edit_document</span><span>Saisie des Notes (CC, TP, SN)</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors" data-path="moteur-mgp-et-deliberations" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">calculate</span><span>Moteur MGP &amp; 30 ECTS</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors" data-path="bulletins-et-publications-minesup" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">history_edu</span><span>Bulletins &amp; MINESUP</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors" data-path="journal-daudit-et-scellement" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">verified</span><span>Audit &amp; Scellement SHA-256</span></a></nav></div><div class="p-space-md border-t border-ardoise bg-papier-clair"><div class="flex items-center justify-between"><span class="font-label-sm text-[10px] uppercase text-ardoise tracking-wider">Intégrité Registre</span><span class="font-data-tabular text-[11px] text-statut-valide font-bold">SHA-256 OK</span></div><div class="mt-1 text-[11px] font-label-sm text-ardoise truncate">Nœud Juridique: DGS-CMR-04</div></div></aside><div class="pl-72"><header class="fixed top-0 left-72 right-0 h-16 bg-papier-clair z-40 border-b border-ardoise"><div class="h-16 w-full px-space-md flex items-center justify-between"><div class="flex items-center gap-space-md"><img alt="Logo officiel GNU pour la gestion des notes universitaires LMD. Emblème vectoriel composé de 5 strates horizontales resserrées vers le haut représentant la hiérarchie académique : Université (encre), Faculté (encre 82%), Département (encre 64%), Filière (encre 46%), et Classe au sommet en rouge-encre (#8C2F2F). Accompagné de la typographie serif prestigieuse 'GNU' et du sous-titre 'Gestion des Notes · Système LMD'.. Brand logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1XDH6Bi7X1hIdgODy7oGFEGu6JhBUc9r9eGw_hk5xQFSZmvSLHtQnY2UkxPZvkeE6W3UZAh4y1DG6MDzIPSF45huGUyNu1X_zcBPSEquGXYBFFPtmCwG9uhA66AdWX1zqV6KnBbXDFjx_1j1j2wUPBrK3PiFdp2uY9Z6M9Zew3X28lyAGRHXXSSiENme8ViRCcxe77bwPthY0fTL6oyahMebolx7-OORp4oGM5C8cjZkX4d1RVwlMMgOPg"/><div class="h-6 w-px bg-ardoise/40"></div><div class="flex items-center gap-space-sm"><span class="font-headline-sm text-headline-sm text-encre font-bold">GNU LMD</span><span class="font-body-sm text-body-sm text-ardoise">|</span><span class="font-body-sm text-body-sm text-ardoise">Cellule Informatique</span></div><div class="flex items-center gap-1.5 px-2 py-0.5 border border-ardoise bg-papier text-encre font-label-sm text-label-sm"><span class="inline-block w-2 h-2 rounded-full bg-statut-valide"></span><span>SESSION ACTIVE</span></div></div><div class="flex items-center gap-space-md"><div class="hidden md:flex flex-col text-right"><span class="font-label-sm text-label-sm text-encre font-bold">Agent Administrateur Système</span><span class="font-label-sm text-[11px] text-ardoise">Matricule : ADM-CI-8842</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="relative pt-16 bg-surface min-h-screen"><div class="flex flex-col w-full">
+<!-- BANDEAU SUPÉRIEUR RÉGALIEN & SUPERVISION -->
+<section class="w-full bg-papier-clair p-space-md border-b border-ardoise">
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
+<div>
+<div class="flex items-center gap-2">
+<span class="inline-block w-2.5 h-2.5 bg-rouge-encre"></span>
+<span class="font-label-sm text-label-sm text-ardoise tracking-widest uppercase">SYSTÈME RÉGALIEN MINESUP · RÉPUBLIQUE DU CAMEROUN</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-encre font-bold mt-1 tracking-tight">Espace Régalien · Cellule Informatique &amp; Systèmes d'Information</h1>
+<p class="font-body-sm text-body-sm text-ardoise mt-0.5">Supervision du cycle académique LMD · Université de Douala · Session Régulière 2023-2024</p>
+</div>
+<div class="flex flex-wrap items-center gap-space-sm">
+<div class="bg-surface px-space-sm py-1.5 border border-ardoise flex items-center gap-2">
+<span class="material-symbols-outlined text-statut-valide text-[18px]">verified_user</span>
+<div>
+<div class="font-label-sm text-[10px] text-ardoise leading-none">SCEAU CRYPTOGRAPHIQUE</div>
+<div class="font-data-tabular text-data-tabular text-encre font-bold leading-tight">SHA-256 ACTIF</div>
+</div>
+</div>
+<div class="bg-surface px-space-sm py-1.5 border border-ardoise flex items-center gap-2">
+<span class="material-symbols-outlined text-rouge-encre text-[18px]">lock_clock</span>
+<div>
+<div class="font-label-sm text-[10px] text-ardoise leading-none">VERROUILLAGE LÉGAL</div>
+<div class="font-data-tabular text-data-tabular text-rouge-encre font-bold leading-tight">J - 2 (48H00)</div>
+</div>
+</div>
+<button class="bg-encre text-surface font-label-sm text-label-sm px-space-md py-2 flex items-center gap-2 hover:bg-ardoise transition-colors" id="btn-export-global">
+<span class="material-symbols-outlined text-[16px]">file_download</span>
+<span>Bordereau Récapitulatif</span>
+</button>
+</div>
+</div>
+<!-- METRICS REGISTRATION STRIP (Cadres d'encadrement nets façon registre) -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-space-sm mt-space-md">
+<div class="bg-surface p-space-sm border border-ardoise flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-[11px] text-ardoise uppercase tracking-wider">Périmètre Structurel</span>
+<span class="material-symbols-outlined text-ardoise text-[16px]">account_balance</span>
+</div>
+<div class="mt-2 flex items-baseline gap-1">
+<span class="font-headline-md text-headline-md font-bold text-encre">1 Univ. · 4 Fac.</span>
+</div>
+<div class="font-label-sm text-[11px] text-ardoise mt-1 truncate">18 Filières · 42 Salles d'examen</div>
+</div>
+<div class="bg-surface p-space-sm border border-ardoise flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-[11px] text-ardoise uppercase tracking-wider">Effectif Étudiants</span>
+<span class="material-symbols-outlined text-statut-valide text-[16px]">group</span>
+</div>
+<div class="mt-2 flex items-baseline gap-2">
+<span class="font-data-tabular text-headline-md font-bold text-encre">14 850</span>
+<span class="font-label-sm text-[11px] text-statut-valide font-bold bg-papier-clair px-1.5 py-0.5 border border-ardoise">100% ACTIFS</span>
+</div>
+<div class="font-label-sm text-[11px] text-ardoise mt-1 truncate">@etu.univ-douala.cm certifiés</div>
+</div>
+<div class="bg-surface p-space-sm border border-ardoise flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-[11px] text-ardoise uppercase tracking-wider">Unités &amp; Matières</span>
+<span class="material-symbols-outlined text-ardoise text-[16px]">auto_stories</span>
+</div>
+<div class="mt-2 flex items-baseline gap-2">
+<span class="font-data-tabular text-headline-md font-bold text-encre">342 UEs</span>
+<span class="font-label-sm text-[11px] text-encre bg-papier px-1.5 py-0.5 border border-ardoise">LMD CEMAC</span>
+</div>
+<div class="font-label-sm text-[11px] text-ardoise mt-1 truncate">Affectation 100% couverte</div>
+</div>
+<div class="bg-surface p-space-sm border border-ardoise flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-[11px] text-ardoise uppercase tracking-wider">Notes Saisies (CC/TP/SN)</span>
+<span class="material-symbols-outlined text-statut-en-attente text-[16px]">pending_actions</span>
+</div>
+<div class="mt-2 flex items-baseline gap-2">
+<span class="font-data-tabular text-headline-md font-bold text-encre">89.4%</span>
+<span class="font-label-sm text-[11px] text-statut-en-attente font-bold bg-papier px-1.5 py-0.5 border border-ardoise">12 ATTENTES</span>
+</div>
+<div class="font-label-sm text-[11px] text-ardoise mt-1 truncate">Clôture des jurys imminente</div>
+</div>
+</div>
+</section>
+<!-- CONTENEUR DU CORPS DU REGISTRE -->
+<div class="p-space-md space-y-space-lg">
+<!-- SECTION 1 : ARBORESCENCE & STRUCTURE UNIVERSITAIRE -->
+<div class="border border-ardoise bg-papier-clair">
+<div class="p-space-md border-b border-ardoise bg-papier flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
+<div>
+<div class="font-label-sm text-[11px] text-rouge-encre font-bold uppercase tracking-widest">MODULE 01 · HIÉRARCHIE ACADÉMIQUE</div>
+<h2 class="font-headline-sm text-headline-sm text-encre font-bold">Arborescence &amp; Cartographie des Salles</h2>
+<div class="font-body-sm text-body-sm text-ardoise mt-0.5 flex flex-wrap items-center gap-1.5">
+<span class="font-medium text-encre">Univ. Douala</span>
+<span>›</span>
+<span>Faculté des Sciences (FS)</span>
+<span>›</span>
+<span>Dépt. Mathématiques &amp; Informatique</span>
+<span>›</span>
+<span class="text-rouge-encre font-semibold">Génie Logiciel &amp; Réseaux</span>
+</div>
+</div>
+<div class="flex items-center gap-space-sm">
+<button class="px-3 py-1.5 border border-ardoise text-encre font-label-sm text-label-sm hover:bg-surface transition-colors flex items-center gap-1 bg-papier-clair">
+<span class="material-symbols-outlined text-[16px]">account_tree</span>
+<span>Vue Graphique</span>
+</button>
+<button class="px-3 py-1.5 bg-encre text-surface font-label-sm text-label-sm hover:bg-ardoise transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">add_circle</span>
+<span>+ Ajouter Faculté / Filière / Salle</span>
+</button>
+</div>
+</div>
+<!-- TABLE DE L'ARBORESCENCE -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-encre text-surface border-b border-ardoise font-label-sm text-label-sm uppercase">
+<th class="py-2.5 px-space-md">Code Inst.</th>
+<th class="py-2.5 px-space-md">Entité / Filière Régie</th>
+<th class="py-2.5 px-space-md">Niveaux Ouverts</th>
+<th class="py-2.5 px-space-md">Chef Département / Coordonnateur</th>
+<th class="py-2.5 px-space-md text-right">Effectif</th>
+<th class="py-2.5 px-space-md">Salles &amp; Capacités Affectées</th>
+<th class="py-2.5 px-space-md text-center">Statut Jury</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-ardoise/30 font-body-sm text-body-sm bg-surface">
+<tr class="hover:bg-papier-clair/60 transition-colors">
+<td class="py-2.5 px-space-md font-data-tabular text-data-tabular font-bold text-encre">FS-DMI-GL</td>
+<td class="py-2.5 px-space-md font-medium text-encre">
+                Génie Logiciel (DMI)
+                <span class="block font-label-sm text-[11px] text-ardoise">Licence Professionnelle &amp; Master</span>
+</td>
+<td class="py-2.5 px-space-md">
+<span class="inline-flex gap-1 font-label-sm text-[11px]">
+<span class="bg-papier px-1 border border-ardoise/60">L1</span>
+<span class="bg-papier px-1 border border-ardoise/60">L2</span>
+<span class="bg-papier px-1 border border-ardoise/60 font-bold text-rouge-encre">L3</span>
+<span class="bg-papier px-1 border border-ardoise/60">M1</span>
+<span class="bg-papier px-1 border border-ardoise/60">M2</span>
+</span>
+</td>
+<td class="py-2.5 px-space-md text-encre">Pr. E. NKEUTCHEU</td>
+<td class="py-2.5 px-space-md font-data-tabular text-data-tabular text-right font-semibold text-encre">412</td>
+<td class="py-2.5 px-space-md">
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="font-label-sm text-[11px] px-1.5 py-0.5 bg-papier-clair border border-ardoise">Amphi 500 (480/500)</span>
+<span class="font-label-sm text-[11px] px-1.5 py-0.5 bg-papier-clair border border-ardoise">Labo Info 03 (45/50)</span>
+</div>
+</td>
+<td class="py-2.5 px-space-md text-center">
+<span class="inline-flex items-center gap-1 font-label-sm text-[11px] text-statut-valide bg-papier-clair px-2 py-0.5 border border-ardoise">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-valide"></span>
+                  Conforme LMD
+                </span>
+</td>
+</tr>
+<tr class="hover:bg-papier-clair/60 transition-colors">
+<td class="py-2.5 px-space-md font-data-tabular text-data-tabular font-bold text-encre">FS-DMI-SR</td>
+<td class="py-2.5 px-space-md font-medium text-encre">
+                Sécurité &amp; Réseaux Télécoms
+                <span class="block font-label-sm text-[11px] text-ardoise">Parcours Technologique Spécialisé</span>
+</td>
+<td class="py-2.5 px-space-md">
+<span class="inline-flex gap-1 font-label-sm text-[11px]">
+<span class="bg-papier px-1 border border-ardoise/60">L1</span>
+<span class="bg-papier px-1 border border-ardoise/60">L2</span>
+<span class="bg-papier px-1 border border-ardoise/60">L3</span>
+<span class="bg-papier px-1 border border-ardoise/60">M1</span>
+</span>
+</td>
+<td class="py-2.5 px-space-md text-encre">Dr. A. TCHOUMBOU</td>
+<td class="py-2.5 px-space-md font-data-tabular text-data-tabular text-right font-semibold text-encre">285</td>
+<td class="py-2.5 px-space-md">
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="font-label-sm text-[11px] px-1.5 py-0.5 bg-papier-clair border border-ardoise">Salle TD 12 (80/80)</span>
+<span class="font-label-sm text-[11px] px-1.5 py-0.5 bg-papier-clair border border-ardoise">Labo Réseau 01 (30/30)</span>
+</div>
+</td>
+<td class="py-2.5 px-space-md text-center">
+<span class="inline-flex items-center gap-1 font-label-sm text-[11px] text-statut-en-attente bg-papier-clair px-2 py-0.5 border border-ardoise">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-en-attente"></span>
+                  Bordereau Partiel
+                </span>
+</td>
+</tr>
+<tr class="hover:bg-papier-clair/60 transition-colors">
+<td class="py-2.5 px-space-md font-data-tabular text-data-tabular font-bold text-encre">FS-DF-CH</td>
+<td class="py-2.5 px-space-md font-medium text-encre">
+                Chimie Fondamentale &amp; Appliquée
+                <span class="block font-label-sm text-[11px] text-ardoise">Département Chimie</span>
+</td>
+<td class="py-2.5 px-space-md">
+<span class="inline-flex gap-1 font-label-sm text-[11px]">
+<span class="bg-papier px-1 border border-ardoise/60">L1</span>
+<span class="bg-papier px-1 border border-ardoise/60">L2</span>
+<span class="bg-papier px-1 border border-ardoise/60">L3</span>
+</span>
+</td>
+<td class="py-2.5 px-space-md text-encre">Pr. C. BINDZI</td>
+<td class="py-2.5 px-space-md font-data-tabular text-data-tabular text-right font-semibold text-encre">530</td>
+<td class="py-2.5 px-space-md">
+<span class="font-label-sm text-[11px] px-1.5 py-0.5 bg-papier-clair border border-ardoise">Amphi 250 A/B (250/250)</span>
+</td>
+<td class="py-2.5 px-space-md text-center">
+<span class="inline-flex items-center gap-1 font-label-sm text-[11px] text-statut-valide bg-papier-clair px-2 py-0.5 border border-ardoise">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-valide"></span>
+                  Conforme LMD
+                </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- SECTION 2 : COHORTES ÉTUDIANTES & COMPTES INSTITUTIONNELS -->
+<div class="border border-ardoise bg-papier-clair">
+<div class="p-space-md border-b border-ardoise bg-papier">
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
+<div>
+<div class="font-label-sm text-[11px] text-rouge-encre font-bold uppercase tracking-widest">MODULE 02 · GESTION RÉGALIENNE DES COMPTES</div>
+<h2 class="font-headline-sm text-headline-sm text-encre font-bold">Cohortes Étudiantes &amp; Comptes Institutionnels</h2>
+<div class="mt-1 flex items-center gap-2">
+<span class="material-symbols-outlined text-or-sceau text-[18px]">verified</span>
+<p class="font-body-sm text-body-sm text-encre italic font-medium">
+                Règle MINESUP : Tout étudiant inscrit bénéficie automatiquement d'un compte certifié via son adresse institutionnelle (<span class="font-data-tabular text-[13px] not-italic text-rouge-encre">prenom.nom@etu.univ-douala.cm</span>).
+              </p>
+</div>
+</div>
+<div class="flex flex-wrap items-center gap-space-xs">
+<button class="px-3 py-2 border border-ardoise text-encre bg-surface font-label-sm text-label-sm hover:bg-papier transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">key</span>
+<span>Générer Clés &amp; Envoi Mail</span>
+</button>
+<button class="px-3 py-2 bg-rouge-encre text-surface font-label-sm text-label-sm hover:bg-primary transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">upload_file</span>
+<span>+ Inscrire / Importer CSV Cohorte</span>
+</button>
+</div>
+</div>
+<!-- FILTRES ET RECHERCHE RAPIDE (Inspiré de l'ergonomie dense de l'image de référence) -->
+<div class="mt-space-md pt-space-sm border-t border-ardoise/40 flex flex-col md:flex-row items-center justify-between gap-space-sm">
+<div class="relative w-full md:w-96">
+<span class="material-symbols-outlined absolute left-2.5 top-2.5 text-ardoise text-[18px]">search</span>
+<input class="w-full pl-9 pr-3 py-1.5 bg-surface border border-ardoise text-encre font-body-sm text-body-sm placeholder-ardoise/60 focus:outline-none focus:border-encre focus:ring-1 focus:ring-encre" id="search-student" placeholder="Recherche par Matricule, Nom ou Courriel..." type="text"/>
+</div>
+<div class="flex items-center gap-space-sm w-full md:w-auto justify-end flex-wrap">
+<div class="flex items-center gap-1.5 bg-surface border border-ardoise px-2 py-1">
+<span class="font-label-sm text-[11px] text-ardoise uppercase">Filière :</span>
+<select class="bg-transparent font-label-sm text-label-sm text-encre focus:outline-none">
+<option>Toutes (DMI / FS)</option>
+<option>Génie Logiciel (GL)</option>
+<option>Sécurité &amp; Réseaux (SR)</option>
+<option>Chimie Fondamentale (CH)</option>
+</select>
+</div>
+<div class="flex items-center gap-1.5 bg-surface border border-ardoise px-2 py-1">
+<span class="font-label-sm text-[11px] text-ardoise uppercase">Niveau :</span>
+<select class="bg-transparent font-label-sm text-label-sm text-encre focus:outline-none">
+<option>Tous Niveaux (L1 à M2)</option>
+<option>Licence 1 (L1)</option>
+<option>Licence 2 (L2)</option>
+<option>Licence 3 (L3)</option>
+<option>Master 1 (M1)</option>
+<option>Master 2 (M2)</option>
+</select>
+</div>
+<div class="flex items-center gap-1 bg-surface border border-ardoise px-2 py-1 text-ardoise font-label-sm text-label-sm">
+<span>Affichage :</span>
+<span class="font-bold text-encre">10</span>
+<span class="material-symbols-outlined text-[14px]">expand_more</span>
+</div>
+</div>
+</div>
+</div>
+<!-- TABLEAU DES ÉTUDIANTS RECOMMANDÉ (Ergonomie Puzzler adaptée charte académique) -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-encre text-surface border-b border-ardoise font-label-sm text-label-sm uppercase">
+<th class="py-2.5 px-space-md">Matricule</th>
+<th class="py-2.5 px-space-md">Identité de l'Étudiant</th>
+<th class="py-2.5 px-space-md">Filière / Niveau</th>
+<th class="py-2.5 px-space-md">Courriel Institutionnel</th>
+<th class="py-2.5 px-space-md">Date Validation</th>
+<th class="py-2.5 px-space-md text-center">Compte ENT</th>
+<th class="py-2.5 px-space-md text-center">Évaluation SN</th>
+<th class="py-2.5 px-space-md text-right">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-ardoise/30 font-body-sm text-body-sm bg-surface" id="student-table-body">
+<tr class="hover:bg-papier-clair/70 transition-colors">
+<td class="py-2.5 px-space-md font-data-tabular text-data-tabular font-bold text-encre">23S04918</td>
+<td class="py-2.5 px-space-md">
+<div class="font-bold text-encre">EBELLE MBAPPE Samuel Arthur</div>
+<div class="font-label-sm text-[11px] text-ardoise">Né le 14/03/2003 · Douala</div>
+</td>
+<td class="py-2.5 px-space-md">
+<span class="font-semibold text-encre">GL · L3</span>
+<span class="block font-label-sm text-[11px] text-ardoise">Semestre 5 &amp; 6</span>
+</td>
+<td class="py-2.5 px-space-md font-data-tabular text-[13px] text-encre">s.ebelle@etu.univ-douala.cm</td>
+<td class="py-2.5 px-space-md font-data-tabular text-[12px] text-ardoise">12/10/2023</td>
+<td class="py-2.5 px-space-md text-center">
+<span class="inline-flex items-center gap-1 font-label-sm text-[11px] text-statut-valide bg-papier-clair px-2 py-0.5 border border-ardoise">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-valide"></span>
+                  Actif
+                </span>
+</td>
+<td class="py-2.5 px-space-md text-center">
+<span class="inline-flex items-center gap-1 font-label-sm text-[11px] text-statut-valide bg-papier-clair px-2 py-0.5 border border-ardoise font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-valide"></span>
+                  Complètes (6/6)
+                </span>
+</td>
+<td class="py-2.5 px-space-md text-right">
+<div class="flex items-center justify-end gap-1">
+<button class="p-1 border border-ardoise/40 hover:border-encre bg-papier-clair text-encre" title="Générer Fiche Académique">
+<span class="material-symbols-outlined text-[16px]">badge</span>
+</button>
+<button class="p-1 border border-ardoise/40 hover:border-encre bg-papier-clair text-encre" title="Éditer Profil">
+<span class="material-symbols-outlined text-[16px]">edit</span>
+</button>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-papier-clair/70 transition-colors">
+<td class="py-2.5 px-space-md font-data-tabular text-data-tabular font-bold text-encre">23S05120</td>
+<td class="py-2.5 px-space-md">
+<div class="font-bold text-encre">NGO BIKOI Jeanne Marie</div>
+<div class="font-label-sm text-[11px] text-ardoise">Née le 22/07/2004 · Edéa</div>
+</td>
+<td class="py-2.5 px-space-md">
+<span class="font-semibold text-encre">GL · L3</span>
+<span class="block font-label-sm text-[11px] text-ardoise">Semestre 5 &amp; 6</span>
+</td>
+<td class="py-2.5 px-space-md font-data-tabular text-[13px] text-encre">jm.ngobikoi@etu.univ-douala.cm</td>
+<td class="py-2.5 px-space-md font-data-tabular text-[12px] text-ardoise">14/10/2023</td>
+<td class="py-2.5 px-space-md text-center">
+<span class="inline-flex items-center gap-1 font-label-sm text-[11px] text-statut-valide bg-papier-clair px-2 py-0.5 border border-ardoise">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-valide"></span>
+                  Actif
+                </span>
+</td>
+<td class="py-2.5 px-space-md text-center">
+<span class="inline-flex items-center gap-1 font-label-sm text-[11px] text-statut-en-attente bg-papier-clair px-2 py-0.5 border border-ardoise font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-en-attente"></span>
+                  En attente SN
+                </span>
+</td>
+<td class="py-2.5 px-space-md text-right">
+<div class="flex items-center justify-end gap-1">
+<button class="p-1 border border-ardoise/40 hover:border-encre bg-papier-clair text-encre" title="Générer Fiche Académique">
+<span class="material-symbols-outlined text-[16px]">badge</span>
+</button>
+<button class="p-1 border border-ardoise/40 hover:border-encre bg-papier-clair text-encre" title="Éditer Profil">
+<span class="material-symbols-outlined text-[16px]">edit</span>
+</button>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-papier-clair/70 transition-colors">
+<td class="py-2.5 px-space-md font-data-tabular text-data-tabular font-bold text-encre">23S08834</td>
+<td class="py-2.5 px-space-md">
+<div class="font-bold text-encre">TCHAPTCHET K. Rodrigue</div>
+<div class="font-label-sm text-[11px] text-ardoise">Né le 09/11/2002 · Bafoussam</div>
+</td>
+<td class="py-2.5 px-space-md">
+<span class="font-semibold text-encre">SR · L3</span>
+<span class="block font-label-sm text-[11px] text-ardoise">Semestre 5 &amp; 6</span>
+</td>
+<td class="py-2.5 px-space-md font-data-tabular text-[13px] text-encre">r.tchaptchet@etu.univ-douala.cm</td>
+<td class="py-2.5 px-space-md font-data-tabular text-[12px] text-ardoise">18/10/2023</td>
+<td class="py-2.5 px-space-md text-center">
+<span class="inline-flex items-center gap-1 font-label-sm text-[11px] text-statut-valide bg-papier-clair px-2 py-0.5 border border-ardoise">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-valide"></span>
+                  Actif
+                </span>
+</td>
+<td class="py-2.5 px-space-md text-center">
+<span class="inline-flex items-center gap-1 font-label-sm text-[11px] text-statut-valide bg-papier-clair px-2 py-0.5 border border-ardoise font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-valide"></span>
+                  Complètes (6/6)
+                </span>
+</td>
+<td class="py-2.5 px-space-md text-right">
+<div class="flex items-center justify-end gap-1">
+<button class="p-1 border border-ardoise/40 hover:border-encre bg-papier-clair text-encre" title="Générer Fiche Académique">
+<span class="material-symbols-outlined text-[16px]">badge</span>
+</button>
+<button class="p-1 border border-ardoise/40 hover:border-encre bg-papier-clair text-encre" title="Éditer Profil">
+<span class="material-symbols-outlined text-[16px]">edit</span>
+</button>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-papier-clair/70 transition-colors">
+<td class="py-2.5 px-space-md font-data-tabular text-data-tabular font-bold text-rouge-encre">23S01902</td>
+<td class="py-2.5 px-space-md">
+<div class="font-bold text-encre">ABDOULAYE MAMOUDOU Oumar</div>
+<div class="font-label-sm text-[11px] text-ardoise">Né le 02/01/2004 · Garoua</div>
+</td>
+<td class="py-2.5 px-space-md">
+<span class="font-semibold text-encre">CH · L1</span>
+<span class="block font-label-sm text-[11px] text-ardoise">Tronc Commun FS</span>
+</td>
+<td class="py-2.5 px-space-md font-data-tabular text-[13px] text-encre">o.abdoulaye@etu.univ-douala.cm</td>
+<td class="py-2.5 px-space-md font-data-tabular text-[12px] text-ardoise">20/10/2023</td>
+<td class="py-2.5 px-space-md text-center">
+<span class="inline-flex items-center gap-1 font-label-sm text-[11px] text-statut-valide bg-papier-clair px-2 py-0.5 border border-ardoise">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-valide"></span>
+                  Actif
+                </span>
+</td>
+<td class="py-2.5 px-space-md text-center">
+<span class="inline-flex items-center gap-1 font-label-sm text-[11px] text-rouge-encre bg-papier-clair px-2 py-0.5 border border-ardoise font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-rouge-encre"></span>
+                  Manquant CC
+                </span>
+</td>
+<td class="py-2.5 px-space-md text-right">
+<div class="flex items-center justify-end gap-1">
+<button class="p-1 border border-ardoise/40 hover:border-encre bg-papier-clair text-encre" title="Générer Fiche Académique">
+<span class="material-symbols-outlined text-[16px]">badge</span>
+</button>
+<button class="p-1 border border-ardoise/40 hover:border-encre bg-papier-clair text-encre" title="Éditer Profil">
+<span class="material-symbols-outlined text-[16px]">edit</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- PAGINATION DU REGISTRE (Style Puzzler épuré) -->
+<div class="p-space-sm bg-papier border-t border-ardoise flex items-center justify-between text-body-sm">
+<div class="font-label-sm text-[12px] text-ardoise">
+          Enregistrements affichés : <span class="font-bold text-encre">1 à 4</span> sur <span class="font-bold text-encre">14 850</span> étudiants certifiés
+        </div>
+<div class="flex items-center gap-1 font-label-sm text-[12px]">
+<button class="px-2.5 py-1 border border-ardoise/60 bg-surface text-ardoise cursor-not-allowed opacity-60">Précédent</button>
+<button class="px-2.5 py-1 border border-encre bg-encre text-surface font-bold">01</button>
+<button class="px-2.5 py-1 border border-ardoise/60 bg-surface text-encre hover:bg-papier-clair">02</button>
+<button class="px-2.5 py-1 border border-ardoise/60 bg-surface text-encre hover:bg-papier-clair">03</button>
+<span class="px-1 text-ardoise">...</span>
+<button class="px-2.5 py-1 border border-ardoise/60 bg-surface text-encre hover:bg-papier-clair">1485</button>
+<button class="px-2.5 py-1 border border-ardoise/60 bg-surface text-encre hover:bg-papier-clair">Suivant</button>
+</div>
+</div>
+</div>
+<!-- SECTION 3 : FLUX OPÉRATIONNEL EN 4 PANNEAUX DE CONTRÔLE -->
+<div>
+<div class="mb-space-sm flex items-center justify-between">
+<div>
+<span class="font-label-sm text-[11px] text-rouge-encre font-bold uppercase tracking-widest">MODULE 03 · PROTOCOLE DE PUBLICATION LMD</span>
+<h2 class="font-headline-sm text-headline-sm text-encre font-bold">Opérations de Délibération, MGP &amp; Scellement</h2>
+</div>
+<span class="font-label-sm text-[11px] text-ardoise border border-ardoise px-2 py-1 bg-papier">Protocole Officiel CEMAC-MINESUP 2024</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-space-md">
+<!-- PANNEAU A -->
+<div class="bg-papier-clair border border-ardoise p-space-md flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between border-b border-ardoise/40 pb-2">
+<span class="font-label-sm text-[11px] text-rouge-encre font-bold">PHASE A</span>
+<span class="material-symbols-outlined text-encre text-[20px]">tune</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-encre font-bold mt-2">Paramétrage UEs &amp; Matières</h3>
+<p class="font-body-sm text-body-sm text-ardoise mt-1">
+              Configuration des crédits ECTS, pondérations officielles (CC 30%, TP 20%, SN 50%) et affectation nominative aux enseignants d'amphi.
+            </p>
+<div class="mt-3 p-2 bg-surface border border-ardoise/50 font-label-sm text-[11px] text-encre">
+<div class="flex justify-between">
+<span>UEs Validées :</span>
+<span class="font-bold text-statut-valide">342 / 342 (100%)</span>
+</div>
+<div class="flex justify-between mt-1">
+<span>Enseignants Référents :</span>
+<span class="font-bold">118 titulaires</span>
+</div>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs border-t border-ardoise/30">
+<button class="w-full py-1.5 border border-encre text-encre font-label-sm text-label-sm hover:bg-encre hover:text-surface transition-colors flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[16px]">settings</span>
+<span>Gérer les Cartables d'UEs</span>
+</button>
+</div>
+</div>
+<!-- PANNEAU B -->
+<div class="bg-papier-clair border border-ardoise p-space-md flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between border-b border-ardoise/40 pb-2">
+<span class="font-label-sm text-[11px] text-rouge-encre font-bold">PHASE B</span>
+<span class="material-symbols-outlined text-encre text-[20px]">document_scanner</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-encre font-bold mt-2">Numérisation &amp; Import des Notes</h3>
+<p class="font-body-sm text-body-sm text-ardoise mt-1">
+              Contrôle strict des bordereaux physiques scellés, vérification de la double signature et levée automatique de l'anonymat d'examen SN.
+            </p>
+<div class="mt-3 p-2 bg-surface border border-ardoise/50 font-label-sm text-[11px] text-encre">
+<div class="flex justify-between">
+<span>Notes Traitées :</span>
+<span class="font-bold text-encre">88 420 notes</span>
+</div>
+<div class="flex justify-between mt-1">
+<span>Bordereaux en instance :</span>
+<span class="font-bold text-statut-en-attente">12 dépôts</span>
+</div>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs border-t border-ardoise/30">
+<button class="w-full py-1.5 border border-encre text-encre font-label-sm text-label-sm hover:bg-encre hover:text-surface transition-colors flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[16px]">file_upload</span>
+<span>Dépouiller Bordereau Enseignant</span>
+</button>
+</div>
+</div>
+<!-- PANNEAU C -->
+<div class="bg-papier-clair border border-ardoise p-space-md flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between border-b border-ardoise/40 pb-2">
+<span class="font-label-sm text-[11px] text-rouge-encre font-bold">PHASE C</span>
+<span class="material-symbols-outlined text-encre text-[20px]">calculate</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-encre font-bold mt-2">Moteur MGP &amp; Délibération 30 ECTS</h3>
+<p class="font-body-sm text-body-sm text-ardoise mt-1">
+              Calcul de la Moyenne Générale Pondérée sur 4.00, vérification des compensations semestrielles (≥10/20) et application des procès-verbaux de jury.
+            </p>
+<div class="mt-3 p-2 bg-surface border border-ardoise/50 font-label-sm text-[11px] text-encre">
+<div class="flex justify-between">
+<span>Formule CEMAC :</span>
+<span class="font-bold text-encre">MGP = Σ(Ci·Qi)/ΣCi</span>
+</div>
+<div class="flex justify-between mt-1">
+<span>Seuil Admissibilité :</span>
+<span class="font-bold text-statut-valide">MGP ≥ 2.00 / 4.00</span>
+</div>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs border-t border-ardoise/30">
+<button class="w-full py-1.5 bg-encre text-surface font-label-sm text-label-sm hover:bg-ardoise transition-colors flex items-center justify-center gap-1" id="btn-run-mgp">
+<span class="material-symbols-outlined text-[16px]">play_arrow</span>
+<span>Exécuter Recalcul MGP</span>
+</button>
+</div>
+</div>
+<!-- PANNEAU D -->
+<div class="bg-papier-clair border-2 border-rouge-encre p-space-md flex flex-col justify-between bg-surface-bright">
+<div>
+<div class="flex items-center justify-between border-b border-rouge-encre/40 pb-2">
+<span class="font-label-sm text-[11px] text-rouge-encre font-bold">PHASE D · RÉGALIEN</span>
+<span class="material-symbols-outlined text-rouge-encre text-[20px]">verified</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-rouge-encre font-bold mt-2">Publication &amp; Relevés Officiels</h3>
+<p class="font-body-sm text-body-sm text-ardoise mt-1">
+              Génération des relevés PDF sécurisés avec QR Code anti-fraude, scellement SHA-256 et publication immédiate vers les comptes des étudiants.
+            </p>
+<div class="mt-3 p-2 bg-papier border border-ardoise font-label-sm text-[11px] text-encre">
+<div class="flex items-center gap-1 text-statut-valide font-bold">
+<span class="material-symbols-outlined text-[14px]">lock</span>
+<span>Registre Prêt pour Scellement</span>
+</div>
+<div class="text-[10px] text-ardoise mt-0.5">MINESUP Node CMR-04 Synchro</div>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs border-t border-rouge-encre/30 space-y-1.5">
+<button class="w-full py-2 bg-rouge-encre text-surface font-label-sm text-label-sm font-bold hover:bg-primary transition-colors flex items-center justify-center gap-1.5 shadow-sm" id="btn-publish-all">
+<span class="material-symbols-outlined text-[16px]">campaign</span>
+<span>Publier Résultats sur Portail</span>
+</button>
+<button class="w-full py-1 border border-ardoise text-encre bg-surface font-label-sm text-[11px] hover:bg-papier transition-colors flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[14px]">qr_code_2</span>
+<span>Générer Relevés PDF Sécurisés</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- SECTION 4 : JOURNAL D'AUDIT ET CONTRÔLE DE CONFORMITÉ (SHA-256) -->
+<div class="border border-ardoise bg-papier-clair">
+<div class="p-space-md border-b border-ardoise bg-papier flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
+<div>
+<div class="font-label-sm text-[11px] text-rouge-encre font-bold uppercase tracking-widest">TRAÇABILITÉ LÉGALE · DÉCRET MINESUP 2021</div>
+<h2 class="font-headline-sm text-headline-sm text-encre font-bold">Journal d'Audit &amp; Scellement Cryptographique</h2>
+<p class="font-body-sm text-body-sm text-ardoise mt-0.5">Registre inaltérable de l'agent de cellule · Horodatage serveur certifié</p>
+</div>
+<div class="flex items-center gap-space-sm">
+<div class="font-label-sm text-[11px] text-encre bg-surface px-2 py-1 border border-ardoise">
+            AGENT : <span class="font-bold">ADM-CI-8842</span>
+</div>
+<button class="px-3 py-1.5 bg-encre text-surface font-label-sm text-label-sm hover:bg-ardoise transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">download</span>
+<span>Exporter Journal d'Audit</span>
+</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-encre text-surface border-b border-ardoise font-label-sm text-label-sm uppercase">
+<th class="py-2.5 px-space-md">Horodatage (UTC+1)</th>
+<th class="py-2.5 px-space-md">Empreinte Scellée (SHA-256)</th>
+<th class="py-2.5 px-space-md">Nature de l'Opération</th>
+<th class="py-2.5 px-space-md">Cible &amp; Contexte Académique</th>
+<th class="py-2.5 px-space-md text-center">Statut Intégrité</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-ardoise/30 font-body-sm text-body-sm bg-surface">
+<tr class="hover:bg-papier-clair/60 transition-colors">
+<td class="py-2.5 px-space-md font-data-tabular text-[13px] text-encre">24/10/2023 · 16:42:19</td>
+<td class="py-2.5 px-space-md font-data-tabular text-[12px] text-ardoise">e4b10c8f9...3982a7f1</td>
+<td class="py-2.5 px-space-md">
+<span class="font-semibold text-encre">Délibération Validée &amp; PV Scellé</span>
+<span class="block font-label-sm text-[11px] text-ardoise">Session Normale S1 - GL3</span>
+</td>
+<td class="py-2.5 px-space-md text-encre">FS · Génie Logiciel · 412 Relevés validés</td>
+<td class="py-2.5 px-space-md text-center">
+<span class="inline-flex items-center gap-1 font-label-sm text-[11px] text-statut-valide font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-valide"></span>
+                  SCELLÉ IMMUABLE
+                </span>
+</td>
+</tr>
+<tr class="hover:bg-papier-clair/60 transition-colors">
+<td class="py-2.5 px-space-md font-data-tabular text-[13px] text-encre">24/10/2023 · 14:15:02</td>
+<td class="py-2.5 px-space-md font-data-tabular text-[12px] text-ardoise">99c3a14e0...810f22bb</td>
+<td class="py-2.5 px-space-md">
+<span class="font-semibold text-encre">Clôture Saisie Bordereau SN</span>
+<span class="block font-label-sm text-[11px] text-ardoise">INF301 : Architecture Systèmes</span>
+</td>
+<td class="py-2.5 px-space-md text-encre">Dépôt scellé par Pr. E. Nkeutcheu</td>
+<td class="py-2.5 px-space-md text-center">
+<span class="inline-flex items-center gap-1 font-label-sm text-[11px] text-statut-valide font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-valide"></span>
+                  SCELLÉ IMMUABLE
+                </span>
+</td>
+</tr>
+<tr class="hover:bg-papier-clair/60 transition-colors">
+<td class="py-2.5 px-space-md font-data-tabular text-[13px] text-encre">23/10/2023 · 09:30:45</td>
+<td class="py-2.5 px-space-md font-data-tabular text-[12px] text-ardoise">38f7d98ab...17498c0d</td>
+<td class="py-2.5 px-space-md">
+<span class="font-semibold text-encre">Import Cohorte L1 Math-Info</span>
+<span class="block font-label-sm text-[11px] text-ardoise">Attribution des comptes institutionnels</span>
+</td>
+<td class="py-2.5 px-space-md text-encre">850 étudiants importés via bordereau scolarité</td>
+<td class="py-2.5 px-space-md text-center">
+<span class="inline-flex items-center gap-1 font-label-sm text-[11px] text-statut-valide font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-valide"></span>
+                  SCELLÉ IMMUABLE
+                </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- TOAST DE CONFIRMATION INTERACTIF -->
+<div class="fixed bottom-6 right-6 max-w-md bg-encre text-surface p-space-md border-l-4 border-rouge-encre shadow-2xl flex items-start gap-3 transition-opacity duration-300 opacity-0 pointer-events-none z-50" id="toast-registry">
+<span class="material-symbols-outlined text-statut-valide text-[24px]">verified</span>
+<div>
+<div class="font-label-sm text-label-sm font-bold uppercase tracking-wide" id="toast-title">Opération Validée</div>
+<div class="font-body-sm text-body-sm text-surface-container-highest mt-0.5" id="toast-msg">Le registre a été synchronisé et scellé avec succès.</div>
+</div>
+</div>
+</div>
+<script>
+  // Interactions de bureau de la Cellule Informatique
+  const searchInput = document.getElementById('search-student');
+  const tableRows = document.querySelectorAll('#student-table-body tr');
+  const toast = document.getElementById('toast-registry');
+  const toastTitle = document.getElementById('toast-title');
+  const toastMsg = document.getElementById('toast-msg');
+
+  function showToast(title, message) {
+    if (!toast) return;
+    toastTitle.textContent = title;
+    toastMsg.textContent = message;
+    toast.classList.remove('opacity-0', 'pointer-events-none');
+    toast.classList.add('opacity-100');
+    setTimeout(() => {
+      toast.classList.remove('opacity-100');
+      toast.classList.add('opacity-0', 'pointer-events-none');
+    }, 4500);
+  }
+
+  // Filtrage instantané du registre étudiant
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase().trim();
+      tableRows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(query) ? '' : 'none';
+      });
+    });
+  }
+
+  // Action Recalcul MGP
+  const btnRunMgp = document.getElementById('btn-run-mgp');
+  if (btnRunMgp) {
+    btnRunMgp.addEventListener('click', () => {
+      btnRunMgp.disabled = true;
+      btnRunMgp.innerHTML = '<span class="material-symbols-outlined animate-spin text-[16px]">sync</span> Calcul en cours...';
+      setTimeout(() => {
+        btnRunMgp.disabled = false;
+        btnRunMgp.innerHTML = '<span class="material-symbols-outlined text-[16px]">play_arrow</span> Exécuter Recalcul MGP';
+        showToast('CALCUL MGP CEMAC TERMINÉ', '14 850 dossiers recalculés avec la formule officielle sur 4.00. Compensation semestrielle appliquée.');
+      }, 1200);
+    });
+  }
+
+  // Action Publication sur le Portail
+  const btnPublishAll = document.getElementById('btn-publish-all');
+  if (btnPublishAll) {
+    btnPublishAll.addEventListener('click', () => {
+      const confirmPublication = window.confirm("Confirmation Régalien : Voulez-vous sceller et publier officiellement les résultats sur le portail étudiant ? Cette action est irrévocable.");
+      if (confirmPublication) {
+        showToast('PUBLICATION & SCELLEMENT RÉUSSI', 'Bordereau scellé SHA-256 généré et diffusé sur l’Espace Étudiant @etu.univ-douala.cm.');
+      }
+    });
+  }
+
+  // Action Export Global
+  const btnExport = document.getElementById('btn-export-global');
+  if (btnExport) {
+    btnExport.addEventListener('click', () => {
+      showToast('BORDEREAU RÉGALIEN', 'Génération du récapitulatif académique officiel MINESUP au format certifié.');
+    });
+  }
+</script></main></div></body></html>

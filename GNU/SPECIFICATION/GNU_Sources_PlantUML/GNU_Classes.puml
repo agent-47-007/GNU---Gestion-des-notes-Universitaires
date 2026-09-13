@@ -1,0 +1,279 @@
+@startuml
+hide empty methods
+skinparam classAttributeIconSize 0
+class "Université" as univ {
+ <u>Code_Univ</u>
+ Nom_Univ
+}
+class "Faculté" as fac {
+ <u>Code_Fac</u>
+ Nom_Fac
+ <i>#Code_Univ</i>
+}
+class "Département" as dep {
+ <u>Code_De</u>
+ Nom_Depart
+ <i>#Code_Fac</i>
+}
+class "Filière" as fil {
+ <u>Code_F</u>
+ Nom_F
+ <i>#Code_De</i>
+}
+class "Niveau" as niv {
+ <u>Code_Niv</u>
+ Cycle_Niv
+ Libellé_Niv
+ <i>#Code_F</i>
+}
+class "Année académique" as annee {
+ <u>Annee_Academique</u>
+ Date_Debut
+ Date_Fin
+}
+class "Classe" as classe {
+ <u>Code_Classe</u>
+ /Effectif
+ <i>#Code_Niv</i>
+ <i>#Annee_Academique</i>
+}
+class "UE" as ue {
+ <u>Code_UE</u>
+ Intitulé_UE
+ /Avec_TP
+ Categorie_UE
+ Credit_UE
+ Numero_Semestre : 1 / 2
+ Version_Programme
+ <i>#Code_Niv</i>
+}
+class "Matière" as mat {
+ <u>Code_M</u>
+ Intitulé
+ Libellé_Matiere
+ Credit_Matiere
+ <i>#Code_UE</i>
+}
+class "Utilisateur" as user {
+ <u>Code_Utilisateur</u>
+ Login
+ Mot_De_Passe_Hash
+ Role
+ Actif
+ Nom, Prénom
+}
+class "Étudiant" as etu {
+ <u>Matricule</u>
+ Matricule conservé comme code métier
+ <i>#Code_Utilisateur</i>
+}
+class "Enseignant" as ens {
+ <u>EID</u>
+ Fonction_Enseignant
+ EID conservé comme code métier
+ <i>#Code_Utilisateur</i>
+}
+class "Inscription de classe" as ic {
+ <u>Code_Inscription_Classe</u>
+ Statut_Redoublant
+ Statut_Inscription
+ <i>#Matricule</i>
+ <i>#Code_Classe</i>
+}
+class "Inscription UE" as choix {
+ <u>Code_Inscription_UE</u>
+ Type_Choix : normale / reprise
+ <i>#Code_Inscription_Classe</i>
+ <i>#Code_UE</i>
+}
+class "Affectation" as aff {
+ <u>Code_Affectation</u>
+ <i>#EID</i>
+ <i>#Code_M</i>
+ <i>#Code_Classe</i>
+}
+class "Évaluation" as eval {
+ <u>Code_Evaluation</u>
+ Type_Eval : CC / TP / SN
+ Date_Evaluation
+ Mode_Evaluation
+ Statut_Evaluation
+ Version_Calendrier
+ <i>#Code_Affectation</i>
+ <i>#Code_Evaluation_Origine [0..1]</i>
+}
+class "Plan évaluation" as plan {
+ <u>Code_Plan</u>
+ Version_Plan, Statut_Plan
+ Portee : CLASSE / ETUDIANT
+ /Coeff_CC, /Coeff_TP, /Coeff_SN
+ <i>#Code_Affectation</i>
+ <i>#Code_Inscription_UE [0..1]</i>
+ <i>#Code_Decision [0..1]</i>
+ <i>#Code_Plan_Commun [0..1]</i>
+}
+class "Ligne plan" as lp {
+ <u>Code_Ligne_Plan</u>
+ Retenue
+ Poids_Evaluation
+ <i>#Code_Plan</i>
+ <i>#Code_Evaluation</i>
+}
+class "Note" as note {
+ <u>Code_Note</u>
+ Valeur_Note : 0..100 ou vide
+ /Type_Eval
+ Statut_Note
+ Date_Validation
+ <i>#Code_Evaluation</i>
+ <i>#EID_Validateur [0..1]</i>
+ <i>#Code_Inscription_UE</i>
+}
+class "Historique note" as vn {
+ <u>Code_Historique_Note</u>
+ Version_Note
+ Valeur_Note
+ Statut_Note
+ Date_Modification
+ Motif_Modification
+ <i>#Code_Note</i>
+ <i>#Code_Utilisateur</i>
+}
+class "Requête" as req {
+ <u>Code_Re</u>
+ Objet_Re
+ Libellé_Requete
+ Type_Requete
+ Statut_Requete
+ Date_Soumission
+ <i>#Code_Evaluation [0..1]</i>
+ <i>#Code_Note [0..1]</i>
+ <i>#Code_Inscription_UE</i>
+ <i>#Code_M</i>
+}
+class "Justificatif" as proof {
+ <u>Code_Justificatif</u>
+ Reference_Fichier_Prive
+ Type_Fichier
+ <i>#Code_Re</i>
+}
+class "Décision requête" as dec {
+ <u>Code_Decision</u>
+ Action_Decision
+ Motif_Decision
+ Date_Decision
+ <i>#Code_Re</i>
+ <i>#EID</i>
+}
+class "Session rattrapage" as session {
+ <u>Code_Session</u>
+ Date_Session
+ Statut_Session
+ <i>#Code_Classe</i>
+}
+class "Candidature rattrapage" as cand {
+ <u>Code_Candidature</u>
+ Statut_Candidature
+ <i>#Code_Session</i>
+ <i>#Code_Evaluation_Origine</i>
+ <i>#Code_Publication_Source</i>
+ <i>#Code_Evaluation_Rattrapage [0..1]</i>
+ <i>#Code_Autorisation [0..1]</i>
+ <i>#Code_Inscription_UE</i>
+ <i>#Code_Bulletin_Source</i>
+}
+class "Publication" as pub {
+ <u>Code_Publication</u>
+ Periode
+ Version_Publication
+ Date_Publication
+ <i>#Code_Classe</i>
+ <i>#Code_Agent_Publicateur</i>
+}
+class "Bulletin" as bul {
+ <u>Code_Bulletin</u>
+ Version_Bulletin
+ MGP_S1, MGP_S2, MGP_Total
+ Decision_Admission
+ Courant
+ Contenu_Fige : document structuré
+ Version_Schema_Contenu
+ Version_Regles, Version_Bareme
+ <i>#Code_Publication</i>
+ <i>#Code_Inscription_Classe</i>
+}
+class "Notification" as notif {
+ <u>Code_Notification</u>
+ Type_Notification
+ Date_Envoi
+ Date_Lecture
+ <i>#Code_Destinataire</i>
+ <i>#Code_Evaluation [0..1]</i>
+ <i>#Code_Re [0..1]</i>
+}
+class "Journal audit" as audit {
+ <u>Code_Audit</u>
+ Action
+ Date_Action
+ Type_Objet
+ Identifiant_Objet
+ Avant, Apres
+ Origine : utilisateur / système
+ <i>#Code_Acteur [0..1]</i>
+}
+univ "1" -- "0..*" fac : R01 / Code_Univ
+fac "1" -- "0..*" dep : R02 / Code_Fac
+dep "1" -- "0..*" fil : R03 / Code_De
+fil "1" -- "0..*" niv : R04 / Code_F
+niv "1" -- "0..*" classe : R05 / Code_Niv
+annee "1" -- "0..*" classe : R06 / Annee_Academique
+ue "1" -- "1..2" mat : R07 / Code_UE
+user "1" -- "0..1" etu : R08 / Code_Utilisateur
+user "1" -- "0..1" ens : R09 / Code_Utilisateur
+etu "1" -- "0..*" ic : R10 / Matricule
+classe "1" -- "0..*" ic : R11 / Code_Classe
+ic "1" -- "0..*" choix : R12 / Code_Inscription_Classe
+ue "1" -- "0..*" choix : R13 / Code_UE
+ens "1" -- "0..*" aff : R14 / EID
+mat "1" -- "0..*" aff : R15 / Code_M
+classe "1" -- "0..*" aff : R16 / Code_Classe
+aff "1" -- "0..*" eval : R17 / Code_Affectation
+aff "1" -- "0..*" plan : R18 / Code_Affectation
+plan "1" -- "1..*" lp : R19 / Code_Plan
+eval "1" -- "0..*" lp : R20 / Code_Evaluation
+eval "1" -- "0..*" note : R21 / Code_Evaluation
+note "1" -- "1..*" vn : R22 / Code_Note
+user "1" -- "0..*" vn : R23 / Code_Utilisateur
+req "1" -- "0..*" proof : R24 / Code_Re
+req "1" -- "0..*" dec : R25 / Code_Re
+ens "1" -- "0..*" dec : R26 / EID
+classe "1" -- "0..*" session : R27 / Code_Classe
+session "1" -- "0..*" cand : R28 / Code_Session
+eval "1" -- "0..*" cand : R29 / Code_Evaluation_Origine
+pub "1" -- "0..*" cand : R30 / Code_Publication_Source
+classe "1" -- "0..*" pub : R31 / Code_Classe
+pub "1" -- "0..*" bul : R32 / Code_Publication
+ic "1" -- "0..*" bul : R33 / Code_Inscription_Classe
+user "1" -- "0..*" notif : R34 / Code_Destinataire
+eval "0..1" -- "0..*" eval : R35 / Code_Evaluation_Origine
+ens "0..1" -- "0..*" note : R36 / EID_Validateur
+eval "0..1" -- "0..*" req : R37 / Code_Evaluation
+note "0..1" -- "0..*" req : R38 / Code_Note
+eval "0..1" -- "0..*" cand : R39 / Code_Evaluation_Rattrapage
+dec "0..1" -- "0..*" cand : R40 / Code_Autorisation
+eval "0..1" -- "0..*" notif : R41 / Code_Evaluation
+req "0..1" -- "0..*" notif : R42 / Code_Re
+user "0..1" -- "0..*" audit : R43 / Code_Acteur
+niv "1" -- "0..*" ue : R44 / Code_Niv
+choix "0..1" -- "0..*" plan : R45 / Code_Inscription_UE
+dec "0..1" -- "0..*" plan : R46 / Code_Decision
+plan "0..1" -- "0..*" plan : R47 / Code_Plan_Commun
+choix "1" -- "0..*" note : R48 / Code_Inscription_UE
+choix "1" -- "0..*" req : R49 / Code_Inscription_UE
+mat "1" -- "0..*" req : R50 / Code_M
+choix "1" -- "0..*" cand : R51 / Code_Inscription_UE
+bul "1" -- "0..*" cand : R52 / Code_Bulletin_Source
+user "1" -- "0..*" pub : R53 / Code_Agent_Publicateur
+note "Matière = EC. Une UE comprend 1 à 2 matières.\nEL sur une UE bloque l’admission même avec MGP = 3." as Regles
+Regles .. bul
+@enduml

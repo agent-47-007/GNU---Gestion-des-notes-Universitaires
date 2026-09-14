@@ -377,6 +377,13 @@ class GradeEntryBook {
     return true;
   }
 
+  /// Reopening an EC deliberately returns it to the draft state so that a
+  /// subsequent change must go through validation again.
+  void reopenEc(String ecId) {
+    status(ecId);
+    _statuses[ecId] = GradeEntryStatus.draft;
+  }
+
   /// Local snapshots deliberately contain no attestation or publication status.
   /// Restoring a draft always requires a fresh validation before submission.
   String encodeDraft() => jsonEncode({

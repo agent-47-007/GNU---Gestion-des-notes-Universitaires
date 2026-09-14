@@ -1,4 +1,16 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+part 'teacher_pages.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await GnuApi.restoreSession();
+  runApp(const GnuApp());
+}
 
 const ink = Color(0xFF1B2942);
 const paper = Color(0xFFDEDACB);
@@ -9,30 +21,116 @@ const slate = Color(0xFF5B5F66);
 const valid = Color(0xFF3C6E52);
 const pending = Color(0xFFC4841F);
 
-void main() => runApp(const GnuApp());
+class GnuApi {
+  static const String baseUrl = 'http://127.0.0.1:8000/api/v1';
+  static String? token;
+  static Map<String, dynamic>? currentUser;
+
+  static Role roleFromBackend(String? role) {
+    final normalized = role?.trim().toUpperCase();
+    return switch (normalized) {
+      'ETUDIANT' => Role.etudiant,
+      'AGENT' => Role.cellule,
+      'ENSEIGNANT' => Role.enseignant,
+      _ => Role.enseignant,
+    };
+  }
+
+  static Future<void> saveSession({required String tokenValue, required Map<String, dynamic> user}) async {
+    final prefs = await SharedPreferences.getInstance();
+    token = tokenValue;
+    currentUser = user;
+    await prefs.setString('gnu_token', tokenValue);
+    await prefs.setString('gnu_current_user', jsonEncode(user));
+  }
+
+  static Future<void> restoreSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    token = prefs.getString('gnu_token');
+    final storedUser = prefs.getString('gnu_current_user');
+    if (storedUser != null && storedUser.isNotEmpty) {
+      currentUser = jsonDecode(storedUser) as Map<String, dynamic>;
+    }
+  }
+
+  static Future<Map<String, dynamic>> login({required String login, required String password, required String deviceName}) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/login'),
+      headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      body: jsonEncode({'login': login, 'password': password, 'device_name': deviceName}),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final message = jsonDecode(response.body)['message'] ?? 'Erreur de connexion au backend GNU.';
+      throw Exception(message);
+    }
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final tokenValue = decoded['token'] as String?;
+    final user = decoded['utilisateur'] as Map<String, dynamic>?;
+    if (tokenValue == null || tokenValue.isEmpty || user == null) {
+      throw Exception('Réponse de connexion GNU incomplète.');
+    }
+
+    await saveSession(tokenValue: tokenValue, user: user);
+    return decoded;
+  }
+
+  static Future<Map<String, dynamic>> me() async {
+    if (token == null || token!.isEmpty) {
+      throw Exception('Token GNU introuvable.');
+    }
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/auth/me'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final message = jsonDecode(response.body)['message'] ?? 'Erreur de profil GNU.';
+      throw Exception(message);
+    }
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    currentUser = decoded;
+    await saveSession(tokenValue: token!, user: decoded);
+    return decoded;
+  }
+}
 
 class GnuApp extends StatelessWidget {
   const GnuApp({super.key});
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'GNU — Gestion des notes',
-        theme: ThemeData(
-          useMaterial3: true,
-          scaffoldBackgroundColor: paper,
-          colorScheme: ColorScheme.fromSeed(seedColor: red, primary: red, surface: paperLight),
-          fontFamily: 'IBM Plex Sans',
-          textTheme: const TextTheme(
-            headlineLarge: TextStyle(fontFamily: 'Fraunces', color: ink, fontSize: 32),
-            headlineMedium: TextStyle(fontFamily: 'Fraunces', color: ink, fontSize: 25),
-            titleLarge: TextStyle(fontFamily: 'Fraunces', color: ink, fontSize: 20),
-            bodyMedium: TextStyle(color: ink, height: 1.35),
-            labelSmall: TextStyle(fontFamily: 'monospace', letterSpacing: 1.1, color: slate),
-          ),
+  Widget build(BuildContext context) {
+    final hasStoredSession = GnuApi.token?.isNotEmpty == true && GnuApi.currentUser != null;
+    final home = hasStoredSession
+        ? RoleHome(role: GnuApi.roleFromBackend((GnuApi.currentUser?['role'] ?? '').toString()))
+        : const LoginPage();
+
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'GNU — Gestion des notes',
+      theme: ThemeData(
+        useMaterial3: true,
+        scaffoldBackgroundColor: paper,
+        colorScheme: ColorScheme.fromSeed(seedColor: red, primary: red, surface: paperLight),
+        fontFamily: 'IBM Plex Sans',
+        textTheme: const TextTheme(
+          headlineLarge: TextStyle(fontFamily: 'Fraunces', color: ink, fontSize: 32),
+          headlineMedium: TextStyle(fontFamily: 'Fraunces', color: ink, fontSize: 25),
+          titleLarge: TextStyle(fontFamily: 'Fraunces', color: ink, fontSize: 20),
+          bodyMedium: TextStyle(color: ink, height: 1.35),
+          labelSmall: TextStyle(fontFamily: 'monospace', letterSpacing: 1.1, color: slate),
         ),
-        home: const LoginPage(),
-      );
+      ),
+      home: home,
+    );
+  }
 }
 
 enum Role { enseignant, cellule, etudiant }
@@ -46,6 +144,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   Role role = Role.enseignant;
   final login = TextEditingController(text: 'ENS-4182-INFO');
+  final password = TextEditingController(text: '');
   bool obscurePassword = true;
   bool stayConnected = true;
 
@@ -66,6 +165,33 @@ class _LoginPageState extends State<LoginPage> {
       role = value;
       login.text = roleHint;
     });
+  }
+
+  Future<void> submitLogin(BuildContext context) async {
+    final identifier = login.text.trim();
+    final pass = password.text;
+    if (identifier.isEmpty || pass.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saisissez vos identifiants GNU.')));
+      return;
+    }
+
+    try {
+      await GnuApi.login(
+        login: identifier,
+        password: pass,
+        deviceName: 'flutter-linux-${DateTime.now().millisecondsSinceEpoch}',
+      );
+
+      final me = await GnuApi.me();
+      final roleName = (me['role'] ?? '').toString();
+      final connectedRole = GnuApi.roleFromBackend(roleName);
+
+      if (!mounted) return;
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => RoleHome(role: connectedRole)));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))));
+    }
   }
 
   @override
@@ -100,11 +226,11 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 20),
                 TextField(controller: login, decoration: InputDecoration(labelText: roleLabel, hintText: roleHint, filled: true, fillColor: const Color(0xFFE7E3D5), border: InputBorder.none)),
                 const SizedBox(height: 14),
-                TextField(obscureText: obscurePassword, decoration: InputDecoration(labelText: 'Mot de passe', hintText: 'Votre mot de passe institutionnel', filled: true, fillColor: const Color(0xFFE7E3D5), border: InputBorder.none, suffixIcon: IconButton(icon: Icon(obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined), onPressed: () => setState(() => obscurePassword = !obscurePassword)))),
+                TextField(controller: password, obscureText: obscurePassword, decoration: InputDecoration(labelText: 'Mot de passe', hintText: 'Votre mot de passe institutionnel', filled: true, fillColor: const Color(0xFFE7E3D5), border: InputBorder.none, suffixIcon: IconButton(icon: Icon(obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined), onPressed: () => setState(() => obscurePassword = !obscurePassword)))),
                 Align(alignment: Alignment.centerRight, child: TextButton(onPressed: () {}, child: const Text('Mot de passe oublié ?'))),
                 CheckboxListTile(value: stayConnected, onChanged: (value) => setState(() => stayConnected = value ?? false), contentPadding: EdgeInsets.zero, title: const Text('Rester connecté sur cet appareil')),
                 const SizedBox(height: 8),
-                SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => RoleHome(role: role))), icon: const Icon(Icons.login), label: const Padding(padding: EdgeInsets.all(14), child: Text('SE CONNECTER')))),
+                SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: () => submitLogin(context), icon: const Icon(Icons.login), label: const Padding(padding: EdgeInsets.all(14), child: Text('SE CONNECTER')))),
                 const SizedBox(height: 30),
                 const Divider(),
                 const SizedBox(height: 12),
@@ -238,7 +364,7 @@ class _MgpRules extends StatelessWidget {
         const Text('La Moyenne Générale Pondérée synthétise les performances académiques de l’étudiant pour un semestre ou l’ensemble d’un cursus.'),
         const SizedBox(height: 16),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(child: Container(padding: const EdgeInsets.all(30), decoration: BoxDecoration(color: Colors.white, border: Border.all(color: ink.withOpacity(.12))), child: const Center(child: Text('MGP =  Σ (Xi × ni)\n          ─────────\n             Σ ni', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'serif', fontSize: 25, color: ink))))),
+          Expanded(child: Container(padding: const EdgeInsets.all(30), decoration: BoxDecoration(color: Colors.white, border: Border.all(color: ink.withValues(alpha: .12))), child: const Center(child: Text('MGP =  Σ (Xi × ni)\n          ─────────\n             Σ ni', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'serif', fontSize: 25, color: ink))))),
           const SizedBox(width: 16),
           const Expanded(child: Column(children: [_GuideCard(title: 'Xi : points de l’UE', text: 'Points du grade de la note entière de l’UE. Une UE EL vaut 0 point.'), _GuideCard(title: 'ni : crédits de l’UE', text: 'Crédits associés à l’unité d’enseignement.'), _GuideCard(title: 'Σ ni : crédits de la période', text: 'Total des crédits des UE dont l’inscription est validée, y compris les UE non acquises et les UE EL.')])),
         ]),
@@ -440,14 +566,26 @@ class RoleHome extends StatelessWidget {
   const RoleHome({super.key, required this.role});
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          title: GnuBrand(),
-          actions: [
-            if (role == Role.etudiant) const _StudentNavActions(),
-            if (role == Role.enseignant) const _TeacherNavActions(),
-            TextButton(onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginPage())), child: const Text('Déconnexion')),
-          ],
-        ),
+        appBar: role == Role.enseignant
+            ? const TeacherAppBar(section: TeacherSection.dashboard)
+            : role == Role.cellule
+                ? AppBar(
+                    title: GnuBrand(),
+                    actions: [
+                      TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CelluleSupervisionPage())), icon: const Icon(Icons.visibility_outlined, size: 17), label: const Text('Supervision')),
+                      TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CelluleNumerisationPage())), icon: const Icon(Icons.scanner_outlined, size: 17), label: const Text('Numérisation')),
+                      TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CellulePublicationsPage())), icon: const Icon(Icons.publish_outlined, size: 17), label: const Text('Publications')),
+                      TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CelluleStructurePage())), icon: const Icon(Icons.account_tree_outlined, size: 17), label: const Text('Structure')),
+                      TextButton(onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginPage())), child: const Text('Déconnexion')),
+                    ],
+                  )
+                : AppBar(
+                    title: GnuBrand(),
+                    actions: [
+                      if (role == Role.etudiant) const _StudentNavActions(),
+                      TextButton(onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginPage())), child: const Text('Déconnexion')),
+                    ],
+                  ),
         body: switch (role) {
           Role.etudiant => const StudentDashboard(),
           Role.enseignant => const TeacherDashboard(),
@@ -465,19 +603,6 @@ class _StudentNavActions extends StatelessWidget {
         TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EnrollmentPage())), icon: const Icon(Icons.assignment_outlined, size: 17), label: const Text('Inscription pédagogique')),
         TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotesPage())), icon: const Icon(Icons.star_border, size: 17), label: const Text('Notes & bulletins')),
         TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RequestsPage())), icon: const Icon(Icons.question_mark_outlined, size: 17), label: const Text('Mes requêtes')),
-        const SizedBox(width: 8),
-      ]);
-}
-
-class _TeacherNavActions extends StatelessWidget {
-  const _TeacherNavActions();
-  void later(BuildContext context, String label) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$label sera construit à l’étape suivante.')));
-  @override
-  Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
-        FilledButton.icon(onPressed: () {}, icon: const Icon(Icons.dashboard_outlined, size: 17), label: const Text('Tableau de bord')),
-        TextButton.icon(onPressed: () => later(context, 'Unités d’enseignement'), icon: const Icon(Icons.menu_book_outlined, size: 17), label: const Text('Unités d’enseignement')),
-        TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GradeEntryPage())), icon: const Icon(Icons.fact_check_outlined, size: 17), label: const Text('Saisie et vérifications des notes')),
-        TextButton.icon(onPressed: () => later(context, 'Requêtes'), icon: const Icon(Icons.campaign_outlined, size: 17), label: const Text('Requêtes')),
         const SizedBox(width: 8),
       ]);
 }
@@ -523,7 +648,7 @@ class _StudentHero extends StatelessWidget {
   final VoidCallback onCertificate, onTranscript;
   const _StudentHero({required this.onCertificate, required this.onTranscript});
   @override
-  Widget build(BuildContext context) => Container(padding: const EdgeInsets.fromLTRB(18, 18, 18, 16), decoration: BoxDecoration(color: paperLight, border: Border.all(color: red.withOpacity(.25)), borderRadius: BorderRadius.circular(12)), child: Row(children: [
+  Widget build(BuildContext context) => Container(padding: const EdgeInsets.fromLTRB(18, 18, 18, 16), decoration: BoxDecoration(color: paperLight, border: Border.all(color: red.withValues(alpha: .25)), borderRadius: BorderRadius.circular(12)), child: Row(children: [
         const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('●  SESSION ACADÉMIQUE EN COURS', style: TextStyle(fontFamily: 'monospace', color: valid, fontSize: 12, letterSpacing: 1)), SizedBox(height: 10), Text('Tableau de Bord de l’Étudiant', style: TextStyle(fontFamily: 'Fraunces', fontSize: 30, fontWeight: FontWeight.bold, color: ink)), SizedBox(height: 8), Text('TCHOUENTCHOU K. Arnaud · Matricule : 21U2412 · Licence 3 Informatique (Système LMD)')])) ,
         OutlinedButton.icon(onPressed: onCertificate, icon: const Icon(Icons.description_outlined), label: const Text('Certificat de scolarité')),
         const SizedBox(width: 10),
@@ -552,7 +677,7 @@ class _StudentAlert extends StatelessWidget {
   final String title, badge, text, action; final Color color; final VoidCallback onPressed;
   const _StudentAlert({required this.title, required this.badge, required this.text, required this.action, required this.color, required this.onPressed});
   @override
-  Widget build(BuildContext context) => Card(color: paperLight, shape: RoundedRectangleBorder(side: BorderSide(color: color.withOpacity(.45)), borderRadius: BorderRadius.circular(12)), child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [Icon(Icons.assignment_late_outlined, color: color), const SizedBox(width: 10), Expanded(child: Text(title, style: TextStyle(fontFamily: 'monospace', color: color, fontWeight: FontWeight.bold, fontSize: 12))), Chip(label: Text(badge, style: TextStyle(color: color, fontSize: 10)), backgroundColor: color.withOpacity(.12))]), const SizedBox(height: 10), Text(text), const SizedBox(height: 10), TextButton.icon(onPressed: onPressed, icon: Icon(Icons.arrow_forward, color: color, size: 16), label: Text(action, style: TextStyle(color: color, fontWeight: FontWeight.bold)))])));
+  Widget build(BuildContext context) => Card(color: paperLight, shape: RoundedRectangleBorder(side: BorderSide(color: color.withValues(alpha: .45)), borderRadius: BorderRadius.circular(12)), child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [Icon(Icons.assignment_late_outlined, color: color), const SizedBox(width: 10), Expanded(child: Text(title, style: TextStyle(fontFamily: 'monospace', color: color, fontWeight: FontWeight.bold, fontSize: 12))), Chip(label: Text(badge, style: TextStyle(color: color, fontSize: 10)), backgroundColor: color.withValues(alpha: .12))]), const SizedBox(height: 10), Text(text), const SizedBox(height: 10), TextButton.icon(onPressed: onPressed, icon: Icon(Icons.arrow_forward, color: color, size: 16), label: Text(action, style: TextStyle(color: color, fontWeight: FontWeight.bold)))])));
 }
 
 class _StudentGradesSection extends StatelessWidget {
@@ -596,7 +721,7 @@ class _StudentGradesSection extends StatelessWidget {
         ]),
       );
 
-  static DataRow _gradeRow(String code, String label, String credits, String cc, String tp, String exam, String status, Color color, void Function(String) onView) => DataRow(cells: [DataCell(Text(code, style: TextStyle(fontFamily: 'monospace', color: color))), DataCell(Text(label)), DataCell(Text(credits)), DataCell(Text(cc)), DataCell(Text(tp, style: TextStyle(color: tp.contains('*') ? gold : ink))), DataCell(Text(exam)), DataCell(Chip(label: Text(status, style: TextStyle(fontSize: 10, color: color)), backgroundColor: color.withOpacity(.12))), DataCell(IconButton(onPressed: () => onView(code), icon: const Icon(Icons.visibility_outlined, size: 18)))]);
+  static DataRow _gradeRow(String code, String label, String credits, String cc, String tp, String exam, String status, Color color, void Function(String) onView) => DataRow(cells: [DataCell(Text(code, style: TextStyle(fontFamily: 'monospace', color: color))), DataCell(Text(label)), DataCell(Text(credits)), DataCell(Text(cc)), DataCell(Text(tp, style: TextStyle(color: tp.contains('*') ? gold : ink))), DataCell(Text(exam)), DataCell(Chip(label: Text(status, style: TextStyle(fontSize: 10, color: color)), backgroundColor: color.withValues(alpha: .12))), DataCell(IconButton(onPressed: () => onView(code), icon: const Icon(Icons.visibility_outlined, size: 18)))]);
 }
 
 class _StudentComplaint extends StatelessWidget {
@@ -679,7 +804,7 @@ class _DebtCard extends StatelessWidget {
   const _DebtCard();
   @override
   Widget build(BuildContext context) => Card(shape: RoundedRectangleBorder(side: const BorderSide(color: gold), borderRadius: BorderRadius.circular(6)), child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [const Icon(Icons.priority_high, color: gold), const SizedBox(width: 10), const Expanded(child: Text('Reprise obligatoire de dette antérieure non capitalisée (Semestre 4 / L2)', style: TextStyle(fontFamily: 'Fraunces', fontSize: 18, fontWeight: FontWeight.bold, color: ink))), Chip(label: const Text('RÉGLEMENTATION LMD · PRIORITÉ 1'), backgroundColor: gold.withOpacity(.18), labelStyle: const TextStyle(color: gold, fontSize: 10))]),
+        Row(children: [const Icon(Icons.priority_high, color: gold), const SizedBox(width: 10), const Expanded(child: Text('Reprise obligatoire de dette antérieure non capitalisée (Semestre 4 / L2)', style: TextStyle(fontFamily: 'Fraunces', fontSize: 18, fontWeight: FontWeight.bold, color: ink))), Chip(label: const Text('RÉGLEMENTATION LMD · PRIORITÉ 1'), backgroundColor: gold.withValues(alpha: .18), labelStyle: const TextStyle(color: gold, fontSize: 10))]),
         const SizedBox(height: 5),
         const Text('En application de la réglementation LMD, l’inscription à la dette est prioritaire sur les UEs optionnelles du niveau en cours.'),
         const SizedBox(height: 12),
@@ -705,21 +830,21 @@ class _UnitTile extends StatelessWidget {
   final String code, title, credits, details; final bool required;
   const _UnitTile({required this.code, required this.title, required this.credits, required this.details, required this.required});
   @override
-  Widget build(BuildContext context) => Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: paper, border: Border.all(color: ink.withOpacity(.12)), borderRadius: BorderRadius.circular(5)), child: Row(children: [Icon(required ? Icons.check_box : Icons.radio_button_unchecked, color: required ? valid : slate), const SizedBox(width: 10), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('$code  $title', style: const TextStyle(fontWeight: FontWeight.bold, color: ink)), const SizedBox(height: 4), Text(details, style: const TextStyle(fontFamily: 'monospace', fontSize: 10, color: slate)), const SizedBox(height: 4), Text(required ? 'Inscrit d’office' : 'Non sélectionné', style: TextStyle(fontFamily: 'monospace', fontSize: 10, color: required ? valid : slate))])), Text(credits, style: const TextStyle(fontFamily: 'monospace', color: ink))]));
+  Widget build(BuildContext context) => Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: paper, border: Border.all(color: ink.withValues(alpha: .12)), borderRadius: BorderRadius.circular(5)), child: Row(children: [Icon(required ? Icons.check_box : Icons.radio_button_unchecked, color: required ? valid : slate), const SizedBox(width: 10), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('$code  $title', style: const TextStyle(fontWeight: FontWeight.bold, color: ink)), const SizedBox(height: 4), Text(details, style: const TextStyle(fontFamily: 'monospace', fontSize: 10, color: slate)), const SizedBox(height: 4), Text(required ? 'Inscrit d’office' : 'Non sélectionné', style: TextStyle(fontFamily: 'monospace', fontSize: 10, color: required ? valid : slate))])), Text(credits, style: const TextStyle(fontFamily: 'monospace', color: ink))]));
 }
 
 class _SelectableUnit extends StatelessWidget {
   final String code, title, details; final bool selected; final VoidCallback onTap;
   const _SelectableUnit({required this.code, required this.title, required this.details, required this.selected, required this.onTap});
   @override
-  Widget build(BuildContext context) => InkWell(onTap: onTap, child: Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: selected ? const Color(0xFFF4F7EF) : paper, border: Border.all(color: selected ? valid : ink.withOpacity(.14), width: selected ? 1.5 : 1), borderRadius: BorderRadius.circular(5)), child: Row(children: [Icon(selected ? Icons.radio_button_checked : Icons.radio_button_unchecked, color: selected ? valid : slate), const SizedBox(width: 10), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('$code  $title', style: const TextStyle(fontWeight: FontWeight.bold, color: ink)), const SizedBox(height: 5), Text(details, style: const TextStyle(fontFamily: 'monospace', fontSize: 10, color: slate)), const SizedBox(height: 5), Text(selected ? '✓ SÉLECTIONNÉ POUR LE PARCOURS GÉNIE LOGICIEL' : 'Non sélectionné', style: TextStyle(fontFamily: 'monospace', fontSize: 10, color: selected ? valid : slate))])), const Text('4 ECTS', style: TextStyle(fontFamily: 'monospace', color: ink, fontWeight: FontWeight.bold))])));
+  Widget build(BuildContext context) => InkWell(onTap: onTap, child: Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: selected ? const Color(0xFFF4F7EF) : paper, border: Border.all(color: selected ? valid : ink.withValues(alpha: .14), width: selected ? 1.5 : 1), borderRadius: BorderRadius.circular(5)), child: Row(children: [Icon(selected ? Icons.radio_button_checked : Icons.radio_button_unchecked, color: selected ? valid : slate), const SizedBox(width: 10), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('$code  $title', style: const TextStyle(fontWeight: FontWeight.bold, color: ink)), const SizedBox(height: 5), Text(details, style: const TextStyle(fontFamily: 'monospace', fontSize: 10, color: slate)), const SizedBox(height: 5), Text(selected ? '✓ SÉLECTIONNÉ POUR LE PARCOURS GÉNIE LOGICIEL' : 'Non sélectionné', style: TextStyle(fontFamily: 'monospace', fontSize: 10, color: selected ? valid : slate))])), const Text('4 ECTS', style: TextStyle(fontFamily: 'monospace', color: ink, fontWeight: FontWeight.bold))])));
 }
 
 class _EnrollmentSummary extends StatelessWidget {
   final bool validated; final VoidCallback onValidate;
   const _EnrollmentSummary({required this.validated, required this.onValidate});
   @override
-  Widget build(BuildContext context) => Card(shape: RoundedRectangleBorder(side: BorderSide(color: validated ? valid : ink.withOpacity(.35))), child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('DOCUMENT RÉGLEMENTAIRE', style: TextStyle(fontFamily: 'monospace', color: slate, fontSize: 10)), const SizedBox(height: 6), const Text('Bordereau Provisoire d’Enrôlement S5', style: TextStyle(fontFamily: 'Fraunces', fontSize: 20, fontWeight: FontWeight.bold, color: ink)), const Divider(), const _SummaryLine(label: 'UEs fondamentales (Tronc Commun)', value: '22 ECTS'), const _SummaryLine(label: 'Reprise Dette L2 (INF201)', value: '6 ECTS'), const _SummaryLine(label: 'UE Optionnelle', value: '4 ECTS'), const Divider(), const _SummaryLine(label: 'TOTAL DES CRÉDITS ENRÔLÉS', value: '30 / 30 ECTS', strong: true), const SizedBox(height: 14), Container(padding: const EdgeInsets.all(10), color: paper, child: const Text('Volume horaire total présentiel : 280 heures\nDétail : CM 124h · TD 62h · TP 94h', style: TextStyle(fontFamily: 'monospace', fontSize: 10, color: slate))), const SizedBox(height: 12), const Text('⚠ Avertissement académique : la validation pédagogique est définitive après visa du Coordonnateur de filière.', style: TextStyle(color: red, fontSize: 11)), const SizedBox(height: 14), SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: onValidate, icon: Icon(validated ? Icons.verified : Icons.verified_outlined), label: Text(validated ? 'INSCRIPTION VALIDÉE' : 'Valider définitivement mon inscription'))), const SizedBox(height: 8), SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fiche d’inscription PDF prête.'))), icon: const Icon(Icons.download_outlined), label: const Text('Télécharger la fiche (.PDF'))), const SizedBox(height: 10), Center(child: Text(validated ? '✓ Registre des visas mis à jour' : 'Réinitialiser les options', style: TextStyle(fontFamily: 'monospace', fontSize: 10, color: validated ? valid : slate)))])));
+  Widget build(BuildContext context) => Card(shape: RoundedRectangleBorder(side: BorderSide(color: validated ? valid : ink.withValues(alpha: .35))), child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('DOCUMENT RÉGLEMENTAIRE', style: TextStyle(fontFamily: 'monospace', color: slate, fontSize: 10)), const SizedBox(height: 6), const Text('Bordereau Provisoire d’Enrôlement S5', style: TextStyle(fontFamily: 'Fraunces', fontSize: 20, fontWeight: FontWeight.bold, color: ink)), const Divider(), const _SummaryLine(label: 'UEs fondamentales (Tronc Commun)', value: '22 ECTS'), const _SummaryLine(label: 'Reprise Dette L2 (INF201)', value: '6 ECTS'), const _SummaryLine(label: 'UE Optionnelle', value: '4 ECTS'), const Divider(), const _SummaryLine(label: 'TOTAL DES CRÉDITS ENRÔLÉS', value: '30 / 30 ECTS', strong: true), const SizedBox(height: 14), Container(padding: const EdgeInsets.all(10), color: paper, child: const Text('Volume horaire total présentiel : 280 heures\nDétail : CM 124h · TD 62h · TP 94h', style: TextStyle(fontFamily: 'monospace', fontSize: 10, color: slate))), const SizedBox(height: 12), const Text('⚠ Avertissement académique : la validation pédagogique est définitive après visa du Coordonnateur de filière.', style: TextStyle(color: red, fontSize: 11)), const SizedBox(height: 14), SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: onValidate, icon: Icon(validated ? Icons.verified : Icons.verified_outlined), label: Text(validated ? 'INSCRIPTION VALIDÉE' : 'Valider définitivement mon inscription'))), const SizedBox(height: 8), SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fiche d’inscription PDF prête.'))), icon: const Icon(Icons.download_outlined), label: const Text('Télécharger la fiche (.PDF'))), const SizedBox(height: 10), Center(child: Text(validated ? '✓ Registre des visas mis à jour' : 'Réinitialiser les options', style: TextStyle(fontFamily: 'monospace', fontSize: 10, color: validated ? valid : slate)))])));
 }
 
 class _SummaryLine extends StatelessWidget {
@@ -843,10 +968,191 @@ class RequestsPage extends StatefulWidget {
 }
 
 class _RequestsPageState extends State<RequestsPage> {
-  String ue = 'INF301 — Conception Orientée Objet';
-  String nature = 'Contrôle Continu';
-  String motif = 'Note de TP non reportée ou erreur matérielle';
-  bool submitted = false;
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: GnuBrand(),
+      actions: [
+        TextButton.icon(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.dashboard_outlined, size: 17), label: const Text('Tableau de bord')),
+        TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EnrollmentPage())), icon: const Icon(Icons.assignment_outlined, size: 17), label: const Text('Inscription pédagogique')),
+        TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotesPage())), icon: const Icon(Icons.star_border, size: 17), label: const Text('Notes & bulletins')),
+        FilledButton.icon(onPressed: () {}, icon: const Icon(Icons.question_mark_outlined, size: 17), label: const Text('Mes requêtes')),
+        const SizedBox(width: 8),
+      ],
+    ),
+    body: SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(32, 22, 32, 40),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1240),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _RequestsTopContext(),
+              const SizedBox(height: 16),
+              const _RequestsTitle(),
+              const SizedBox(height: 18),
+              _RequestsFilterBar(),
+              const SizedBox(height: 14),
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(flex: 2, child: _RequestRegistryList()),
+                const SizedBox(width: 18),
+                Expanded(child: _RequestSummaryPanel()),
+              ]),
+              const SizedBox(height: 24),
+              const _StudentFooter(),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class _RequestsTopContext extends StatelessWidget {
+  const _RequestsTopContext();
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(22, 14, 22, 14),
+      child: Row(children: [
+        const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('FACULTÉ DES SCIENCES  /  DÉP. MATHÉMATIQUES & INFORMATIQUE', style: TextStyle(fontFamily: 'Fraunces', color: ink, fontSize: 18)),
+          SizedBox(height: 6),
+          Text('ANNÉE 2024–2025  ·  SEMESTRES IMPAIRS & PAIRS', style: TextStyle(fontFamily: 'monospace', color: slate, fontSize: 10)),
+        ])),
+        Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7), color: paperLight, child: const Text('● HABILITATION PÉDAGOGIQUE VALIDÉE', style: TextStyle(fontFamily: 'monospace', color: valid, fontSize: 10))),
+        const SizedBox(width: 20),
+        const Text('Horodatage officiel : 24/02/2025 · 10:15 UTC+1', style: TextStyle(fontFamily: 'monospace', fontSize: 10, color: slate)),
+      ]),
+    ),
+  );
+}
+
+class _RequestsTitle extends StatelessWidget {
+  const _RequestsTitle();
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(26, 18, 26, 18),
+      child: Row(children: [
+        const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('REGISTRE OFFICIEL   ·   DÉPÔT & ARBITRAGE LMD', style: TextStyle(fontFamily: 'monospace', color: red, fontSize: 11)),
+          SizedBox(height: 8),
+          Text('Registre officiel des réclamations académiques', style: TextStyle(fontFamily: 'Fraunces', fontSize: 29, color: ink, fontWeight: FontWeight.bold)),
+          SizedBox(height: 8),
+          Text('Bureau de traitement des requêtes académiques — Examen, arbitrage et rectification des réclamations sur notes déposées par les étudiants.', style: TextStyle(fontSize: 12, color: slate)),
+        ])),
+        Row(children: [
+          OutlinedButton.icon(onPressed: () {}, icon: const Icon(Icons.print_outlined), label: const Text('Export (xlsx)')),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(onPressed: () {}, icon: const Icon(Icons.picture_as_pdf_outlined), label: const Text('PV rectificatif (.pdf)')),
+        ]),
+      ]),
+    ),
+  );
+}
+
+class _RequestsFilterBar extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      child: Row(children: [
+        const Text('FILTRE :', style: TextStyle(fontFamily: 'monospace', fontSize: 11, color: slate)),
+        const SizedBox(width: 10),
+        Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7), color: paperLight, child: const Text('Tous', style: TextStyle(color: ink, fontFamily: 'monospace', fontSize: 11))),
+        const SizedBox(width: 6),
+        Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7), color: paper, child: const Text('L1', style: TextStyle(color: slate, fontFamily: 'monospace', fontSize: 11))),
+        const SizedBox(width: 6),
+        Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7), color: paper, child: const Text('L2', style: TextStyle(color: slate, fontFamily: 'monospace', fontSize: 11))),
+        const SizedBox(width: 6),
+        Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7), color: paper, child: const Text('L3', style: TextStyle(color: slate, fontFamily: 'monospace', fontSize: 11))),
+        const Spacer(),
+        const SizedBox(width: 250, child: TextField(decoration: InputDecoration(labelText: 'Rechercher par matricule ou UE', filled: true, fillColor: paperLight, border: InputBorder.none))),
+      ]),
+    ),
+  );
+}
+
+class _RequestRegistryList extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Column(children: [
+    _RequestRegistryEntry(code: 'REQ-2025-0842', ue: 'INF301', title: 'INF301 · EC 01 · Contrôle Continu', student: 'TCHOUKETCHEU KAMDEM Guy Arnaud', group: 'Groupe 1P · Parcours Informatique Générale', status: 'EN ATTENTE D’ARBITRAGE', color: pending, detail: 'Note de TP non reportée'),
+    const SizedBox(height: 14),
+    _RequestRegistryEntry(code: 'REQ-2025-0839', ue: 'INF301', title: 'INF301 · EC 01 · Contrôle Continu', student: 'MENGUE EKANI Marie-Claire', group: 'Groupe 1P · Parcours Informatique Générale', status: 'VALIDÉE / NOTE RECTIFIÉE', color: valid, detail: 'Erreur de report sur bordereau officiel'),
+    const SizedBox(height: 14),
+    _RequestRegistryEntry(code: 'REQ-2025-0818', ue: 'INF303', title: 'INF303 · EC 01 · Contrôle Continu', student: 'EKANE TCHINDA Rostand', group: 'Groupe 2A · Systèmes & Réseaux LMD', status: 'EN COURS D’EXAMEN', color: red, detail: 'Demande de vérification de notes'),
+  ]);
+}
+
+class _RequestRegistryEntry extends StatelessWidget {
+  final String code, ue, title, student, group, status, detail;
+  final Color color;
+  const _RequestRegistryEntry({required this.code, required this.ue, required this.title, required this.student, required this.group, required this.status, required this.color, required this.detail});
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Text(code, style: const TextStyle(fontFamily: 'monospace', color: ink, fontWeight: FontWeight.bold, fontSize: 11)),
+          const SizedBox(width: 10),
+          Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), color: paperLight, child: Text(ue, style: const TextStyle(fontFamily: 'monospace', color: ink, fontSize: 10))),
+          const SizedBox(width: 10),
+          Expanded(child: Text(title, style: const TextStyle(fontFamily: 'monospace', color: slate, fontSize: 11))),
+          Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), color: color.withValues(alpha: .12), child: Text(status, style: TextStyle(fontFamily: 'monospace', color: color, fontSize: 10, fontWeight: FontWeight.bold))),
+        ]),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(student, style: const TextStyle(fontFamily: 'Fraunces', fontSize: 19, color: ink, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text(group, style: const TextStyle(fontFamily: 'monospace', color: slate, fontSize: 10)),
+          ])),
+          const Text('12/20', style: TextStyle(fontFamily: 'Fraunces', fontSize: 16, color: red)),
+        ]),
+        const SizedBox(height: 12),
+        Container(padding: const EdgeInsets.all(14), color: paperLight, child: Text(detail, style: const TextStyle(fontSize: 11, color: slate))),
+        const SizedBox(height: 10),
+        Row(children: [
+          const Expanded(child: Text('Motif : note de TP non reportée ou erreur matérielle', style: TextStyle(fontFamily: 'monospace', color: slate, fontSize: 10))),
+          OutlinedButton(onPressed: () {}, child: const Text('Confirmer')),
+          const SizedBox(width: 8),
+          FilledButton(onPressed: () {}, child: const Text('Décision')),
+        ]),
+      ]),
+    ),
+  );
+}
+
+class _RequestSummaryPanel extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('Typologie des Requêtes', style: TextStyle(fontFamily: 'Fraunces', fontSize: 21, color: ink, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        Center(child: Container(width: 120, height: 120, decoration: const BoxDecoration(shape: BoxShape.circle, color: paperLight), child: const Center(child: Text('100%\nACTIVE', style: TextStyle(fontFamily: 'Fraunces', fontSize: 20, color: ink))))),
+        const SizedBox(height: 14),
+        const Text('▷ Error de report / CC/TP : 50%', style: TextStyle(fontFamily: 'monospace', color: red, fontSize: 10)),
+        const Text('▷ Rectification / moyenne : 30%', style: TextStyle(fontFamily: 'monospace', color: gold, fontSize: 10)),
+        const Text('▷ Dépôt des pièces : 20%', style: TextStyle(fontFamily: 'monospace', color: valid, fontSize: 10)),
+        const Divider(height: 24),
+        const Text('Déploiement des dossiers', style: TextStyle(fontFamily: 'Fraunces', color: ink, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        const Text('Total : 12', style: TextStyle(fontFamily: 'monospace', color: slate, fontSize: 11)),
+        const Text('Demandes reçues : 12', style: TextStyle(fontFamily: 'monospace', color: slate, fontSize: 11)),
+        const Text('Traitées : 8', style: TextStyle(fontFamily: 'monospace', color: slate, fontSize: 11)),
+        const Text('En attente : 4', style: TextStyle(fontFamily: 'monospace', color: slate, fontSize: 11)),
+      ]),
+    ),
+  );
+}
+
+class LegacyTeacherRequestsPage extends StatelessWidget {
+  const LegacyTeacherRequestsPage({super.key});
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -854,9 +1160,9 @@ class _RequestsPageState extends State<RequestsPage> {
           title: GnuBrand(),
           actions: [
             TextButton.icon(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.dashboard_outlined, size: 17), label: const Text('Tableau de bord')),
-            TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EnrollmentPage())), icon: const Icon(Icons.assignment_outlined, size: 17), label: const Text('Inscription pédagogique')),
-            TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotesPage())), icon: const Icon(Icons.star_border, size: 17), label: const Text('Notes & bulletins')),
-            FilledButton.icon(onPressed: () {}, icon: const Icon(Icons.question_mark_outlined, size: 17), label: const Text('Mes requêtes')),
+            TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeacherUnitsPage())), icon: const Icon(Icons.menu_book_outlined, size: 17), label: const Text('Unités d’enseignement')),
+            TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GradeEntryPage())), icon: const Icon(Icons.fact_check_outlined, size: 17), label: const Text('Saisie et vérifications des notes')),
+            FilledButton.icon(onPressed: () {}, icon: const Icon(Icons.campaign_outlined, size: 17), label: const Text('Requêtes')),
             const SizedBox(width: 8),
           ],
         ),
@@ -864,16 +1170,63 @@ class _RequestsPageState extends State<RequestsPage> {
           padding: const EdgeInsets.fromLTRB(32, 22, 32, 40),
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1240),
-              child: Column(children: [
-                LayoutBuilder(builder: (context, constraints) {
-                  final wide = constraints.maxWidth >= 900;
-                  final form = _RequestFormPanel(ue: ue, nature: nature, motif: motif, onUe: (v) => setState(() => ue = v), onNature: (v) => setState(() => nature = v), onMotif: (v) => setState(() => motif = v), onSubmit: () => setState(() => submitted = true));
-                  final aside = _RequestAside(submitted: submitted);
-                  return wide ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: form), const SizedBox(width: 22), SizedBox(width: 400, child: aside)]) : Column(children: [form, const SizedBox(height: 18), aside]);
-                }),
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+                    child: Row(children: [
+                      const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('REGISTRE OFFICIEL   /  RÉCLAMATIONS ACADÉMIQUES', style: TextStyle(fontFamily: 'monospace', color: red, fontSize: 11)),
+                        SizedBox(height: 8),
+                        Text('Traitement des Requêtes', style: TextStyle(fontFamily: 'Fraunces', color: ink, fontSize: 28, fontWeight: FontWeight.bold)),
+                        SizedBox(height: 5),
+                        Text('Filière : Licence 3 Informatique · Session normale 2024-2025', style: TextStyle(color: slate, fontSize: 12)),
+                      ])),
+                      Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10), color: paperLight, child: const Text('2 urgentes · 04 total', style: TextStyle(fontFamily: 'monospace', color: red, fontSize: 11))),
+                    ]),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(flex: 2, child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        const Row(children: [
+                          Icon(Icons.campaign_outlined, color: red),
+                          SizedBox(width: 10),
+                          Text('Liste des réclamations', style: TextStyle(fontFamily: 'Fraunces', fontSize: 22, color: ink, fontWeight: FontWeight.bold)),
+                        ]),
+                        const Divider(height: 22),
+                        _TeacherRequestLine(code: 'REQ-2025-0842', student: 'KAMGA P.', ue: 'INF301 · Algorithmique', issue: 'Erreur matière sur appréciation de note TP', status: 'À traiter', color: red),
+                        const SizedBox(height: 12),
+                        _TeacherRequestLine(code: 'REQ-2025-0843', student: 'BONGO S.', ue: 'INF305 · Réseaux', issue: 'Erreur de saisie de note', status: 'À vérifier', color: gold),
+                        const SizedBox(height: 12),
+                        _TeacherRequestLine(code: 'REQ-2025-0844', student: 'OTTO M.', ue: 'INF303 · BD', issue: 'Demande de rectification note CC', status: 'Validée', color: valid),
+                      ]),
+                    ),
+                  )),
+                  const SizedBox(width: 16),
+                  Expanded(child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        const Text('Commission de recours', style: TextStyle(fontFamily: 'Fraunces', fontSize: 22, color: ink, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 12),
+                        const Text('Session normale 2024-2025', style: TextStyle(fontFamily: 'monospace', color: slate, fontSize: 11)),
+                        const SizedBox(height: 16),
+                        Container(padding: const EdgeInsets.all(12), color: paperLight, child: const Text('Clôture des réclamations : 38h14m', style: TextStyle(fontFamily: 'monospace', color: red))),
+                        const SizedBox(height: 12),
+                        Container(padding: const EdgeInsets.all(12), color: paper, child: const Text('Norme : traitement préalable de l’arbitrage des notes', style: TextStyle(fontSize: 11, color: slate))),
+                        const SizedBox(height: 20),
+                        SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Traitement des requêtes lancé.'))), icon: const Icon(Icons.campaign_outlined), label: const Text('Traiter les requêtes'))),
+                      ]),
+                    ),
+                  )),
+                ]),
                 const SizedBox(height: 24),
-                const _StudentFooter(),
+                const _TeacherFooter(),
               ]),
             ),
           ),
@@ -881,65 +1234,121 @@ class _RequestsPageState extends State<RequestsPage> {
       );
 }
 
-class _RequestFormPanel extends StatelessWidget {
-  final String ue, nature, motif; final ValueChanged<String> onUe, onNature, onMotif; final VoidCallback onSubmit;
-  const _RequestFormPanel({required this.ue, required this.nature, required this.motif, required this.onUe, required this.onNature, required this.onMotif, required this.onSubmit});
+class _TeacherRequestLine extends StatelessWidget {
+  final String code, student, ue, issue, status;
+  final Color color;
+  const _TeacherRequestLine({required this.code, required this.student, required this.ue, required this.issue, required this.status, required this.color});
+
   @override
-  Widget build(BuildContext context) => Card(child: Padding(padding: const EdgeInsets.fromLTRB(24, 24, 24, 22), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('FORMULAIRE OFFICIEL  /  RÉF. DÉCRET ARBITRAGE LMD N° 2021–419', style: TextStyle(fontFamily: 'monospace', fontSize: 11, color: red, letterSpacing: .8)),
-        const SizedBox(height: 8),
-        const Text('Réclamation Académique & Arbitrage', style: TextStyle(fontFamily: 'Fraunces', fontSize: 28, color: red)),
-        const SizedBox(height: 5),
-        const Text('Registre d’instruction contradictoire pour la rectification des procès-verbaux de notes semestriels.', style: TextStyle(color: slate)),
-        const SizedBox(height: 22),
-        const Text('Unité d’Enseignement (UE) concernée *', style: TextStyle(fontWeight: FontWeight.bold, color: ink)),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<String>(value: ue, decoration: const InputDecoration(filled: true, fillColor: paper, border: InputBorder.none), items: const [DropdownMenuItem(value: 'INF301 — Conception Orientée Objet', child: Text('INF301 — Conception Orientée Objet')), DropdownMenuItem(value: 'INF303 — Bases de Données', child: Text('INF303 — Bases de Données')), DropdownMenuItem(value: 'INF307 — Algorithmique Avancée', child: Text('INF307 — Algorithmique Avancée'))], onChanged: (v) { if (v != null) onUe(v); }),
-        const SizedBox(height: 18),
-        const Text('Nature de l’évaluation contestée *', style: TextStyle(fontWeight: FontWeight.bold, color: ink)),
-        Row(children: ['Contrôle Continu', 'Travaux Pratiques', 'Examen Terminal'].map((v) => Expanded(child: RadioListTile<String>(contentPadding: EdgeInsets.zero, dense: true, title: Text(v, style: const TextStyle(fontSize: 12)), subtitle: Text(v == 'Contrôle Continu' ? 'Pondération 30%' : v == 'Travaux Pratiques' ? 'Session 1 à 6' : 'Session Normale 70%', style: const TextStyle(fontSize: 10)), value: v, groupValue: nature, onChanged: (x) { if (x != null) onNature(x); }))).toList()),
-        const SizedBox(height: 10),
-        const Text('Motif formel de la réclamation *', style: TextStyle(fontWeight: FontWeight.bold, color: ink)),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<String>(value: motif, decoration: const InputDecoration(filled: true, fillColor: paper, border: InputBorder.none), items: const [DropdownMenuItem(value: 'Note de TP non reportée ou erreur matérielle', child: Text('Note de TP non reportée ou erreur matérielle')), DropdownMenuItem(value: 'Erreur de calcul ou d’addition', child: Text('Erreur de calcul ou d’addition')), DropdownMenuItem(value: 'Absence injustifiée / émargement', child: Text('Absence injustifiée / émargement'))], onChanged: (v) { if (v != null) onMotif(v); }),
-        const SizedBox(height: 18),
-        const Row(children: [Expanded(child: _ScoreBox(title: 'Note affichée sur le PV provisoire', value: 'ex: 00.00 ou 08.50', tag: 'Litigieuse')), SizedBox(width: 14), Expanded(child: _ScoreBox(title: 'Note réclamée / estimée', value: 'ex: 15.50', tag: 'Régularisation'))]),
-        const SizedBox(height: 18),
-        const Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Exposé méthodique des faits & argumentation', style: TextStyle(fontWeight: FontWeight.bold, color: ink)), Text('0 / 600 car.', style: TextStyle(fontFamily: 'monospace', fontSize: 10, color: slate))]),
-        const SizedBox(height: 6),
-        const TextField(maxLines: 5, decoration: InputDecoration(filled: true, fillColor: paper, border: InputBorder.none, hintText: 'Exposez avec sobriété et courtoisie les circonstances : date de la composition, signature sur la feuille d’émargement, numéro de poste en salle machine ou confirmation orale de l’enseignant…')),
-        const SizedBox(height: 18),
-        const Text('Pièces justificatives probantes     Formats : PDF, JPG, PNG (Max 5 Mo)', style: TextStyle(fontWeight: FontWeight.bold, color: ink)),
-        const SizedBox(height: 6),
-        InkWell(onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sélection de pièce jointe simulée.'))), child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 30), color: paper, child: const Column(children: [Icon(Icons.attach_file, color: red, size: 28), SizedBox(height: 8), Text('Déposer la pièce justificative ou cliquer pour parcourir', style: TextStyle(fontWeight: FontWeight.bold, color: ink)), SizedBox(height: 4), Text('Copie de la feuille de présence émargée, barème visé ou copie du devoir.', style: TextStyle(fontSize: 11, color: slate))]))),
-        const SizedBox(height: 18),
-        Row(children: [const Expanded(child: Text('◉ La soumission attribue un identifiant de registre officiel scellé.', style: TextStyle(fontFamily: 'monospace', fontSize: 10, color: slate))), FilledButton.icon(onPressed: onSubmit, icon: const Icon(Icons.send), label: const Text('Transmettre la requête au Bureau d’Arbitrage'))]),
-      ])));
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: paperLight, border: Border.all(color: color.withValues(alpha: 0.2)), borderRadius: BorderRadius.circular(8)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: Text(code, style: const TextStyle(fontFamily: 'monospace', color: red, fontWeight: FontWeight.bold))),
+            Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), color: color.withValues(alpha: 0.12), child: Text(status, style: TextStyle(fontFamily: 'monospace', color: color, fontSize: 10))),
+          ]),
+          const SizedBox(height: 8),
+          Text(student, style: const TextStyle(fontWeight: FontWeight.bold, color: ink)),
+          Text(ue, style: const TextStyle(fontFamily: 'monospace', color: slate, fontSize: 11)),
+          const SizedBox(height: 5),
+          Text(issue, style: const TextStyle(color: slate, fontSize: 11)),
+        ]),
+      );
 }
 
-class _ScoreBox extends StatelessWidget {
-  final String title, value, tag;
-  const _ScoreBox({required this.title, required this.value, required this.tag});
+class LegacyTeacherUnitsPage extends StatelessWidget {
+  const LegacyTeacherUnitsPage({super.key});
+
   @override
-  Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(12), color: paper, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(title, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)), Text(tag, style: const TextStyle(fontFamily: 'monospace', fontSize: 10, color: valid))]), const SizedBox(height: 10), Text(value, style: const TextStyle(fontFamily: 'monospace', fontSize: 16, color: ink))]));
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(
+          title: GnuBrand(),
+          actions: [
+            TextButton.icon(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.dashboard_outlined, size: 17), label: const Text('Tableau de bord')),
+            FilledButton.icon(onPressed: () {}, icon: const Icon(Icons.menu_book_outlined, size: 17), label: const Text('Unités d’enseignement')),
+            TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GradeEntryPage())), icon: const Icon(Icons.fact_check_outlined, size: 17), label: const Text('Saisie et vérifications des notes')),
+            TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeacherRequestsPage())), icon: const Icon(Icons.campaign_outlined, size: 17), label: const Text('Requêtes')),
+            const SizedBox(width: 8),
+          ],
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(32, 22, 32, 40),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const _TeacherUnitsHeader(),
+                const SizedBox(height: 18),
+                const Wrap(spacing: 14, runSpacing: 14, children: [
+                  _TeacherUnitCard(code: 'INF301', title: 'Algorithmique Avancée & Structures de Données', credits: '6 ECTS', instructor: 'Pr. MBARGA F.', status: 'En validation', color: red),
+                  _TeacherUnitCard(code: 'INF305', title: 'Systèmes & Réseaux', credits: '5 ECTS', instructor: 'Dr. NKENGFACK H.', status: 'Saisie partielle', color: gold),
+                  _TeacherUnitCard(code: 'INF201', title: 'C/C++ Fondamental', credits: '4 ECTS', instructor: 'Dr. TSOPMO A.', status: 'Validé', color: valid),
+                  _TeacherUnitCard(code: 'INF303', title: 'Bases de Données Avancées', credits: '5 ECTS', instructor: 'Pr. BELA KOUAM J.', status: 'En cours', color: ink),
+                ]),
+                const SizedBox(height: 24),
+                const _TeacherFooter(),
+              ]),
+            ),
+          ),
+        ),
+      );
 }
 
-class _RequestAside extends StatelessWidget {
-  final bool submitted;
-  const _RequestAside({required this.submitted});
+class _TeacherUnitsHeader extends StatelessWidget {
+  const _TeacherUnitsHeader();
   @override
-  Widget build(BuildContext context) => Column(children: [Container(width: double.infinity, padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: red, borderRadius: BorderRadius.circular(5)), child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('◷  DÉLAI LÉGAL D’ARBITRAGE', style: TextStyle(fontFamily: 'monospace', color: paperLight, fontSize: 11)), Chip(label: Text('72H OUVRABLES'), backgroundColor: Color(0x33FFFFFF), labelStyle: TextStyle(color: paperLight, fontSize: 10))]), SizedBox(height: 14), Text('Clôture des réclamations dans 38h 14m', style: TextStyle(fontFamily: 'Fraunces', fontSize: 21, color: paperLight)), SizedBox(height: 10), Text('Toute contestation des notes de la Session Normale S5 doit être soumise au plus tard le 27 Février 2025 à 18h00.', style: TextStyle(color: paper, fontSize: 12)), SizedBox(height: 14), Text('Commission décanale de régularisation :    03 Mars 2025', style: TextStyle(fontFamily: 'monospace', color: paperLight, fontSize: 10))])), const SizedBox(height: 18), Card(child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Row(children: [Icon(Icons.history, color: ink), SizedBox(width: 8), Text('Historique & Suivi des Requêtes', style: TextStyle(fontFamily: 'Fraunces', fontSize: 19, fontWeight: FontWeight.bold, color: ink))]), const Divider(), _RequestHistoryItem(code: 'REQ-2025-0842', title: 'INF301 — Travaux Pratiques Machine', status: submitted ? 'REQUÊTE TRANSMISE' : 'EN ATTENTE D’ARBITRAGE', color: pending, detail: 'Motif : omission de la note du TP n°4 lors de l’export centralisé.'), const SizedBox(height: 10), const _RequestHistoryItem(code: 'REQ-2024-0319', title: 'INF202 — Architecture des Ordinateurs', status: 'RECTIFIÉE & VALIDÉE', color: valid, detail: 'Résolution : +3.50 points accordés après vérification décanale.'), const SizedBox(height: 14), Container(padding: const EdgeInsets.all(12), color: paper, child: const Text('Besoin d’un arbitrage en séance plénière ?\nFormulez une demande gracieuse devant le Conseil Pédagogique Décanal.', style: TextStyle(fontSize: 11, color: slate))) ])))]);
+  Widget build(BuildContext context) => Card(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
+          child: Row(children: [
+            const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('GESTION PEDAGOGIQUE · UNITÉS D’ENSEIGNEMENT', style: TextStyle(fontFamily: 'monospace', color: red, letterSpacing: 1.2, fontSize: 11)),
+              SizedBox(height: 8),
+              Text('Unités d’Enseignement Affectées', style: TextStyle(fontFamily: 'Fraunces', fontSize: 27, color: ink, fontWeight: FontWeight.bold)),
+              SizedBox(height: 6),
+              Text('Département Informatique · Licence 3 · Semestre 5 · Année 2024–2025', style: TextStyle(color: slate, fontSize: 12)),
+            ])),
+            Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10), color: paperLight, child: const Text('03 Cours · 04 UEs', style: TextStyle(fontFamily: 'monospace', color: ink, fontSize: 11))),
+          ]),
+        ),
+      );
 }
 
-class _RequestHistoryItem extends StatelessWidget {
-  final String code, title, status, detail; final Color color;
-  const _RequestHistoryItem({required this.code, required this.title, required this.status, required this.color, required this.detail});
+class _TeacherUnitCard extends StatelessWidget {
+  final String code, title, credits, instructor, status;
+  final Color color;
+  const _TeacherUnitCard({required this.code, required this.title, required this.credits, required this.instructor, required this.status, required this.color});
+
   @override
-  Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(12), color: paper, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(code, style: const TextStyle(fontFamily: 'monospace', fontSize: 10, color: slate)), Text(status, style: TextStyle(fontFamily: 'monospace', fontSize: 10, color: color, fontWeight: FontWeight.bold))]), const SizedBox(height: 7), Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: ink)), const SizedBox(height: 5), Text(detail, style: const TextStyle(fontSize: 11, color: slate)), const SizedBox(height: 5), Text('Consulter le récépissé →', style: TextStyle(fontSize: 11, color: color))]));
+  Widget build(BuildContext context) => SizedBox(
+        width: 270,
+        child: Card(
+          shape: RoundedRectangleBorder(side: BorderSide(color: color.withValues(alpha: 0.4), width: 1.2), borderRadius: BorderRadius.circular(8)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Text(code, style: const TextStyle(fontFamily: 'Fraunces', fontSize: 22, fontWeight: FontWeight.bold, color: ink)),
+                Icon(Icons.menu_book_outlined, color: color, size: 20),
+              ]),
+              const SizedBox(height: 12),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: ink, fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 9),
+              Text(instructor, style: const TextStyle(fontFamily: 'monospace', fontSize: 10, color: slate)),
+              const SizedBox(height: 14),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Text(credits, style: TextStyle(fontFamily: 'monospace', color: color, fontWeight: FontWeight.bold, fontSize: 12)),
+                Text(status, style: TextStyle(fontFamily: 'monospace', color: color, fontSize: 10)),
+              ]),
+            ]),
+          ),
+        ),
+      );
 }
 
-class TeacherDashboard extends StatelessWidget {
-  const TeacherDashboard({super.key});
+class LegacyTeacherDashboard extends StatelessWidget {
+  const LegacyTeacherDashboard({super.key});
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(32, 22, 32, 40),
@@ -952,11 +1361,11 @@ class TeacherDashboard extends StatelessWidget {
               const _TeacherHero(),
               const SizedBox(height: 22),
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Expanded(child: _TeacherPillar(title: 'PILIER 1', heading: 'Unités d’Enseignement', badge: '3 Cours Affectés', value: '310', caption: 'Étudiants au total', color: ink, icon: Icons.menu_book_outlined, lines: const ['INF301 · Algorithmique Avancée', 'INF305 · Systèmes & Réseaux', 'INF201 · Programmation C/C++'], action: 'Gérer les Unités d’enseignement', onPressed: () => _notice(context, 'La gestion des UE sera construite à l’étape suivante.'))),
+                Expanded(child: _TeacherPillar(title: 'PILIER 1', heading: 'Unités d’Enseignement', badge: '3 Cours Affectés', value: '310', caption: 'Étudiants au total', color: ink, icon: Icons.menu_book_outlined, lines: const ['INF301 · Algorithmique Avancée', 'INF305 · Systèmes & Réseaux', 'INF201 · Programmation C/C++'], action: 'Gérer les Unités d’enseignement', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeacherUnitsPage())))),
                 const SizedBox(width: 18),
-                Expanded(child: _TeacherPillar(title: 'PILIER 2', heading: 'Saisie & Vérifications', badge: '96.4% Numérisé', value: '96.4%', caption: 'Notes numérisées', color: valid, icon: Icons.fact_check_outlined, lines: const ['INF301 (Algorithmique) : 96.4% saisi (81/84)', 'INF305 (Systèmes & Réseaux) : 78.0% saisi (66/84)', 'INF201 (C/C++ Fondamental) : 100% prêt (142/142)'], action: 'Accéder à la saisie et vérification', onPressed: () => _notice(context, 'La saisie et vérification des notes sera construite à l’étape suivante.'))),
+                Expanded(child: _TeacherPillar(title: 'PILIER 2', heading: 'Saisie & Vérifications', badge: '96.4% Numérisé', value: '96.4%', caption: 'Notes numérisées', color: valid, icon: Icons.fact_check_outlined, lines: const ['INF301 (Algorithmique) : 96.4% saisi (81/84)', 'INF305 (Systèmes & Réseaux) : 78.0% saisi (66/84)', 'INF201 (C/C++ Fondamental) : 100% prêt (142/142)'], action: 'Accéder à la saisie et vérification', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GradeEntryPage())))),
                 const SizedBox(width: 18),
-                Expanded(child: _TeacherPillar(title: 'PILIER 3', heading: 'Requêtes & Réclamations', badge: '2 Urgentes', value: '04', caption: 'Reçues au total', color: red, icon: Icons.campaign_outlined, lines: const ['#REC-2024-0841 · Note TP omise (ABS)', '#REC-2024-0842 · Erreur note CC 06/20', '10 notes éliminatoires à surveiller'], action: 'Traiter toutes les requêtes (4)', onPressed: () => _notice(context, 'Le traitement des requêtes sera construit à l’étape suivante.'))),
+                Expanded(child: _TeacherPillar(title: 'PILIER 3', heading: 'Requêtes & Réclamations', badge: '2 Urgentes', value: '04', caption: 'Reçues au total', color: red, icon: Icons.campaign_outlined, lines: const ['#REC-2024-0841 · Note TP omise (ABS)', '#REC-2024-0842 · Erreur note CC 06/20', '10 notes éliminatoires à surveiller'], action: 'Traiter toutes les requêtes (4)', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeacherRequestsPage())))),
               ]),
               const SizedBox(height: 22),
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -971,7 +1380,6 @@ class TeacherDashboard extends StatelessWidget {
         ),
       );
 
-  static void _notice(BuildContext context, String text) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
 }
 
 class _TeacherContext extends StatelessWidget {
@@ -999,7 +1407,7 @@ class _TeacherPillar extends StatelessWidget {
               Icon(icon, color: color),
               const SizedBox(width: 8),
               Expanded(child: Text(title, style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, color: color))),
-              Chip(label: Text(badge, style: TextStyle(fontFamily: 'monospace', fontSize: 10, color: color)), backgroundColor: color.withOpacity(.1)),
+              Chip(label: Text(badge, style: TextStyle(fontFamily: 'monospace', fontSize: 10, color: color)), backgroundColor: color.withValues(alpha: .1)),
             ]),
             const SizedBox(height: 12),
             Text(heading, style: const TextStyle(fontFamily: 'Fraunces', fontSize: 19, fontWeight: FontWeight.bold, color: ink)),
@@ -1040,13 +1448,13 @@ class _TeacherFooter extends StatelessWidget {
   Widget build(BuildContext context) => Container(width: double.infinity, padding: const EdgeInsets.all(18), color: paperLight, child: const Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('GNU — Gestion des Notes Universitaires', style: TextStyle(fontFamily: 'Fraunces', fontWeight: FontWeight.bold, color: ink)), Text('ANNÉE UNIVERSITAIRE 2024–2025   ·   ASSISTANCE & SUPPORT', style: TextStyle(fontFamily: 'monospace', fontSize: 10, color: slate))]));
 }
 
-class GradeEntryPage extends StatefulWidget {
-  const GradeEntryPage({super.key});
+class LegacyGradeEntryPage extends StatefulWidget {
+  const LegacyGradeEntryPage({super.key});
   @override
-  State<GradeEntryPage> createState() => _GradeEntryPageState();
+  State<LegacyGradeEntryPage> createState() => _GradeEntryPageState();
 }
 
-class _GradeEntryPageState extends State<GradeEntryPage> {
+class _GradeEntryPageState extends State<LegacyGradeEntryPage> {
   String selectedUe = 'INF301 : Algorithmique Avancée & Structures de Données';
   bool validated = false;
 
@@ -1056,9 +1464,9 @@ class _GradeEntryPageState extends State<GradeEntryPage> {
           title: GnuBrand(),
           actions: [
             TextButton.icon(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.dashboard_outlined, size: 17), label: const Text('Tableau de bord')),
-            TextButton.icon(onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('La page Unités d’enseignement sera construite ensuite.'))), icon: const Icon(Icons.menu_book_outlined, size: 17), label: const Text('Unités d’enseignement')),
+            TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeacherUnitsPage())), icon: const Icon(Icons.menu_book_outlined, size: 17), label: const Text('Unités d’enseignement')),
             FilledButton.icon(onPressed: () {}, icon: const Icon(Icons.fact_check_outlined, size: 17), label: const Text('Saisie et vérifications des notes')),
-            TextButton.icon(onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('La page Requêtes sera construite ensuite.'))), icon: const Icon(Icons.campaign_outlined, size: 17), label: const Text('Requêtes')),
+            TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeacherRequestsPage())), icon: const Icon(Icons.campaign_outlined, size: 17), label: const Text('Requêtes')),
             const SizedBox(width: 8),
           ],
         ),
@@ -1110,7 +1518,7 @@ class _GradeEntryIntro extends StatelessWidget {
               ])),
               const SizedBox(width: 20),
               SizedBox(width: 380, child: DropdownButtonFormField<String>(
-                value: selectedUe,
+                initialValue: selectedUe,
                 decoration: const InputDecoration(labelText: 'UNITÉ D’ENSEIGNEMENT (UE)', filled: true, fillColor: paper, border: InputBorder.none),
                 items: const [
                   DropdownMenuItem(value: 'INF301 : Algorithmique Avancée & Structures de Données', child: Text('INF301 : Algorithmique Avancée & Structures de Données')),
@@ -1186,13 +1594,174 @@ class _GradeEntryCommitment extends StatelessWidget {
 class CelluleDashboard extends StatelessWidget {
   const CelluleDashboard({super.key});
   @override
-  Widget build(BuildContext context) => _PageShell(title: 'Classe : Licence 3 Informatique — Promotion A', subtitle: 'Cellule Informatique LMD · Structure & Hiérarchie · Session 2024–2025', children: [
-        Row(children: [_Panel(title: 'Effectif inscrit', value: '84', caption: 'étudiants · 100% immatriculés', icon: Icons.groups_outlined, color: ink), _Panel(title: 'Crédits ECTS (S5)', value: '30', caption: '6 unités d’enseignement', icon: Icons.school_outlined, color: gold), _Panel(title: 'Quota enseignant', value: '08', caption: 'enseignants affectés', icon: Icons.badge_outlined, color: valid)]),
-        const SizedBox(height: 18),
-        _Section(title: 'Référentiel des strates · Organigramme officiel', child: const Column(children: [ListTile(leading: Icon(Icons.account_balance_outlined), title: Text('Université de Douala'), trailing: Text('6 FAC')), ListTile(leading: Icon(Icons.account_tree_outlined), title: Text('Faculté des Sciences · Département Informatique'), trailing: Text('4 DÉP')), ListTile(leading: Icon(Icons.layers_outlined, color: red), title: Text('L3 Info — Promo A'), trailing: Text('84 ÉTUD.')), Divider(), ListTile(leading: Icon(Icons.menu_book_outlined), title: Text('Programme & Unités d’Enseignement'), subtitle: Text('6 UEs · 30 crédits · 5/6 validées'))])),
-        const SizedBox(height: 18),
-        FilledButton.icon(onPressed: () {}, icon: const Icon(Icons.publish), label: const Text('Publier les résultats')),
-      ]);
+  Widget build(BuildContext context) => _PageShell(
+        title: 'Classe : Licence 3 Informatique — Promotion A',
+        subtitle: 'Cellule Informatique LMD · Structure & Hiérarchie · Session 2024–2025',
+        children: [
+          Row(children: [
+            _Panel(title: 'Effectif inscrit', value: '84', caption: 'étudiants · 100% immatriculés', icon: Icons.groups_outlined, color: ink),
+            _Panel(title: 'Crédits ECTS (S5)', value: '30', caption: '6 unités d’enseignement', icon: Icons.school_outlined, color: gold),
+            _Panel(title: 'Quota enseignant', value: '08', caption: 'enseignants affectés', icon: Icons.badge_outlined, color: valid),
+          ]),
+          const SizedBox(height: 18),
+          Row(children: [
+            Expanded(child: _CelluleShortcutCard(title: 'Supervision', subtitle: 'Suivi qualité, délais et conformité LMD', icon: Icons.visibility_outlined, badge: '03 dossiers', color: valid, onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CelluleSupervisionPage())))),
+            const SizedBox(width: 12),
+            Expanded(child: _CelluleShortcutCard(title: 'Numérisation', subtitle: 'Registres, émargement et scan des pièces', icon: Icons.scanner_outlined, badge: '12 lots', color: gold, onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CelluleNumerisationPage())))),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: _CelluleShortcutCard(title: 'Publications', subtitle: 'Résultats, procès-verbaux et délibérations', icon: Icons.publish_outlined, badge: '05 états', color: red, onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CellulePublicationsPage())))),
+            const SizedBox(width: 12),
+            Expanded(child: _CelluleShortcutCard(title: 'Structure', subtitle: 'Organigramme, UEs, emplacements et statuts', icon: Icons.account_tree_outlined, badge: '06 unités', color: ink, onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CelluleStructurePage())))),
+          ]),
+          const SizedBox(height: 18),
+          _Section(title: 'Référentiel des strates · Organigramme officiel', child: const Column(children: [
+            ListTile(leading: Icon(Icons.account_balance_outlined), title: Text('Université de Douala'), trailing: Text('6 FAC')),
+            ListTile(leading: Icon(Icons.account_tree_outlined), title: Text('Faculté des Sciences · Département Informatique'), trailing: Text('4 DÉP')),
+            ListTile(leading: Icon(Icons.layers_outlined, color: red), title: Text('L3 Info — Promo A'), trailing: Text('84 ÉTUD.')),
+            Divider(),
+            ListTile(leading: Icon(Icons.menu_book_outlined), title: Text('Programme & Unités d’Enseignement'), subtitle: Text('6 UEs · 30 crédits · 5/6 validées')),
+          ])),
+          const SizedBox(height: 18),
+          FilledButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CellulePublicationsPage())), icon: const Icon(Icons.publish), label: const Text('Publier les résultats')),
+        ],
+      );
+}
+
+class CelluleSupervisionPage extends StatelessWidget {
+  const CelluleSupervisionPage({super.key});
+  @override
+  Widget build(BuildContext context) => _PageShell(
+        title: 'Supervision académique',
+        subtitle: 'Cellule Informatique LMD · Contrôle qualité · Session 2024–2025',
+        children: [
+          Row(children: [
+            _Panel(title: 'Dossiers validés', value: '42', caption: 'dossiers homogènes', icon: Icons.verified_outlined, color: valid),
+            _Panel(title: 'À contrôler', value: '14', caption: 'requêtes ou anomalies', icon: Icons.warning_amber_outlined, color: red),
+            _Panel(title: 'Délais respectés', value: '96%', caption: 'traitement hebdo', icon: Icons.timer_outlined, color: gold),
+          ]),
+          const SizedBox(height: 18),
+          _Section(title: 'Supervision des activités', child: Column(children: [
+            ListTile(leading: const Icon(Icons.assignment_turned_in_outlined, color: valid), title: const Text('Bordereaux de synthèse'), subtitle: const Text('Saisie, validation et scellage des délibérations'), trailing: const Text('07 / 09')),
+            const Divider(),
+            ListTile(leading: const Icon(Icons.rate_review_outlined, color: gold), title: const Text('Contrôle des écarts notes'), subtitle: const Text('Vérification matière, UE, groupe et mention'), trailing: const Text('05 alertes')),
+            const Divider(),
+            ListTile(leading: const Icon(Icons.rule_outlined, color: red), title: const Text('Dossiers pédagogiques'), subtitle: const Text('Validation LMD, degrés de progression et cas particuliers'), trailing: const Text('03 cas')),
+          ])),
+          const SizedBox(height: 18),
+          FilledButton.icon(onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Supervision lancée.'))), icon: const Icon(Icons.search), label: const Text('Lancer la supervision')),
+        ],
+      );
+}
+
+class CelluleNumerisationPage extends StatelessWidget {
+  const CelluleNumerisationPage({super.key});
+  @override
+  Widget build(BuildContext context) => _PageShell(
+        title: 'Numérisation & Traitement des pièces',
+        subtitle: 'Cellule Informatique LMD · Registres numériques · Session 2024–2025',
+        children: [
+          _Section(title: 'Flux de numérisation', child: Column(children: [
+            const ListTile(leading: Icon(Icons.scanner_outlined, color: gold), title: Text('Emargement TP & CC'), subtitle: Text('Numérisation interactive des feuilles d’émargement'), trailing: Text('06 lots')),
+            const Divider(),
+            const ListTile(leading: Icon(Icons.upload_file_outlined, color: red), title: Text('Dépôt des relevés'), subtitle: Text('Cadrage des pièces scannées pour la publication'), trailing: Text('14 pièces')),
+            const Divider(),
+            const ListTile(leading: Icon(Icons.archive_outlined, color: valid), title: Text('Archivage des dossiers'), subtitle: Text('Coffres de sauvegarde PDF et image des relevés'), trailing: Text('100%')),
+          ])),
+          const SizedBox(height: 18),
+          _Section(title: 'Lot de travail actuel', child: SizedBox(width: double.infinity, child: DataTable(columns: const [DataColumn(label: Text('Lot')), DataColumn(label: Text('UE')), DataColumn(label: Text('Volume')), DataColumn(label: Text('Statut'))], rows: [
+            DataRow(cells: [DataCell(Text('LOT-042')), DataCell(Text('INF301')), DataCell(Text('84 pages')), DataCell(Text('Scanné'))]),
+            DataRow(cells: [DataCell(Text('LOT-043')), DataCell(Text('INF305')), DataCell(Text('74 pages')), DataCell(Text('À contrôler'))]),
+            DataRow(cells: [DataCell(Text('LOT-044')), DataCell(Text('INF201')), DataCell(Text('66 pages')), DataCell(Text('Archivé'))]),
+          ]))),
+        ],
+      );
+}
+
+class CellulePublicationsPage extends StatelessWidget {
+  const CellulePublicationsPage({super.key});
+  @override
+  Widget build(BuildContext context) => _PageShell(
+        title: 'Publications & Délibérations',
+        subtitle: 'Cellule Informatique LMD · Publication des résultats · Session 2024–2025',
+        children: [
+          Row(children: [
+            _Panel(title: 'Procès-verbaux', value: '07', caption: 'documents prêts', icon: Icons.description_outlined, color: ink),
+            _Panel(title: 'Délibérations', value: '06', caption: 'listes scellées', icon: Icons.balance_outlined, color: gold),
+            _Panel(title: 'Diffusion', value: '84', caption: 'affectations envoyées', icon: Icons.language_outlined, color: valid),
+          ]),
+          const SizedBox(height: 18),
+          _Section(title: 'Canal de publication', child: Column(children: [
+            const ListTile(leading: Icon(Icons.send_outlined, color: red), title: Text('Envoi des résultats étudiants'), subtitle: Text('Mise à jour portail académique et bulletin officiel'), trailing: Text('En attente')),
+            const Divider(),
+            const ListTile(leading: Icon(Icons.fact_check_outlined, color: valid), title: Text('Validation des procès-verbaux'), subtitle: Text('Contrôle de l’alignement des notes et mentions'), trailing: Text('05 / 07')),
+            const Divider(),
+            const ListTile(leading: Icon(Icons.campaign_outlined, color: gold), title: Text('Publication du référentiel final'), subtitle: Text('Rétention des données et historique des délibérations'), trailing: Text('Publié')),
+          ])),
+          const SizedBox(height: 18),
+          FilledButton.icon(onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Publication envoyée au portail officiel.'))), icon: const Icon(Icons.public_outlined), label: const Text('Publier les résultats')),
+        ],
+      );
+}
+
+class CelluleStructurePage extends StatelessWidget {
+  const CelluleStructurePage({super.key});
+  @override
+  Widget build(BuildContext context) => _PageShell(
+        title: 'Structure académique',
+        subtitle: 'Cellule Informatique LMD · Organigramme officiel · Session 2024–2025',
+        children: [
+          _Section(title: 'Organisation des structures', child: Column(children: [
+            ListTile(leading: const Icon(Icons.account_balance_outlined, color: ink), title: const Text('Université de Douala'), subtitle: const Text('6 Facultés · 4 Départements'), trailing: const Text('U.D.')),
+            const Divider(),
+            ListTile(leading: const Icon(Icons.account_tree_outlined, color: red), title: const Text('Faculté des Sciences · Informatique'), subtitle: const Text('Licence 3, Master 1, Master 2'), trailing: const Text('Département')),
+            const Divider(),
+            ListTile(leading: const Icon(Icons.groups_outlined, color: valid), title: const Text('Promotion L3 Information'), subtitle: const Text('84 étudiants · 8 enseignants'), trailing: const Text('Promo A')),
+            const Divider(),
+            ListTile(leading: const Icon(Icons.menu_book_outlined, color: gold), title: const Text('Programme des unités d’enseignement'), subtitle: const Text('6 UEs · 30 crédits · 5/6 validées'), trailing: const Text('S5')),
+          ])),
+          const SizedBox(height: 18),
+          _Section(title: 'Système de référence LMD', child: Wrap(spacing: 12, runSpacing: 12, children: const [
+            Chip(label: Text('Licence 1')),
+            Chip(label: Text('Licence 2')),
+            Chip(label: Text('Licence 3')),
+            Chip(label: Text('Master 1')),
+            Chip(label: Text('Master 2')),
+            Chip(label: Text('Doctorat')),
+          ])),
+        ],
+      );
+}
+
+class _CelluleShortcutCard extends StatelessWidget {
+  final String title, subtitle, badge;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onPressed;
+  const _CelluleShortcutCard({required this.title, required this.subtitle, required this.badge, required this.icon, required this.color, required this.onPressed});
+  @override
+  Widget build(BuildContext context) => Card(
+        color: paperLight,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: InkWell(
+            onTap: onPressed,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [Icon(icon, color: color, size: 28), const Spacer(), Chip(label: Text(badge, style: const TextStyle(fontFamily: 'monospace', fontSize: 10)), backgroundColor: color.withValues(alpha: .10))]),
+                const SizedBox(height: 14),
+                Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(color: color)),
+                const SizedBox(height: 8),
+                Text(subtitle, style: const TextStyle(color: slate)),
+                const SizedBox(height: 14),
+                Align(alignment: Alignment.centerRight, child: Icon(Icons.arrow_forward, color: color)),
+              ],
+            ),
+          ),
+        ),
+      );
 }
 
 class _PageShell extends StatelessWidget {
@@ -1212,7 +1781,7 @@ class _PageShell extends StatelessWidget {
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     color: paperLight,
-                    border: Border.all(color: ink.withOpacity(.15)),
+                    border: Border.all(color: ink.withValues(alpha: .15)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1234,29 +1803,7 @@ class _PageShell extends StatelessWidget {
       );
 }
 
-class _Metric extends StatelessWidget { final String label, value, suffix; final Color color; const _Metric({required this.label, required this.value, required this.suffix, required this.color}); @override Widget build(BuildContext context) => Expanded(child: Card(child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label.toUpperCase(), style: Theme.of(context).textTheme.labelSmall), const SizedBox(height: 12), Text(value, style: TextStyle(fontFamily: 'monospace', fontSize: 28, color: color)), Text(suffix, style: const TextStyle(color: slate))])))); }
 class _Panel extends StatelessWidget { final String title, value, caption; final IconData icon; final Color color; const _Panel({required this.title, required this.value, required this.caption, required this.icon, required this.color}); @override Widget build(BuildContext context) => Expanded(child: Card(child: Padding(padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(icon, color: color), const SizedBox(height: 12), Text(title, style: Theme.of(context).textTheme.titleLarge), const SizedBox(height: 12), Text(value, style: TextStyle(fontFamily: 'monospace', fontSize: 30, color: color)), Text(caption, style: const TextStyle(color: slate))])))); }
 class _Section extends StatelessWidget { final String title; final Widget child; const _Section({required this.title, required this.child}); @override Widget build(BuildContext context) => Card(child: Padding(padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: Theme.of(context).textTheme.titleLarge), const Divider(), child]))); }
-class _Alert extends StatelessWidget { final String title, text, action; final Color color; const _Alert({required this.title, required this.text, required this.color, required this.action}); @override Widget build(BuildContext context) => Card(color: paperLight, child: ListTile(leading: Icon(Icons.notification_important_outlined, color: color), title: Text(title, style: TextStyle(color: color, fontWeight: FontWeight.bold)), subtitle: Text('$text\n$action →'))); }
-class _GradesTable extends StatelessWidget {
-  const _GradesTable();
-
-  @override
-  Widget build(BuildContext context) => DataTable(
-        columns: const [
-          DataColumn(label: Text('CODE UE')),
-          DataColumn(label: Text('INTITULÉ')),
-          DataColumn(label: Text('CRÉDITS')),
-          DataColumn(label: Text('CC /20')),
-          DataColumn(label: Text('TP /20')),
-          DataColumn(label: Text('STATUT')),
-        ],
-        rows: const [
-          DataRow(cells: [DataCell(Text('INF301')), DataCell(Text('Conception orientée objet')), DataCell(Text('5 ECTS')), DataCell(Text('14.50')), DataCell(Text('10.00')), DataCell(Text('Arbitrage'))]),
-          DataRow(cells: [DataCell(Text('INF303')), DataCell(Text('Systèmes de gestion BD')), DataCell(Text('5 ECTS')), DataCell(Text('15.00')), DataCell(Text('16.50')), DataCell(Text('En bonne voie'))]),
-          DataRow(cells: [DataCell(Text('INF307')), DataCell(Text('Algorithmique avancée')), DataCell(Text('5 ECTS')), DataCell(Text('8.50')), DataCell(Text('—')), DataCell(Text('À surveiller'))]),
-        ],
-      );
-}
 class _Feature extends StatelessWidget { final IconData icon; final String title, text; const _Feature({required this.icon, required this.title, required this.text}); @override Widget build(BuildContext context) => Padding(padding: const EdgeInsets.only(bottom: 14), child: ListTile(tileColor: Colors.white10, leading: Icon(icon, color: gold), title: Text(title, style: const TextStyle(color: paperLight, fontFamily: 'Fraunces')), subtitle: Text(text, style: const TextStyle(color: paper)))); }
 class GnuBrand extends StatelessWidget { GnuBrand({super.key}); @override Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [Image.asset('assets/logo_gnu.png', width: 32, height: 32), const SizedBox(width: 8), const Text('GNU', style: TextStyle(fontFamily: 'Fraunces', fontSize: 23, color: ink)), const SizedBox(width: 10), const Text('SYSTÈME ACADÉMIQUE LMD · PORTAIL DE CONNEXION', style: TextStyle(fontFamily: 'monospace', fontSize: 10, color: slate))]); }

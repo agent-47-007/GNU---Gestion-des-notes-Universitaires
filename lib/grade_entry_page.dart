@@ -1,4 +1,8 @@
-part of 'main.dart';
+import 'package:flutter/material.dart';
+
+import 'grade_draft_store.dart';
+import 'grade_entry_model.dart';
+import 'main.dart' show GuidePage, ink, paper, pending, red, slate, valid;
 
 class GradeEntryPage extends StatefulWidget {
   const GradeEntryPage({super.key, this.store, this.book});

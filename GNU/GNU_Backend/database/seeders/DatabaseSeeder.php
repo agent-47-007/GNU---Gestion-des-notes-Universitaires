@@ -8,6 +8,6 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->command?->info('Aucun compte de démonstration. Initialiser le premier agent avec gnu:create-agent.');
+        $this->call(DemoGnuAccountsSeeder::class);
     }
 }

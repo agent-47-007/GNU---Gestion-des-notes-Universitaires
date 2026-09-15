@@ -3,10 +3,12 @@
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RegistrationController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('api.v1.')->group(function (): void {
     Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:login')->name('login');
+    Route::post('auth/register', [RegistrationController::class, 'registerStudent'])->middleware('throttle:login')->name('register');
 
     Route::middleware(['auth:sanctum', 'account.active', 'throttle:api'])->group(function (): void {
         Route::get('auth/me', [ProfileController::class, 'show'])->name('me');

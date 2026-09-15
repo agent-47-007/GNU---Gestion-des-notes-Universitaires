@@ -25,6 +25,8 @@ const passwordInput = document.querySelector('#password');
 const passwordToggle = document.querySelector('[data-password-toggle]');
 const loginForm = document.querySelector('#login-form');
 const loginFeedback = document.querySelector('#login-feedback');
+const registerForm = document.querySelector('#register-form');
+const registerFeedback = document.querySelector('#register-feedback');
 
 const getToken = () => window.localStorage.getItem('gnu_token');
 const roleLabels = { ETUDIANT: 'Étudiant', ENSEIGNANT: 'Enseignant', AGENT: 'Agent' };
@@ -97,6 +99,10 @@ document.querySelectorAll('.role-button').forEach((button) => {
 	button.addEventListener('click', () => {
 		document.querySelectorAll('.role-button').forEach((item) => item.classList.remove('is-selected'));
 		button.classList.add('is-selected');
+		const loginField = document.querySelector('#login');
+		if (loginField && button.dataset.login) {
+			loginField.value = button.dataset.login;
+		}
 	});
 });
 
@@ -174,5 +180,42 @@ loginForm?.addEventListener('submit', async (event) => {
 		loginFeedback.hidden = false;
 		submitButton.disabled = false;
 		submitButton.textContent = 'Se connecter';
+	}
+});
+
+registerForm?.addEventListener('submit', async (event) => {
+	event.preventDefault();
+	registerFeedback.hidden = true;
+	registerFeedback.textContent = '';
+	const submitButton = registerForm.querySelector('button[type="submit"]');
+	submitButton.disabled = true;
+	submitButton.textContent = 'Création en cours...';
+
+	try {
+		const response = await fetch('/api/v1/auth/register', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+			body: JSON.stringify({
+				nom: registerForm.nom.value,
+				prenom: registerForm.prenom.value,
+				matricule: registerForm.matricule.value,
+				password: registerForm.password.value,
+				password_confirmation: registerForm.password_confirmation.value,
+			}),
+		});
+
+		const data = await response.json();
+		if (!response.ok) {
+			const errors = data.errors ? Object.values(data.errors).flat().join(' ') : data.message;
+			throw new Error(errors || 'Impossible de créer le compte.');
+		}
+
+		window.localStorage.setItem('gnu_token', data.token);
+		window.location.assign('/etudiant');
+	} catch (error) {
+		registerFeedback.textContent = error.message;
+		registerFeedback.hidden = false;
+		submitButton.disabled = false;
+		submitButton.textContent = 'Créer mon compte étudiant';
 	}
 });

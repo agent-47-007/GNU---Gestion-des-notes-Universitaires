@@ -27,12 +27,12 @@ class GnuApi {
   static Map<String, dynamic>? currentUser;
 
   static Role roleFromBackend(String? role) {
-    final normalized = role?.trim().toUpperCase();
+    final normalized = role?.trim().toUpperCase().replaceAll('-', '_');
     return switch (normalized) {
       'ETUDIANT' => Role.etudiant,
       'AGENT' => Role.cellule,
       'ENSEIGNANT' => Role.enseignant,
-      _ => Role.enseignant,
+      _ => throw StateError('Rôle utilisateur GNU inconnu: ${role ?? 'absent'}'),
     };
   }
 
@@ -44,12 +44,25 @@ class GnuApi {
     await prefs.setString('gnu_current_user', jsonEncode(user));
   }
 
+  static Future<void> clearSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    token = null;
+    currentUser = null;
+    await prefs.remove('gnu_token');
+    await prefs.remove('gnu_current_user');
+  }
+
   static Future<void> restoreSession() async {
     final prefs = await SharedPreferences.getInstance();
     token = prefs.getString('gnu_token');
     final storedUser = prefs.getString('gnu_current_user');
     if (storedUser != null && storedUser.isNotEmpty) {
       currentUser = jsonDecode(storedUser) as Map<String, dynamic>;
+      try {
+        roleFromBackend(currentUser?['role']?.toString());
+      } on StateError {
+        await clearSession();
+      }
     }
   }
 
@@ -96,9 +109,36 @@ class GnuApi {
     }
 
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-    currentUser = decoded;
-    await saveSession(tokenValue: token!, user: decoded);
-    return decoded;
+    final user = decoded['data'] is Map<String, dynamic> ? decoded['data'] as Map<String, dynamic> : decoded;
+    final role = user['role']?.toString().trim();
+    if (role == null || role.isEmpty) {
+      throw StateError('Le profil utilisateur GNU est incomplet.');
+    }
+    await saveSession(tokenValue: token!, user: user);
+    return user;
+  }
+
+  static Future<Map<String, dynamic>> registerStudent({required String nom, required String prenom, required String matricule, required String password}) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/register'),
+      headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      body: jsonEncode({'nom': nom, 'prenom': prenom, 'matricule': matricule, 'password': password, 'password_confirmation': password}),
+    );
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final errors = body['errors'] as Map<String, dynamic>?;
+      final firstError = errors?.values.firstOrNull;
+      throw Exception(firstError is List ? firstError.first : body['message'] ?? 'Impossible de créer le compte GNU.');
+    }
+
+    final tokenValue = body['token'] as String?;
+    final user = body['utilisateur'] as Map<String, dynamic>?;
+    if (tokenValue == null || tokenValue.isEmpty || user == null) {
+      throw Exception('Réponse d’inscription GNU incomplète.');
+    }
+    await saveSession(tokenValue: tokenValue, user: user);
+    return body;
   }
 }
 
@@ -107,10 +147,16 @@ class GnuApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasStoredSession = GnuApi.token?.isNotEmpty == true && GnuApi.currentUser != null;
-    final home = hasStoredSession
-        ? RoleHome(role: GnuApi.roleFromBackend((GnuApi.currentUser?['role'] ?? '').toString()))
-        : const LoginPage();
+    final storedRole = GnuApi.currentUser?['role']?.toString();
+    Role? connectedRole;
+    try {
+      if (GnuApi.token?.isNotEmpty == true && GnuApi.currentUser != null) {
+        connectedRole = GnuApi.roleFromBackend(storedRole);
+      }
+    } on StateError {
+      connectedRole = null;
+    }
+    final home = connectedRole == null ? const LoginPage() : RoleHome(role: connectedRole);
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -234,7 +280,7 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 30),
                 const Divider(),
                 const SizedBox(height: 12),
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Besoin d’assistance avec votre compte ?', style: TextStyle(color: slate)), TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportPage())), child: const Text('Contacter le support universitaire'))]),
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Pas encore de compte étudiant ?', style: TextStyle(color: slate)), TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegistrationPage())), child: const Text('Créer mon compte'))]),
               ]),
             ),
           );
@@ -243,6 +289,101 @@ class _LoginPageState extends State<LoginPage> {
           final content = Center(child: SizedBox(width: pageWidth, child: Card(clipBehavior: Clip.antiAlias, child: wide ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: form), Expanded(child: panel)]) : Column(children: [form, panel]))));
           return SingleChildScrollView(padding: const EdgeInsets.fromLTRB(40, 32, 40, 28), child: Column(children: [content, const SizedBox(height: 32), SizedBox(width: pageWidth, child: const _LoginFeatureRow()), const SizedBox(height: 28), SizedBox(width: pageWidth, child: const _LoginFooter())]));
         }),
+      );
+}
+
+class RegistrationPage extends StatefulWidget {
+  const RegistrationPage({super.key});
+
+  @override
+  State<RegistrationPage> createState() => _RegistrationPageState();
+}
+
+class _RegistrationPageState extends State<RegistrationPage> {
+  Role selectedRole = Role.etudiant;
+  final nom = TextEditingController();
+  final prenom = TextEditingController();
+  final matricule = TextEditingController();
+  final password = TextEditingController();
+  final confirmation = TextEditingController();
+  bool obscurePassword = true;
+  bool submitting = false;
+
+  Future<void> submit() async {
+    if (selectedRole != Role.etudiant) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Les comptes enseignant et agent doivent être créés ou validés par l’administration.')));
+      return;
+    }
+    if ([nom, prenom, matricule, password, confirmation].any((field) => field.text.trim().isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Complétez tous les champs.')));
+      return;
+    }
+    if (password.text != confirmation.text) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Les mots de passe ne correspondent pas.')));
+      return;
+    }
+
+    setState(() => submitting = true);
+    try {
+      await GnuApi.registerStudent(nom: nom.text.trim(), prenom: prenom.text.trim(), matricule: matricule.text.trim(), password: password.text);
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const RoleHome(role: Role.etudiant)), (_) => false);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))));
+      setState(() => submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: GnuBrand(), backgroundColor: paper, actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Déjà inscrit ? Se connecter')), const SizedBox(width: 12)]),
+        body: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(32),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 620),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Text('Créer votre compte étudiant', style: Theme.of(context).textTheme.headlineLarge),
+                    const SizedBox(height: 8),
+                    const Text('Votre matricule deviendra votre identifiant de connexion.'),
+                    const SizedBox(height: 24),
+                    const Text('Type de compte'),
+                    const SizedBox(height: 8),
+                    SegmentedButton<Role>(
+                      segments: const [
+                        ButtonSegment(value: Role.etudiant, label: Text('Étudiant'), icon: Icon(Icons.person_outline)),
+                        ButtonSegment(value: Role.enseignant, label: Text('Enseignant'), icon: Icon(Icons.school_outlined)),
+                        ButtonSegment(value: Role.cellule, label: Text('Agent'), icon: Icon(Icons.account_balance_outlined)),
+                      ],
+                      selected: {selectedRole},
+                      onSelectionChanged: (values) => setState(() => selectedRole = values.first),
+                    ),
+                    if (selectedRole != Role.etudiant) ...[
+                      const SizedBox(height: 10),
+                      const Text('Ce rôle nécessite une validation administrative avant l’accès.', style: TextStyle(color: slate)),
+                    ],
+                    const SizedBox(height: 24),
+                    TextField(controller: nom, textInputAction: TextInputAction.next, decoration: const InputDecoration(labelText: 'Nom', border: OutlineInputBorder())),
+                    const SizedBox(height: 14),
+                    TextField(controller: prenom, textInputAction: TextInputAction.next, decoration: const InputDecoration(labelText: 'Prénom', border: OutlineInputBorder())),
+                    const SizedBox(height: 14),
+                    TextField(controller: matricule, textInputAction: TextInputAction.next, textCapitalization: TextCapitalization.characters, decoration: const InputDecoration(labelText: 'Matricule', hintText: 'Ex. 21T2355', border: OutlineInputBorder())),
+                    const SizedBox(height: 14),
+                    TextField(controller: password, obscureText: obscurePassword, textInputAction: TextInputAction.next, decoration: InputDecoration(labelText: 'Mot de passe', border: const OutlineInputBorder(), suffixIcon: IconButton(icon: Icon(obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined), onPressed: () => setState(() => obscurePassword = !obscurePassword)))),
+                    const SizedBox(height: 14),
+                    TextField(controller: confirmation, obscureText: obscurePassword, onSubmitted: (_) => submit(), decoration: const InputDecoration(labelText: 'Confirmer le mot de passe', border: OutlineInputBorder())),
+                    const SizedBox(height: 22),
+                    FilledButton.icon(onPressed: submitting ? null : submit, icon: const Icon(Icons.person_add_outlined), label: Padding(padding: const EdgeInsets.all(13), child: Text(submitting ? 'Création en cours...' : 'Créer mon compte étudiant'))),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        ),
       );
 }
 

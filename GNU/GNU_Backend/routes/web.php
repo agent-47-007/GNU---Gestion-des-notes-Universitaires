@@ -7,6 +7,7 @@ use App\Http\Controllers\ProfilePageController;
 
 Route::view('/', 'welcome')->name('home');
 Route::view('/connexion', 'auth.login')->name('login');
+Route::view('/inscription', 'auth.register')->name('register');
 Route::view('/guide-lmd', 'guide.lmd')->name('guide.lmd');
 Route::view('/support-registres', 'support.registres')->name('support.registres');
 Route::view('/profil', 'profile')->name('profile');

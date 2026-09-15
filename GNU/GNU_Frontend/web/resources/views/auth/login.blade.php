@@ -24,9 +24,9 @@
                 <form id="login-form" novalidate>
                     <label class="role-label">Vous vous connectez en tant que :</label>
                     <div class="role-selector" role="group" aria-label="Type de compte">
-                        <button class="role-button is-selected" type="button"><strong><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16M6 10v8m6-8v8m6-8v8M3 20h18M12 4l9 4H3l9-4Z"/></svg></strong>Enseignant</button>
-                        <button class="role-button" type="button"><strong><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21h16M6 21V8h12v13M9 8V5h6v3M9 12h2m2 0h2m-6 4h2m2 0h2"/></svg></strong>Scolarité / Jury</button>
-                        <button class="role-button" type="button"><strong><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></strong>Étudiant</button>
+                        <button class="role-button is-selected" type="button" data-login="ENS-4182-INFO"><strong><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16M6 10v8m6-8v8m6-8v8M3 20h18M12 4l9 4H3l9-4Z"/></svg></strong>Enseignant</button>
+                        <button class="role-button" type="button" data-login="ADM-8842-CELLULE"><strong><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21h16M6 21V8h12v13M9 8V5h6v3M9 12h2m2 0h2m-6 4h2m2 0h2"/></svg></strong>Scolarité / Jury</button>
+                        <button class="role-button" type="button" data-login="21T2355"><strong><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></strong>Étudiant</button>
                     </div>
 
                     <div class="field"><label for="login">Identifiant ou matricule</label><input id="login" name="login" type="text" autocomplete="username" value="ENS-4182-INFO" placeholder="Ex. 21A123" required></div>
@@ -35,7 +35,7 @@
                     <p class="auth-feedback" id="login-feedback" role="alert" hidden></p>
                     <button class="auth-submit" type="submit">↪ &nbsp; SE CONNECTER</button>
                 </form>
-                <div class="auth-help"><span>Besoin d’aide avec votre compte ?</span><a href="#support">Contacter le support</a></div>
+                <div class="auth-help"><span>Vous êtes étudiant sans compte ?</span><a href="{{ route('register') }}">Créer un compte</a></div>
             </section>
 
             <aside class="auth-aside">

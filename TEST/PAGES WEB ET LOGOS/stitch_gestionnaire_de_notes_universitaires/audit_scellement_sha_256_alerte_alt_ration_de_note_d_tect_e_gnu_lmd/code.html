@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+
+<html lang="fr"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&amp;family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&amp;family=Space+Mono:ital,wght@0,400;0,700;1,400&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "encre": "#1B2942",
+          "error-container": "#ffdad6",
+          "on-tertiary-fixed": "#2a1800",
+          "surface-container-highest": "#e7e2d3",
+          "surface": "#fef9ea",
+          "primary-fixed-dim": "#ffb3af",
+          "on-surface": "#1d1c13",
+          "papier": "#DEDACB",
+          "on-secondary-fixed": "#0c1b34",
+          "on-primary-fixed": "#410005",
+          "on-error-container": "#93000a",
+          "ardoise": "#5B5F66",
+          "background": "#fef9ea",
+          "on-primary": "#ffffff",
+          "or-sceau": "#A9762C",
+          "on-error": "#ffffff",
+          "tertiary-fixed-dim": "#f8bb6a",
+          "on-primary-container": "#ffaba7",
+          "rouge-encre": "#8C2F2F",
+          "inverse-on-surface": "#f5f1e1",
+          "on-secondary": "#ffffff",
+          "secondary": "#515f7a",
+          "statut-manquant": "#8C2F2F",
+          "surface-container-lowest": "#ffffff",
+          "outline-variant": "#dcc0be",
+          "secondary-container": "#cfddfe",
+          "surface-container-low": "#f8f4e4",
+          "surface-variant": "#e7e2d3",
+          "inverse-surface": "#323126",
+          "on-tertiary-fixed-variant": "#643f00",
+          "statut-en-attente": "#C4841F",
+          "primary": "#6d181b",
+          "on-secondary-container": "#53617d",
+          "outline": "#897270",
+          "error": "#ba1a1a",
+          "on-surface-variant": "#564241",
+          "surface-container-high": "#ece8d9",
+          "secondary-fixed": "#d7e2ff",
+          "primary-container": "#8c2f2f",
+          "surface-dim": "#dedacb",
+          "papier-clair": "#F1EEE2",
+          "secondary-fixed-dim": "#b9c7e7",
+          "on-primary-fixed-variant": "#812728",
+          "on-tertiary": "#ffffff",
+          "surface-tint": "#a03e3d",
+          "on-tertiary-container": "#f2b665",
+          "primary-fixed": "#ffdad7",
+          "tertiary-container": "#6f4600",
+          "surface-container": "#f2eede",
+          "tertiary": "#503100",
+          "statut-valide": "#3C6E52",
+          "tertiary-fixed": "#ffddb5",
+          "inverse-primary": "#ffb3af",
+          "on-secondary-fixed-variant": "#394761",
+          "on-background": "#1d1c13",
+          "surface-bright": "#fef9ea"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.125rem",
+          "lg": "0.25rem",
+          "xl": "0.5rem",
+          "full": "0.75rem"
+        },
+        "spacing": {
+          "space-xl": "2rem",
+          "space-3xl": "4rem",
+          "space-2xs": "0.125rem",
+          "space-lg": "1.5rem",
+          "space-sm": "0.5rem",
+          "margin-mobile": "1rem",
+          "space-xs": "0.25rem",
+          "col-gutter": "1rem",
+          "margin-desktop": "2.5rem",
+          "space-2xl": "3rem",
+          "space-md": "1rem"
+        },
+        "fontFamily": {
+          "label-sm": [
+            "Space Mono"
+          ],
+          "body-sm": [
+            "IBM Plex Sans"
+          ],
+          "body-lg": [
+            "IBM Plex Sans"
+          ],
+          "data-tabular": [
+            "Space Mono"
+          ],
+          "label-md": [
+            "Space Mono"
+          ],
+          "body-md": [
+            "IBM Plex Sans"
+          ],
+          "headline-sm": [
+            "EB Garamond"
+          ],
+          "headline-xl": [
+            "EB Garamond"
+          ],
+          "headline-xl-mobile": [
+            "EB Garamond"
+          ],
+          "headline-lg": [
+            "EB Garamond"
+          ],
+          "headline-md": [
+            "EB Garamond"
+          ]
+        },
+        "fontSize": {
+          "label-sm": [
+            "12px",
+            {
+              "lineHeight": "16px",
+              "letterSpacing": "0.04em",
+              "fontWeight": "400"
+            }
+          ],
+          "body-sm": [
+            "14px",
+            {
+              "lineHeight": "20px",
+              "fontWeight": "400"
+            }
+          ],
+          "body-lg": [
+            "18px",
+            {
+              "lineHeight": "28px",
+              "fontWeight": "400"
+            }
+          ],
+          "data-tabular": [
+            "15px",
+            {
+              "lineHeight": "20px",
+              "fontWeight": "500"
+            }
+          ],
+          "label-md": [
+            "14px",
+            {
+              "lineHeight": "20px",
+              "letterSpacing": "0.02em",
+              "fontWeight": "400"
+            }
+          ],
+          "body-md": [
+            "16px",
+            {
+              "lineHeight": "24px",
+              "fontWeight": "400"
+            }
+          ],
+          "headline-sm": [
+            "20px",
+            {
+              "lineHeight": "28px",
+              "fontWeight": "500"
+            }
+          ],
+          "headline-xl": [
+            "48px",
+            {
+              "lineHeight": "56px",
+              "fontWeight": "500"
+            }
+          ],
+          "headline-xl-mobile": [
+            "32px",
+            {
+              "lineHeight": "40px",
+              "fontWeight": "500"
+            }
+          ],
+          "headline-lg": [
+            "32px",
+            {
+              "lineHeight": "40px",
+              "fontWeight": "500"
+            }
+          ],
+          "headline-md": [
+            "24px",
+            {
+              "lineHeight": "32px",
+              "fontWeight": "500"
+            }
+          ]
+        }
+      },
+    },
+  }</script></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-72 bg-papier z-50 flex flex-col justify-between border-r border-ardoise"><div class="flex flex-col"><div class="h-16 px-space-md border-b border-ardoise flex items-center gap-space-sm bg-papier-clair"><span class="material-symbols-outlined text-encre text-[20px]">account_balance</span><div><div class="font-label-sm text-label-sm text-encre font-bold uppercase tracking-wider">RÉPERTOIRE RÉGALIEN</div><div class="font-label-sm text-[10px] text-ardoise">MINESUP · ARCHITECTURE LMD</div></div></div><div class="px-space-md py-space-sm border-b border-ardoise bg-papier/60"><div class="font-label-sm text-[11px] text-ardoise uppercase tracking-widest">Navigation Magistrale</div></div><nav class="flex flex-col py-space-xs" data-active-classes="bg-primary-container text-on-primary font-semibold border-l-4 border-rouge-encre pl-3"><a aria-current="page" class="flex items-center gap-space-sm px-space-md py-space-sm transition-colors bg-primary-container text-on-primary font-semibold border-l-4 border-rouge-encre pl-3" data-path="tableau-de-bord" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">dashboard</span><span>Tableau de Bord Régalien</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors" data-path="structure-universitaire" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">domain</span><span>Structure Universitaire</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors" data-path="etudiants-et-comptes" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">badge</span><span>Étudiants &amp; Comptes</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors" data-path="matieres-et-ues" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">menu_book</span><span>Matières, UEs &amp; Cours</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors" data-path="saisie-et-numerisation-des-notes" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">edit_document</span><span>Saisie des Notes (CC, TP, SN)</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors" data-path="moteur-mgp-et-deliberations" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">calculate</span><span>Moteur MGP &amp; 30 ECTS</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors" data-path="bulletins-et-publications-minesup" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">history_edu</span><span>Bulletins &amp; MINESUP</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors" data-path="journal-daudit-et-scellement" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">verified</span><span>Audit &amp; Scellement SHA-256</span></a></nav></div><div class="p-space-md border-t border-ardoise bg-papier-clair"><div class="flex items-center justify-between"><span class="font-label-sm text-[10px] uppercase text-ardoise tracking-wider">Intégrité Registre</span><span class="font-data-tabular text-[11px] text-statut-valide font-bold">SHA-256 OK</span></div><div class="mt-1 text-[11px] font-label-sm text-ardoise truncate">Nœud Juridique: DGS-CMR-04</div></div></aside><div class="pl-72"><header class="fixed top-0 left-72 right-0 h-16 bg-papier-clair z-40 border-b border-ardoise"><div class="h-16 w-full px-space-md flex items-center justify-between"><div class="flex items-center gap-space-md"><img alt="Logo officiel GNU pour la gestion des notes universitaires LMD. Emblème vectoriel composé de 5 strates horizontales resserrées vers le haut représentant la hiérarchie académique : Université (encre), Faculté (encre 82%), Département (encre 64%), Filière (encre 46%), et Classe au sommet en rouge-encre (#8C2F2F). Accompagné de la typographie serif prestigieuse 'GNU' et du sous-titre 'Gestion des Notes · Système LMD'.. Brand logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1XDH6Bi7X1hIdgODy7oGFEGu6JhBUc9r9eGw_hk5xQFSZmvSLHtQnY2UkxPZvkeE6W3UZAh4y1DG6MDzIPSF45huGUyNu1X_zcBPSEquGXYBFFPtmCwG9uhA66AdWX1zqV6KnBbXDFjx_1j1j2wUPBrK3PiFdp2uY9Z6M9Zew3X28lyAGRHXXSSiENme8ViRCcxe77bwPthY0fTL6oyahMebolx7-OORp4oGM5C8cjZkX4d1RVwlMMgOPg"/><div class="h-6 w-px bg-ardoise/40"></div><div class="flex items-center gap-space-sm"><span class="font-headline-sm text-headline-sm text-encre font-bold">GNU LMD</span><span class="font-body-sm text-body-sm text-ardoise">|</span><span class="font-body-sm text-body-sm text-ardoise">Cellule Informatique</span></div><div class="flex items-center gap-1.5 px-2 py-0.5 border border-ardoise bg-papier text-encre font-label-sm text-label-sm"><span class="inline-block w-2 h-2 rounded-full bg-statut-valide"></span><span>SESSION ACTIVE</span></div></div><div class="flex items-center gap-space-md"><div class="hidden md:flex flex-col text-right"><span class="font-label-sm text-label-sm text-encre font-bold">Agent Administrateur Système</span><span class="font-label-sm text-[11px] text-ardoise">Matricule : ADM-CI-8842</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="relative pt-16 bg-surface min-h-screen"><div class="flex flex-col w-full">
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const activeLink = document.querySelector('a[data-path="journal-daudit-et-scellement"]');
+      if (activeLink) {
+        document.querySelectorAll('nav a').forEach(el => {
+          el.className = "flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors";
+          const icon = el.querySelector('.material-symbols-outlined');
+          if (icon) icon.className = "material-symbols-outlined text-[18px] text-ardoise";
+        });
+        activeLink.className = "flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm bg-primary-container text-on-primary font-semibold border-l-4 border-rouge-encre pl-3";
+        const activeIcon = activeLink.querySelector('.material-symbols-outlined');
+        if (activeIcon) activeIcon.className = "material-symbols-outlined text-[18px] text-on-primary";
+      }
+    });
+  </script>
+<!-- En-tête de page institutionnel -->
+<div class="bg-papier-clair px-margin-desktop py-space-xl border-b border-ardoise">
+<div class="max-w-[1440px] mx-auto flex flex-col lg:flex-row lg:items-end justify-between gap-space-lg">
+<div class="flex flex-col gap-space-xs max-w-3xl">
+<div class="flex items-center gap-space-xs">
+<span class="inline-block w-2 h-2 rounded-full bg-or-sceau"></span>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-ardoise">
+            CONTRÔLE RÉGALIEN · SÉCURITÉ CRYPTOGRAPHIQUE &amp; PROTOCOLE D'INTÉGRITÉ MINESUP / DGS
+          </span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-encre tracking-tight font-serif">
+          Journal d'Audit &amp; Scellement Cryptographique SHA-256
+        </h1>
+<p class="font-body-md text-body-md text-ardoise leading-relaxed">
+          Chaîne de blocs académique certifiée, horodatage régalien RFC 3161, détection des altérations de notes en temps réel et scellement perpétuel des procès-verbaux de délibération.
+        </p>
+</div>
+<!-- Actions de gouvernance -->
+<div class="flex flex-wrap items-center gap-space-sm"><button class="flex items-center gap-space-xs px-space-md py-space-sm bg-rouge-encre text-on-primary font-label-sm text-label-sm hover:bg-primary transition-colors cursor-pointer shadow-sm border border-rouge-encre" type="button"><span class="material-symbols-outlined text-[18px]">emergency</span><span>Isoler le Bloc &amp; Reconstituer</span></button>
+<button class="flex items-center gap-space-xs px-space-md py-space-sm bg-papier border border-encre text-encre font-label-sm text-label-sm hover:bg-encre hover:text-papier-clair transition-colors cursor-pointer shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">download_for_offline</span>
+<span>Exporter Grand Livre (JSON-LD)</span>
+</button>
+<button class="flex items-center gap-space-xs px-space-md py-space-sm bg-papier-clair border border-encre text-encre font-label-sm text-label-sm hover:bg-encre hover:text-papier-clair transition-colors cursor-pointer shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">account_tree</span>
+<span>Auditer Arbre Merkle</span>
+</button>
+<button class="flex items-center gap-space-xs px-space-md py-space-sm bg-rouge-encre text-on-primary font-label-sm text-label-sm hover:bg-primary transition-colors cursor-pointer shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">lock</span>
+<span>Sceller la Session (Définitif)</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Fil Hiérarchique & Horodatage Réseau -->
+<div class="bg-papier px-margin-desktop py-space-xs border-b border-ardoise/60">
+<div class="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between text-ardoise font-label-sm text-label-sm">
+<div class="flex items-center gap-space-xs">
+<span class="text-encre font-medium">MINESUP Cameroun</span>
+<span>›</span>
+<span>Univ. Yaoundé I</span>
+<span>›</span>
+<span>Faculté des Sciences (FS)</span>
+<span>›</span>
+<span>Dpt. Informatique</span>
+<span>›</span>
+<span class="text-encre font-bold">Registre d'Ancrage #DGS-2024-S2</span>
+</div>
+<div class="flex items-center gap-space-md text-[11px] font-data-tabular">
+<span>HORLOGE NATIONALE RFC 3161 : <strong>2024-10-24 16:45:02 UTC+1</strong></span>
+<span class="text-statut-valide font-bold">● SYNCHRONISÉ DGS/ANTIC</span>
+</div>
+</div>
+</div><div class="bg-rouge-encre/10 border-b-2 border-rouge-encre px-margin-desktop py-space-sm"><div class="max-w-[1440px] mx-auto flex items-start gap-space-sm text-rouge-encre"><span class="material-symbols-outlined text-[24px] text-rouge-encre flex-shrink-0 mt-0.5">warning</span><div class="font-body-sm text-body-sm flex-1"><span class="font-bold uppercase font-label-sm text-[12px] tracking-wider block mb-1 text-rouge-encre">⚠️ ALERTE CRITIQUE DE SÉCURITÉ RÉGALIENNE — DIVERGENCE CRYPTOGRAPHIQUE SUR LE REGISTRE DES NOTES</span><p class="text-encre text-[13px] leading-relaxed">Une altération unilatérale non scellée a été interceptée par l'algorithme Merkle. Le hachage calculé en base de données PostgreSQL ne concorde plus avec l'empreinte scellée dans le <strong>Bloc #1480</strong>. Bloc suspect immédiatement verrouillé et placé en quarantaine d'urgence.</p></div><div class="hidden md:flex items-center gap-2"><span class="px-2 py-1 bg-rouge-encre text-on-primary font-label-sm text-[11px] font-bold uppercase tracking-wider">RUPTURE DE CONCORDANCE</span></div></div></div>
+<!-- Contenu Principal -->
+<div class="px-margin-desktop py-space-xl max-w-[1440px] mx-auto w-full flex flex-col gap-space-xl">
+<!-- Bandeau des 5 Indicateurs Cryptographiques -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-space-md">
+<!-- KPI 1 -->
+<div class="bg-papier-clair p-space-md border-2 border-rouge-encre flex flex-col justify-between relative overflow-hidden"><div class="flex items-center justify-between mb-space-xs"><span class="font-label-sm text-label-sm text-rouge-encre font-bold uppercase">État de la Chaîne</span><span class="inline-flex items-center gap-1 text-[10px] font-label-sm font-bold text-rouge-encre bg-rouge-encre/10 px-1.5 py-0.5 border border-rouge-encre"><span class="inline-block w-2 h-2 rounded-full bg-rouge-encre animate-pulse"></span>RUPTURE HASH</span></div><div class="font-data-tabular text-[20px] text-rouge-encre font-bold leading-tight">ALTÉRATION DÉTECTÉE (99.98%)</div><div class="font-label-sm text-[11px] text-rouge-encre font-medium mt-space-xs">1 divergence active sur 142 890 entrées</div></div>
+<!-- KPI 2 -->
+<div class="bg-papier-clair p-space-md border border-ardoise flex flex-col justify-between">
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-label-sm text-label-sm text-ardoise uppercase">Blocs Scellés</span>
+<span class="material-symbols-outlined text-[16px] text-ardoise">token</span>
+</div>
+<div class="font-data-tabular text-headline-sm text-encre font-bold">1 482 blocs</div>
+<div class="font-label-sm text-[11px] text-ardoise mt-space-xs">Bloc #1482 ancré il y a 3 min</div>
+</div>
+<!-- KPI 3 -->
+<div class="bg-papier-clair p-space-md border border-ardoise flex flex-col justify-between">
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-label-sm text-label-sm text-ardoise uppercase">Clé Décanat</span>
+<span class="material-symbols-outlined text-[16px] text-or-sceau">vpn_key</span>
+</div>
+<div class="font-data-tabular text-headline-sm text-encre font-bold">RSA 4096-bit</div>
+<div class="font-label-sm text-[11px] text-ardoise mt-space-xs">DGS-PKI Cameroun · Exp. 2026</div>
+</div>
+<!-- KPI 4 -->
+<div class="bg-papier-clair p-space-md border border-ardoise flex flex-col justify-between">
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-label-sm text-label-sm text-ardoise uppercase">Anonymat &amp; Séquestre</span>
+<span class="material-symbols-outlined text-[16px] text-rouge-encre">shield_lock</span>
+</div>
+<div class="font-data-tabular text-headline-sm text-rouge-encre font-bold">SÉQUESTRÉ</div>
+<div class="font-label-sm text-[11px] text-ardoise mt-space-xs">Double sceau Doyen + Cellule Info</div>
+</div>
+<!-- KPI 5 -->
+<div class="bg-papier-clair p-space-md border border-ardoise flex flex-col justify-between">
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-label-sm text-label-sm text-ardoise uppercase">Norme Juridique</span>
+<span class="material-symbols-outlined text-[16px] text-statut-valide">verified</span>
+</div>
+<div class="font-data-tabular text-headline-sm text-encre font-bold">CEMAC 01/06</div>
+<div class="font-label-sm text-[11px] text-ardoise mt-space-xs">Conformité ISO 27001 LMD</div>
+</div>
+</div>
+<!-- Outil de Filtrage & Vérification Immédiate d'Empreinte -->
+<div class="bg-papier-clair p-space-md border border-encre">
+<div class="flex flex-col xl:flex-row gap-space-md items-stretch xl:items-end justify-between">
+<div class="flex flex-wrap gap-space-md flex-1">
+<div class="flex flex-col gap-space-2xs min-w-[220px]">
+<label class="font-label-sm text-label-sm text-ardoise uppercase">Filtre d'Événement Cryptographique</label>
+<select class="bg-papier border border-ardoise px-space-sm py-space-xs font-body-sm text-body-sm text-encre focus:border-encre focus:ring-0 focus:outline-none cursor-pointer">
+<option>Tous les événements certifiés (1 482)</option>
+<option>Saisie / Modification de Note (CC, TP, SN)</option>
+<option>Levée d'Anonymat &amp; Rapprochement</option>
+<option>Clôture &amp; Signature de Bordereau</option>
+<option>Injection Moteur MGP &amp; 30 ECTS</option>
+<option>Homologation Décanat &amp; MINESUP</option>
+</select>
+</div>
+<div class="flex flex-col gap-space-2xs min-w-[240px]">
+<label class="font-label-sm text-label-sm text-ardoise uppercase">Périmètre Académique</label>
+<select class="bg-papier border border-ardoise px-space-sm py-space-xs font-body-sm text-body-sm text-encre focus:border-encre focus:ring-0 focus:outline-none cursor-pointer">
+<option>Faculté des Sciences (FS) · DMI - Tous Niveaux</option>
+<option>Licence 3 GLSR (Génie Logiciel)</option>
+<option>Licence 3 SI (Systèmes d'Information)</option>
+<option>Master 1 Recherche Informatique</option>
+<option>Toutes Facultés Conjointes</option>
+</select>
+</div>
+<div class="flex flex-col gap-space-2xs flex-1 min-w-[320px]">
+<label class="font-label-sm text-label-sm text-ardoise uppercase">Contrôle Rapide Merkle (Hachage ou Matricule)</label>
+<div class="flex gap-1">
+<input class="w-full bg-papier border border-ardoise px-space-sm py-space-xs font-data-tabular text-body-sm text-encre placeholder-ardoise/60 focus:border-encre focus:ring-0 focus:outline-none" placeholder="Coller une empreinte SHA-256 (64 hex) ou matricule étudiant..." type="text"/>
+<button class="bg-encre text-papier-clair px-space-md py-space-xs font-label-sm text-label-sm hover:bg-ardoise transition-colors whitespace-nowrap" type="button">
+                Vérifier
+              </button>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-space-xs font-label-sm text-[11px] text-ardoise pb-1 border-t xl:border-t-0 border-ardoise/40 pt-2 xl:pt-0">
+<span class="material-symbols-outlined text-[16px] text-statut-valide">sync</span>
+<span>Surveillance continue active : écoute sur WebSocket Sécurisé TLS 1.3</span>
+</div>
+</div>
+</div>
+<!-- Grand Registre Central de la Chaîne d'Audit Cryptographique -->
+<div class="bg-papier-clair border border-encre">
+<div class="bg-papier px-space-md py-space-sm border-b border-encre flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-encre text-[20px]">history_edu</span>
+<span class="font-label-md text-label-md text-encre font-bold uppercase tracking-wider">
+            Registre Central Inaltérable de la Session Académique 2024-2025
+          </span>
+</div>
+<div class="font-data-tabular text-label-sm text-ardoise">
+          Enregistrements affichés : <strong>6 derniers blocs</strong> sur 1 482
+        </div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-encre text-papier-clair font-label-sm text-[11px] uppercase tracking-wider">
+<th class="py-space-sm px-space-md border-r border-ardoise/40">Bloc # &amp; Horodatage</th>
+<th class="py-space-sm px-space-md border-r border-ardoise/40">Acteur Régalien</th>
+<th class="py-space-sm px-space-md border-r border-ardoise/40">Nature de la Transaction</th>
+<th class="py-space-sm px-space-md border-r border-ardoise/40">Périmètre / Cible</th>
+<th class="py-space-sm px-space-md border-r border-ardoise/40">Empreinte Hachée (Précédent → Actuel)</th>
+<th class="py-space-sm px-space-md border-r border-ardoise/40">Statut</th>
+<th class="py-space-sm px-space-md text-right">Preuve</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm text-on-surface divide-y divide-ardoise/30"><tr class="bg-rouge-encre/10 border-l-4 border-rouge-encre transition-colors"><td class="py-space-sm px-space-md border-r border-ardoise/30 font-data-tabular whitespace-nowrap"><div class="font-bold text-rouge-encre flex items-center gap-1"><span class="material-symbols-outlined text-[16px] text-rouge-encre">gpp_bad</span>BLOC #1483</div><div class="text-rouge-encre text-[11px] font-bold">24.10.2024 16:44:12 UTC+1</div></td><td class="py-space-sm px-space-md border-r border-ardoise/30 whitespace-nowrap"><div class="font-semibold text-rouge-encre">SENTINEL SHA-256</div><div class="font-label-sm text-[11px] text-ardoise">Détecteur Intégrité · SYS-AI</div></td><td class="py-space-sm px-space-md border-r border-ardoise/30"><div class="font-bold text-rouge-encre">Tentative de Falsification Note SN</div><div class="text-rouge-encre text-[12px]">Altération PostgreSQL directe non signée : 11.00 ➔ 16.00/20</div></td><td class="py-space-sm px-space-md border-r border-ardoise/30 font-label-sm text-[12px]"><span class="bg-rouge-encre text-on-primary px-1.5 py-0.5 font-bold">Matr. 21S05332 · INF 311</span></td><td class="py-space-sm px-space-md border-r border-ardoise/30 font-data-tabular text-[12px] text-ardoise whitespace-nowrap"><span class="text-encre font-mono">88ea...66bc</span><span class="text-rouge-encre mx-1">≠</span><span class="text-rouge-encre font-mono font-bold">f4c2...91d0 [REJETÉ]</span></td><td class="py-space-sm px-space-md border-r border-ardoise/30 whitespace-nowrap"><span class="inline-flex items-center gap-1 px-2 py-0.5 border border-rouge-encre bg-rouge-encre text-on-primary font-label-sm text-[11px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-surface animate-pulse"></span>QUARANTAINE / VETO</span></td><td class="py-space-sm px-space-md text-right whitespace-nowrap"><button class="px-2 py-1 bg-rouge-encre text-on-primary border border-rouge-encre font-label-sm text-[11px] hover:bg-primary transition-colors font-bold" type="button">Preuve Violation</button></td></tr>
+<!-- Ligne 1 -->
+<tr class="hover:bg-papier/70 transition-colors">
+<td class="py-space-sm px-space-md border-r border-ardoise/30 font-data-tabular whitespace-nowrap">
+<div class="font-bold text-encre">BLOC #1482</div>
+<div class="text-ardoise text-[11px]">24.10.2024 16:42:18 UTC+1</div>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 whitespace-nowrap">
+<div class="font-semibold text-encre">Pr. EBOMBOU Jean-Paul</div>
+<div class="font-label-sm text-[11px] text-ardoise">Doyen · DEC-012</div>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30">
+<div class="font-medium text-encre">Homologation Finale &amp; Scellement PV Semestre 5</div>
+<div class="text-ardoise text-[12px]">Apposition du sceau ministériel DAUQ</div>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 font-label-sm text-[12px]">
+<span class="bg-papier px-1.5 py-0.5 border border-ardoise/60 text-encre">L3 GLSR · 54 Étudiants</span>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 font-data-tabular text-[12px] text-ardoise whitespace-nowrap">
+<span class="text-encre font-mono">c3e8...1a09</span>
+<span class="text-rouge-encre mx-1">➔</span>
+<span class="text-rouge-encre font-mono font-bold">b7a3...9d84</span>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 border border-statut-valide bg-papier-clair text-statut-valide font-label-sm text-[11px]">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-valide"></span>
+                  Signé Décanat
+                </span>
+</td>
+<td class="py-space-sm px-space-md text-right whitespace-nowrap">
+<button class="px-2 py-1 bg-papier border border-encre text-encre font-label-sm text-[11px] hover:bg-encre hover:text-papier transition-colors" type="button">
+                  Preuve Merkle
+                </button>
+</td>
+</tr>
+<!-- Ligne 2 -->
+<tr class="hover:bg-papier/70 transition-colors">
+<td class="py-space-sm px-space-md border-r border-ardoise/30 font-data-tabular whitespace-nowrap">
+<div class="font-bold text-encre">BLOC #1481</div>
+<div class="text-ardoise text-[11px]">24.10.2024 15:19:40 UTC+1</div>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 whitespace-nowrap">
+<div class="font-semibold text-encre">Moteur MGP Juridique</div>
+<div class="font-label-sm text-[11px] text-ardoise">Système · ALG-MGP-30</div>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30">
+<div class="font-medium text-encre">Calcul Automatique MGP &amp; Crédits ECTS</div>
+<div class="text-ardoise text-[12px]">Application règle de compensation semestrielle</div>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 font-label-sm text-[12px]">
+<span class="bg-papier px-1.5 py-0.5 border border-ardoise/60 text-encre">UEs Fondamentales · S5</span>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 font-data-tabular text-[12px] text-ardoise whitespace-nowrap">
+<span class="text-encre font-mono">4d11...f89a</span>
+<span class="text-rouge-encre mx-1">➔</span>
+<span class="text-rouge-encre font-mono font-bold">c3e8...1a09</span>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 border border-statut-valide bg-papier-clair text-statut-valide font-label-sm text-[11px]">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-valide"></span>
+                  Scellé &amp; Conforme
+                </span>
+</td>
+<td class="py-space-sm px-space-md text-right whitespace-nowrap">
+<button class="px-2 py-1 bg-papier border border-encre text-encre font-label-sm text-[11px] hover:bg-encre hover:text-papier transition-colors" type="button">
+                  Preuve Merkle
+                </button>
+</td>
+</tr>
+<!-- Ligne 3 -->
+<tr class="hover:bg-papier/70 transition-colors">
+<td class="py-space-sm px-space-md border-r border-ardoise/30 font-data-tabular whitespace-nowrap">
+<div class="font-bold text-encre">BLOC #1480</div>
+<div class="text-ardoise text-[11px]">24.10.2024 14:02:11 UTC+1</div>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 whitespace-nowrap">
+<div class="font-semibold text-encre">Dr. TCHINDA Victorine</div>
+<div class="font-label-sm text-[11px] text-ardoise">Chef Dpt Info · ENS-1044</div>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30">
+<div class="font-medium text-encre">Levée d'Anonymat Examen Session Normale</div>
+<div class="text-ardoise text-[12px]">Rapprochement cryptographique Clé A + Clé B</div>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 font-label-sm text-[12px]">
+<span class="bg-papier px-1.5 py-0.5 border border-ardoise/60 text-encre">UE INF 311 · 54 Copies</span>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 font-data-tabular text-[12px] text-ardoise whitespace-nowrap">
+<span class="text-encre font-mono">88ea...66bc</span>
+<span class="text-rouge-encre mx-1">➔</span>
+<span class="text-rouge-encre font-mono font-bold">4d11...f89a</span>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 border border-or-sceau bg-papier-clair text-or-sceau font-label-sm text-[11px]">
+<span class="w-1.5 h-1.5 rounded-full bg-or-sceau"></span>
+                  Désanonymisé
+                </span>
+</td>
+<td class="py-space-sm px-space-md text-right whitespace-nowrap">
+<button class="px-2 py-1 bg-papier border border-encre text-encre font-label-sm text-[11px] hover:bg-encre hover:text-papier transition-colors" type="button">
+                  Certificat RFC
+                </button>
+</td>
+</tr>
+<!-- Ligne 4 -->
+<tr class="hover:bg-papier/70 transition-colors">
+<td class="py-space-sm px-space-md border-r border-ardoise/30 font-data-tabular whitespace-nowrap">
+<div class="font-bold text-encre">BLOC #1479</div>
+<div class="text-ardoise text-[11px]">24.10.2024 11:35:48 UTC+1</div>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 whitespace-nowrap">
+<div class="font-semibold text-encre">Pr. FOUDA Ndjodo</div>
+<div class="font-label-sm text-[11px] text-ardoise">Enseignant Titulaire · ENS-0812</div>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30">
+<div class="font-medium text-encre">Rectification Note CC sur Requête J-3</div>
+<div class="text-ardoise text-[12px]">Avis favorable jury · Note modifiée : 11.50 → 13.25/20</div>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 font-label-sm text-[12px]">
+<span class="bg-papier px-1.5 py-0.5 border border-ardoise/60 text-encre">Matr. 21S05120 · INF 311</span>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 font-data-tabular text-[12px] text-ardoise whitespace-nowrap">
+<span class="text-encre font-mono">12f0...34aa</span>
+<span class="text-rouge-encre mx-1">➔</span>
+<span class="text-rouge-encre font-mono font-bold">88ea...66bc</span>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 border border-statut-valide bg-papier-clair text-statut-valide font-label-sm text-[11px]">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-valide"></span>
+                  Validé avec Recours
+                </span>
+</td>
+<td class="py-space-sm px-space-md text-right whitespace-nowrap">
+<button class="px-2 py-1 bg-papier border border-encre text-encre font-label-sm text-[11px] hover:bg-encre hover:text-papier transition-colors" type="button">
+                  Preuve Merkle
+                </button>
+</td>
+</tr>
+<!-- Ligne 5 -->
+<tr class="hover:bg-papier/70 transition-colors">
+<td class="py-space-sm px-space-md border-r border-ardoise/30 font-data-tabular whitespace-nowrap">
+<div class="font-bold text-encre">BLOC #1478</div>
+<div class="text-ardoise text-[11px]">23.10.2024 17:50:04 UTC+1</div>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 whitespace-nowrap">
+<div class="font-semibold text-encre">ADM-CI-8842</div>
+<div class="font-label-sm text-[11px] text-ardoise">Agent Cellule Info · ADM-04</div>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30">
+<div class="font-medium text-encre">Importation Bordereau Numérisé TP/Projet</div>
+<div class="text-ardoise text-[12px]">Hachage du document source PDF scanné</div>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 font-label-sm text-[12px]">
+<span class="bg-papier px-1.5 py-0.5 border border-ardoise/60 text-encre">INF 315 · 54 Notes TP</span>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 font-data-tabular text-[12px] text-ardoise whitespace-nowrap">
+<span class="text-encre font-mono">99cb...01ee</span>
+<span class="text-rouge-encre mx-1">➔</span>
+<span class="text-rouge-encre font-mono font-bold">12f0...34aa</span>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 border border-statut-valide bg-papier-clair text-statut-valide font-label-sm text-[11px]">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-valide"></span>
+                  Scellé &amp; Conforme
+                </span>
+</td>
+<td class="py-space-sm px-space-md text-right whitespace-nowrap">
+<button class="px-2 py-1 bg-papier border border-encre text-encre font-label-sm text-[11px] hover:bg-encre hover:text-papier transition-colors" type="button">
+                  Certificat RFC
+                </button>
+</td>
+</tr>
+<!-- Ligne 6 -->
+<tr class="hover:bg-papier/70 transition-colors">
+<td class="py-space-sm px-space-md border-r border-ardoise/30 font-data-tabular whitespace-nowrap">
+<div class="font-bold text-encre">BLOC #1477</div>
+<div class="text-ardoise text-[11px]">23.10.2024 09:12:33 UTC+1</div>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 whitespace-nowrap">
+<div class="font-semibold text-encre">DAUQ / MINESUP Yaoundé</div>
+<div class="font-label-sm text-[11px] text-ardoise">Nœud National · MIN-CMR-01</div>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30">
+<div class="font-medium text-encre">Ancrage Périodique au Registre Fédéral</div>
+<div class="text-ardoise text-[12px]">Validation de l'état racine de l'arbre universitaire</div>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 font-label-sm text-[12px]">
+<span class="bg-papier px-1.5 py-0.5 border border-ardoise/60 text-encre">Établissement UY1</span>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 font-data-tabular text-[12px] text-ardoise whitespace-nowrap">
+<span class="text-encre font-mono">00a1...77d3</span>
+<span class="text-rouge-encre mx-1">➔</span>
+<span class="text-rouge-encre font-mono font-bold">99cb...01ee</span>
+</td>
+<td class="py-space-sm px-space-md border-r border-ardoise/30 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 border border-encre bg-papier-clair text-encre font-label-sm text-[11px]">
+<span class="w-1.5 h-1.5 rounded-full bg-or-sceau"></span>
+                  Fédéré MINESUP
+                </span>
+</td>
+<td class="py-space-sm px-space-md text-right whitespace-nowrap">
+<button class="px-2 py-1 bg-papier border border-encre text-encre font-label-sm text-[11px] hover:bg-encre hover:text-papier transition-colors" type="button">
+                  Preuve Merkle
+                </button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pied de table de ledger -->
+<div class="p-space-md bg-papier border-t border-encre flex flex-wrap items-center justify-between gap-space-sm text-ardoise font-label-sm text-label-sm">
+<div class="flex items-center gap-space-sm">
+<span class="text-encre font-bold">Total Blocs Indexés : 1 482</span>
+<span>·</span>
+<span>Espace Disque Ledger : 842.1 Mo</span>
+<span>·</span>
+<span>Signature PGP du Registre : Valide</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1 bg-papier-clair border border-ardoise text-ardoise cursor-not-allowed" type="button">Précédent</button>
+<span class="text-encre font-mono font-bold">Page 1 sur 247</span>
+<button class="px-3 py-1 bg-papier-clair border border-encre text-encre hover:bg-encre hover:text-papier-clair transition-colors" type="button">Suivant</button>
+</div>
+</div>
+</div>
+<!-- Deux panneaux inférieurs d'audit approfondi -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
+<!-- Panneau Gauche (60%) : Inspecteur Merkle Tree -->
+<div class="lg:col-span-7 bg-papier-clair border border-encre p-space-lg flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between border-b border-ardoise pb-space-sm mb-space-md">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-encre text-[22px]">account_tree</span>
+<h2 class="font-headline-sm text-headline-sm text-encre font-serif">
+                Inspecteur de Preuve Cryptographique (Arbre de Merkle)
+              </h2>
+</div>
+<span class="font-data-tabular text-[12px] px-2 py-0.5 bg-rouge-encre border border-rouge-encre text-on-primary font-bold animate-pulse">DIVERGENCE DÉTECTÉE — RUPTURE HASH</span>
+</div>
+<p class="font-body-sm text-body-sm text-ardoise mb-space-md">
+            Décomposition arborescente des empreintes canoniques pour la cohorte <strong>Licence 3 GLSR (Semestre 5)</strong>. Toute modification unilatérale dans PostgreSQL invaliderait immédiatement la racine Merkle.
+          </p>
+<!-- Schéma Graphique de l'Arbre -->
+<div class="bg-papier p-space-md border border-ardoise space-y-space-md">
+<!-- Racine de Merkle -->
+<div class="border-2 border-rouge-encre bg-rouge-encre/10 p-space-sm"><div class="flex items-center justify-between font-label-sm text-[11px] text-ardoise mb-1"><span class="font-bold text-rouge-encre uppercase flex items-center gap-1"><span class="material-symbols-outlined text-[16px] text-rouge-encre">error</span>Racine de Merkle Actuelle (Merkle Root)</span><span class="text-rouge-encre font-bold bg-rouge-encre text-on-primary px-1.5 py-0.2">CORROMPUE / DIVERGENTE</span></div><div class="font-data-tabular text-body-sm text-rouge-encre font-mono break-all font-bold">0x8F3C99482A1B41E97C23BA094D99FE288301B2E0756A109E9F03B8D4EA771C82<span class="text-encre text-[11px] block mt-1 font-normal font-sans">Hash calculé BDD : 0x4B9E77...11F0 (Écart d'empreinte sur branche SN)</span></div></div>
+<!-- Niveau intermédiaire (branches) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-sm">
+<div class="border border-ardoise/60 bg-papier-clair p-space-xs">
+<div class="font-label-sm text-[10px] text-ardoise uppercase">Branche Évaluations Continues</div>
+<div class="font-data-tabular text-[12px] text-encre font-mono truncate">
+                  SHA-256: d4a7...98c1 (CC + TP)
+                </div>
+</div>
+<div class="border border-ardoise/60 bg-papier-clair p-space-xs">
+<div class="font-label-sm text-[10px] text-ardoise uppercase">Branche Examens &amp; Délibération</div>
+<div class="font-data-tabular text-[12px] text-encre font-mono truncate">
+                  SHA-256: 7f12...e4b3 (SN + MGP)
+                </div>
+</div>
+</div>
+<!-- Feuilles de hachage individuelles (Leaves) -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-space-xs"><div class="p-space-xs border border-ardoise/40 bg-papier-clair flex flex-col"><span class="font-label-sm text-[10px] text-ardoise">Feuille #1</span><span class="font-label-sm text-[11px] font-bold text-encre">Notes CC (30%)</span><span class="font-data-tabular text-[10px] text-ardoise font-mono truncate mt-1">cc_scores: 1e9a...</span><span class="text-[10px] text-statut-valide mt-1 font-bold">● Conforme</span></div><div class="p-space-xs border border-ardoise/40 bg-papier-clair flex flex-col"><span class="font-label-sm text-[10px] text-ardoise">Feuille #2</span><span class="font-label-sm text-[11px] font-bold text-encre">Notes TP (20%)</span><span class="font-data-tabular text-[10px] text-ardoise font-mono truncate mt-1">tp_scores: 82cf...</span><span class="text-statut-valide text-[10px] mt-1 font-bold">● Conforme</span></div><div class="p-space-xs border-2 border-rouge-encre bg-rouge-encre/10 flex flex-col shadow-sm"><span class="font-label-sm text-[10px] text-rouge-encre font-bold">Feuille #3 [ALTÉRÉE]</span><span class="font-label-sm text-[11px] font-bold text-rouge-encre">Notes SN (50%)</span><span class="font-data-tabular text-[10px] text-rouge-encre font-mono truncate mt-1 font-bold">sn_scores: bc44... ≠ f4c2</span><span class="text-rouge-encre text-[10px] mt-1 font-bold leading-tight">⚠️ ALTÉRATION SUSPECTE : Copie AN-9483 / Matr. 21S05332 (Note 11.00 ➔ 16.00 hors décanat)</span></div><div class="p-space-xs border border-or-sceau bg-papier flex flex-col"><span class="font-label-sm text-[10px] text-ardoise">Feuille #4</span><span class="font-label-sm text-[11px] font-bold text-encre">MGP &amp; ECTS</span><span class="font-data-tabular text-[10px] text-ardoise font-mono truncate mt-1">mgp_30ects: a703...</span><span class="text-or-sceau text-[10px] mt-1 font-bold">⚠ Impactée par SN</span></div></div>
+</div>
+</div>
+<div class="mt-space-md p-space-sm border-2 border-rouge-encre bg-rouge-encre/10 flex items-start gap-space-sm"><span class="material-symbols-outlined text-rouge-encre text-[24px] flex-shrink-0 mt-0.5">crisis_alert</span><div class="font-body-sm text-body-sm text-rouge-encre leading-relaxed"><strong class="font-bold uppercase font-label-sm text-[12px] block mb-1">🚨 ANOMALIE CONFIRMÉE : ALTÉRATION DIRECTE DE LA NOTE SN DANS POSTGRESQL DÉTECTÉE À 16:44:12 GMT+1</strong>Valeur enregistrée au scellement : <strong class="font-mono text-encre">11.00/20</strong> (Hash: <code class="font-mono">88ea...66bc</code>). Valeur actuelle trouvée en BDD : <strong class="font-mono text-rouge-encre">16.00/20</strong> (Hash: <code class="font-mono">f4c2...91d0</code>). Aucune signature décanale associée. Procédure automatique de gel du relevé de notes et notification du Doyen déclenchée.</div></div>
+</div>
+<!-- Panneau Droit (40%) : Séquestre Numérique & Tiers de Confiance -->
+<div class="lg:col-span-5 bg-papier-clair border border-encre p-space-lg flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-space-xs border-b border-ardoise pb-space-sm mb-space-md">
+<span class="material-symbols-outlined text-or-sceau text-[22px]">verified_user</span>
+<h2 class="font-headline-sm text-headline-sm text-encre font-serif">
+              Séquestre &amp; Tiers de Confiance
+            </h2>
+</div>
+<div class="space-y-space-md">
+<!-- Ministère DAUQ -->
+<div class="p-space-sm bg-papier border border-ardoise">
+<div class="font-label-sm text-[11px] text-ardoise uppercase mb-1">Clé Publique MINESUP (DAUQ Yaoundé)</div>
+<div class="font-data-tabular text-[12px] text-encre font-mono break-all">
+                MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAx4n...F3qQIDAQAB
+              </div>
+<div class="mt-1 flex items-center justify-between text-[11px] font-label-sm text-ardoise">
+<span>Nœud Autorité : DGS-PKI-01</span>
+<span class="text-statut-valide font-bold">Certificat Valide</span>
+</div>
+</div>
+<!-- Horodatage RFC 3161 -->
+<div class="p-space-sm bg-papier border border-ardoise">
+<div class="font-label-sm text-[11px] text-ardoise uppercase mb-1">Autorité d'Horodatage (TSA Nationale)</div>
+<div class="font-body-sm text-body-sm text-encre font-medium">ANTIC Cameroun · Serveur Stratum 1</div>
+<div class="font-data-tabular text-[12px] text-ardoise mt-1 font-mono">
+                Jet d'horodatage : 20241024164502Z+TSA_CMR
+              </div>
+</div>
+<!-- Double Signature Décanale & Système -->
+<div class="p-space-sm bg-papier border border-ardoise">
+<div class="font-label-sm text-[11px] text-ardoise uppercase mb-2">Signatures Bi-Partites Déposées</div>
+<div class="space-y-1 text-[12px]">
+<div class="flex items-center justify-between">
+<span class="font-medium text-encre">Doyen (DEC-012) :</span>
+<span class="font-data-tabular text-statut-valide font-mono font-bold">SHA256: 9b2d...f4e0 [SIGNÉ]</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-medium text-encre">Cellule Info (ADM-04) :</span>
+<span class="font-data-tabular text-statut-valide font-mono font-bold">SHA256: 41a8...33cc [SIGNÉ]</span>
+</div>
+</div>
+</div>
+<!-- Empreinte globale scellée -->
+<div class="p-space-sm bg-encre text-papier-clair">
+<div class="font-label-sm text-[10px] uppercase text-papier tracking-wider mb-1">
+                Empreinte Globale de Session (Master Hash)
+              </div>
+<div class="font-data-tabular text-[11px] text-papier font-mono break-all font-bold">
+                e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+              </div>
+</div>
+</div>
+</div>
+<div class="mt-space-md pt-space-sm border-t border-ardoise/60 flex items-center justify-between font-label-sm text-[11px] text-ardoise">
+<span>Statut Séquestre : VERROUILLÉ</span>
+<span class="font-mono text-encre font-bold">Clés RSA sous HSM Dédié</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Pied de Page Régalien Officiel -->
+<footer class="mt-space-2xl bg-papier-clair border-t-2 border-encre px-margin-desktop py-space-lg">
+<div class="max-w-[1440px] mx-auto flex flex-col md:flex-row items-center justify-between gap-space-md text-center md:text-left">
+<div class="flex flex-col gap-1">
+<div class="font-label-sm text-label-sm text-encre font-bold uppercase tracking-wider">
+          RÉPUBLIQUE DU CAMEROUN · PAIX - TRAVAIL - PATRIE
+        </div>
+<div class="font-label-sm text-[11px] text-ardoise">
+          Système GNU LMD Régalien · Direction des Affaires Universitaires et de la Qualité (DAUQ) · MINESUP Yaoundé
+        </div>
+<div class="font-label-sm text-[11px] text-ardoise">
+          Conformité Cadre Réglementaire CEMAC N° 01/06-UEAC-019-CM-14 &amp; Arrêté N° 99/0054/MINESUP/DD
+        </div>
+</div>
+<div class="flex flex-col items-center md:items-end gap-1">
+<div class="flex items-center gap-space-xs font-label-sm text-[11px] text-encre font-bold">
+<span class="material-symbols-outlined text-[16px] text-statut-valide">gavel</span>
+<span>REGISTRE OFFICIEL À VALEUR PROBANTE IMMÉDIATE</span>
+</div>
+<div class="font-data-tabular text-[10px] text-ardoise font-mono">
+          Nœud Juridique Validateur : <strong>DGS-CMR-04</strong> · Session UUID: c3f94-uy1-fs-2024
+        </div>
+</div>
+</div>
+</footer>
+</div></main></div></body></html>

@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+
+<html lang="fr"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=IBM+Plex+Sans:wght@300;400;500;600;700&amp;family=Space+Mono:wght@400;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"primary-container":"#8c2f2f","on-secondary-fixed-variant":"#394761","on-primary-container":"#ffaba7","on-surface-variant":"#564241","surface":"#fef9ea","on-secondary-fixed":"#0c1b34","tertiary-fixed":"#ffddb5","on-primary-fixed":"#410005","secondary":"#515f7a","primary":"#6d181b","on-tertiary":"#ffffff","papier-clair":"#F1EEE2","on-tertiary-container":"#f2b665","statut-manquant":"#8C2F2F","or-sceau":"#A9762C","on-tertiary-fixed-variant":"#643f00","on-secondary-container":"#53617d","on-error-container":"#93000a","surface-tint":"#a03e3d","error":"#ba1a1a","inverse-primary":"#ffb3af","tertiary":"#503100","secondary-container":"#cfddfe","background":"#fef9ea","on-error":"#ffffff","encre":"#1B2942","error-container":"#ffdad6","primary-fixed-dim":"#ffb3af","inverse-on-surface":"#f5f1e1","rouge-encre":"#8C2F2F","on-background":"#1d1c13","statut-en-attente":"#C4841F","ardoise":"#5B5F66","tertiary-fixed-dim":"#f8bb6a","surface-container-highest":"#e7e2d3","surface-container-lowest":"#ffffff","surface-container-high":"#ece8d9","on-primary-fixed-variant":"#812728","on-surface":"#1d1c13","on-secondary":"#ffffff","surface-bright":"#fef9ea","inverse-surface":"#323126","outline":"#897270","surface-dim":"#dedacb","statut-valide":"#3C6E52","tertiary-container":"#6f4600","surface-variant":"#e7e2d3","primary-fixed":"#ffdad7","papier":"#DEDACB","surface-container":"#f2eede","on-primary":"#ffffff","surface-container-low":"#f8f4e4","on-tertiary-fixed":"#2a1800","outline-variant":"#dcc0be","secondary-fixed-dim":"#b9c7e7","secondary-fixed":"#d7e2ff"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-md":"1rem","space-sm":"0.5rem","margin-desktop":"2.5rem","space-3xl":"4rem","space-2xs":"0.125rem","space-xs":"0.25rem","margin-mobile":"1rem","space-xl":"2rem","space-lg":"1.5rem","space-2xl":"3rem","col-gutter":"1rem"},"fontFamily":{"headline-md":["EB Garamond"],"label-sm":["Space Mono"],"body-sm":["IBM Plex Sans"],"label-md":["Space Mono"],"data-tabular":["Space Mono"],"headline-sm":["EB Garamond"],"headline-xl-mobile":["EB Garamond"],"body-md":["IBM Plex Sans"],"headline-xl":["EB Garamond"],"body-lg":["IBM Plex Sans"],"headline-lg":["EB Garamond"]},"fontSize":{"headline-md":["24px",{"lineHeight":"32px","fontWeight":"500"}],"label-sm":["12px",{"lineHeight":"16px","letterSpacing":"0.04em","fontWeight":"400"}],"body-sm":["14px",{"lineHeight":"20px","fontWeight":"400"}],"label-md":["14px",{"lineHeight":"20px","letterSpacing":"0.02em","fontWeight":"400"}],"data-tabular":["15px",{"lineHeight":"20px","fontWeight":"500"}],"headline-sm":["20px",{"lineHeight":"28px","fontWeight":"500"}],"headline-xl-mobile":["32px",{"lineHeight":"40px","fontWeight":"500"}],"body-md":["16px",{"lineHeight":"24px","fontWeight":"400"}],"headline-xl":["48px",{"lineHeight":"56px","fontWeight":"500"}],"body-lg":["18px",{"lineHeight":"28px","fontWeight":"400"}],"headline-lg":["32px",{"lineHeight":"40px","fontWeight":"500"}]}}}}</script></head><body class="bg-papier text-encre font-body-md text-body-md antialiased min-h-screen"><aside class="fixed left-0 top-0 h-full w-72 bg-papier-clair border-r border-ardoise/30 z-50 flex flex-col justify-between overflow-y-auto"><div class="flex flex-col"><div class="p-space-md border-b border-ardoise/20 bg-papier"><div class="flex items-center gap-space-sm"><img alt="Logo officiel GNU pour la gestion des notes universitaires LMD. Emblème vectoriel composé de 5 strates horizontales resserrées vers le haut représentant la hiérarchie académique : Université (encre), Faculté (encre 82%), Département (encre 64%), Filière (encre 46%), et Classe au sommet en rouge-encre (#8C2F2F). Accompagné de la typographie serif prestigieuse 'GNU' et du sous-titre 'Gestion des Notes · Système LMD'.. Brand logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1XDH6Bi7X1hIdgODy7oGFEGu6JhBUc9r9eGw_hk5xQFSZmvSLHtQnY2UkxPZvkeE6W3UZAh4y1DG6MDzIPSF45huGUyNu1X_zcBPSEquGXYBFFPtmCwG9uhA66AdWX1zqV6KnBbXDFjx_1j1j2wUPBrK3PiFdp2uY9Z6M9Zew3X28lyAGRHXXSSiENme8ViRCcxe77bwPthY0fTL6oyahMebolx7-OORp4oGM5C8cjZkX4d1RVwlMMgOPg"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-encre tracking-tight leading-tight">GNU · LMD</span><span class="font-label-sm text-label-sm text-ardoise uppercase tracking-wider">Registre d'État Enseignant</span></div></div></div><div class="px-space-md py-space-sm bg-papier-clair border-b border-ardoise/20"><div class="font-label-sm text-label-sm uppercase tracking-wider text-ardoise">Matricule &amp; Affectation</div><div class="font-data-tabular text-data-tabular text-encre font-bold">Pr. Ndongo Marcelin</div><div class="font-label-sm text-label-sm text-ardoise">ENS-INFO-02 · Resp. L3 Math-Info</div></div><div class="px-space-md pt-space-md pb-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-widest text-ardoise font-semibold">Registres &amp; Actes</span></div><nav class="flex flex-col px-space-sm gap-space-2xs" data-active-classes="bg-encre text-papier-clair font-medium"><a class="flex items-center gap-space-sm px-space-sm py-2 rounded text-on-surface-variant hover:bg-papier hover:text-encre transition-colors" data-path="tableau-de-bord" href="#"><span class="material-symbols-outlined text-[18px]">dashboard</span><span class="font-body-sm text-body-sm">Tableau de bord</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded text-on-surface-variant hover:bg-papier hover:text-encre transition-colors" data-path="affectation-ue" href="#"><span class="material-symbols-outlined text-[18px]">assignment_ind</span><span class="font-body-sm text-body-sm">Affectation &amp; Choix UEs/ECs</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded text-on-surface-variant hover:bg-papier hover:text-encre transition-colors" data-path="saisie-notes" href="#"><span class="material-symbols-outlined text-[18px]">edit_note</span><span class="font-body-sm text-body-sm">Saisie, Import &amp; Transmission</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded text-on-surface-variant hover:bg-papier hover:text-encre transition-colors" data-path="requetes-recours" href="#"><span class="material-symbols-outlined text-[18px]">rule_folder</span><span class="font-body-sm text-body-sm">Requêtes &amp; Recours Étudiants</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded text-on-surface-variant hover:bg-papier hover:text-encre transition-colors" data-path="pv-deliberation" href="#"><span class="material-symbols-outlined text-[18px]">history_edu</span><span class="font-body-sm text-body-sm">PV de Délibération</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded text-on-surface-variant hover:bg-papier hover:text-encre transition-colors" data-path="archives-statistiques" href="#"><span class="material-symbols-outlined text-[18px]">analytics</span><span class="font-body-sm text-body-sm">Archives &amp; Statistiques</span></a></nav><div class="px-space-md pt-space-lg pb-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-widest text-ardoise font-semibold">Unités d'Enseignement actives</span></div><div class="px-space-md flex flex-col gap-space-xs"><div class="flex items-center justify-between p-space-xs bg-papier rounded border border-ardoise/20"><div class="flex flex-col"><span class="font-label-sm text-label-sm font-bold text-encre">INF301</span><span class="font-body-sm text-body-sm text-ardoise text-[11px] leading-tight">Algorithmique Avancée</span></div><span class="font-label-sm text-label-sm text-statut-valide bg-papier-clair px-1 border border-statut-valide/30">Saisie 100%</span></div><div class="flex items-center justify-between p-space-xs bg-papier rounded border border-ardoise/20"><div class="flex flex-col"><span class="font-label-sm text-label-sm font-bold text-encre">INF305</span><span class="font-body-sm text-body-sm text-ardoise text-[11px] leading-tight">Systèmes d'Exploitation</span></div><span class="font-label-sm text-label-sm text-statut-en-attente bg-papier-clair px-1 border border-statut-en-attente/30">En attente</span></div><div class="flex items-center justify-between p-space-xs bg-papier rounded border border-ardoise/20"><div class="flex flex-col"><span class="font-label-sm text-label-sm font-bold text-encre">INF311</span><span class="font-body-sm text-body-sm text-ardoise text-[11px] leading-tight">Bases de Données R.</span></div><span class="font-label-sm text-label-sm text-statut-manquant bg-papier-clair px-1 border border-statut-manquant/30">CC Manquant</span></div><div class="flex items-center justify-between p-space-xs bg-papier rounded border border-ardoise/20"><div class="flex flex-col"><span class="font-label-sm text-label-sm font-bold text-encre">INF315</span><span class="font-body-sm text-body-sm text-ardoise text-[11px] leading-tight">Génie Logiciel LMD</span></div><span class="font-label-sm text-label-sm text-statut-valide bg-papier-clair px-1 border border-statut-valide/30">Transmis</span></div></div></div><div class="p-space-md border-t border-ardoise/30 bg-papier"><div class="flex items-center gap-space-xs text-or-sceau mb-space-2xs"><span class="material-symbols-outlined text-[16px]">verified</span><span class="font-label-sm text-label-sm uppercase font-bold tracking-wider">Sceau LMD · CEMAC</span></div><p class="font-body-sm text-body-sm text-ardoise text-[11px] leading-normal">Plateforme officielle de certification des notes sous tutelle MINESUP · République du Cameroun.</p></div></aside><div class="pl-72 flex flex-col min-h-screen"><header class="fixed top-0 left-72 right-0 h-16 bg-papier-clair/95 border-b border-ardoise/30 z-40 px-space-lg flex items-center justify-between backdrop-blur"><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs font-body-sm text-body-sm text-ardoise"><span class="text-encre font-medium">Univ. Douala</span><span>›</span><span>Faculté des Sciences</span><span>›</span><span class="text-encre font-semibold">Dép. Math-Info</span></div><div class="hidden xl:flex items-center gap-space-xs pl-space-md border-l border-ardoise/30"><span class="font-label-sm text-label-sm text-ardoise uppercase">Session :</span><span class="font-label-sm text-label-sm font-bold text-encre bg-papier px-2 py-0.5 border border-ardoise/30">Semestre 1 · 2023-2024</span></div></div><div class="flex items-center gap-space-lg"><div class="hidden md:flex items-center gap-space-xs bg-papier px-space-sm py-1 border border-rouge-encre/40"><span class="material-symbols-outlined text-rouge-encre text-[16px]">alarm</span><span class="font-label-sm text-label-sm text-rouge-encre font-bold">Échéance : 14 Mars 2024 (J-4)</span></div><div class="flex items-center gap-space-sm pl-space-md border-l border-ardoise/20"><div class="flex flex-col text-right"><span class="font-body-sm text-body-sm font-semibold text-encre leading-tight">Pr. Ndongo M.</span><span class="font-label-sm text-label-sm text-ardoise text-[11px]">Session Active</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="relative pt-16 bg-papier flex-1 px-space-lg py-space-md w-full"><div class="flex flex-col w-full gap-space-lg">
+<!-- En-tête de section ministérielle & Titre du Registre -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md pb-space-sm bg-papier-clair p-space-lg rounded shadow-sm">
+<div class="flex flex-col gap-space-2xs">
+<div class="flex items-center gap-space-xs text-ardoise font-label-sm text-label-sm uppercase tracking-widest">
+<span class="material-symbols-outlined text-[16px] text-rouge-encre">gavel</span>
+<span>Procédure Réglementaire MINESUP · Décret LMD 2020/004</span>
+<span>·</span>
+<span class="text-or-sceau font-bold">Session Normale S1 (2023-2024)</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-encre tracking-tight leading-tight">
+        Traitement des Requêtes &amp; Arbitrage des Recours Étudiants
+      </h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-4xl">
+        Examen des réclamations post-affichage, révision contradictoire des copies d'examen et transmission motivée des avis au Président du jury de délibération.
+      </p>
+</div>
+<!-- Actions rapides de session -->
+<div class="flex items-center gap-space-xs shrink-0">
+<button class="flex items-center gap-space-xs bg-papier hover:bg-papier-clair text-encre px-space-md py-2 rounded text-label-sm font-label-sm uppercase tracking-wider transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">print</span>
+<span>PV d'Arbitrage (PDF)</span>
+</button>
+<button class="flex items-center gap-space-xs bg-encre hover:bg-secondary text-papier-clair px-space-md py-2 rounded text-label-sm font-label-sm uppercase tracking-wider transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">history</span>
+<span>Historique S1</span>
+</button>
+</div>
+</div>
+<!-- Métriques & KPIs d'Arbitrage (Bento Grid 4 cases) -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+<!-- Total reçues -->
+<div class="bg-papier-clair p-space-md rounded flex flex-col justify-between shadow-sm relative overflow-hidden">
+<div class="flex items-start justify-between">
+<span class="font-label-sm text-label-sm text-ardoise uppercase tracking-wider">Requêtes Réceptionnées</span>
+<span class="material-symbols-outlined text-encre/70 text-[20px]">folder_shared</span>
+</div>
+<div class="flex items-baseline gap-space-xs my-space-xs">
+<span class="font-data-tabular text-[36px] font-bold text-encre leading-none">04</span>
+<span class="font-label-sm text-label-sm text-ardoise">dossiers inscrits</span>
+</div>
+<div class="flex items-center gap-space-xs text-ardoise font-body-sm text-body-sm text-[12px]">
+<span class="w-2 h-2 rounded-full bg-encre"></span>
+<span>Clôture du registre dans 48h</span>
+</div>
+</div>
+<!-- En attente d'arbitrage -->
+<div class="bg-papier-clair p-space-md rounded flex flex-col justify-between shadow-sm relative">
+<div class="flex items-start justify-between">
+<span class="font-label-sm text-label-sm text-statut-en-attente uppercase tracking-wider font-bold">À Arbitrer d'Urgence</span>
+<span class="material-symbols-outlined text-statut-en-attente text-[20px]">pending_actions</span>
+</div>
+<div class="flex items-baseline gap-space-xs my-space-xs">
+<span class="font-data-tabular text-[36px] font-bold text-statut-en-attente leading-none">02</span>
+<span class="font-label-sm text-label-sm text-statut-en-attente">dossiers en suspens</span>
+</div>
+<div class="flex items-center gap-space-xs font-body-sm text-body-sm text-[12px] text-statut-en-attente">
+<span class="material-symbols-outlined text-[14px]">timer</span>
+<span>Copies sorties des archives</span>
+</div>
+</div>
+<!-- Avis Favorables -->
+<div class="bg-papier-clair p-space-md rounded flex flex-col justify-between shadow-sm relative">
+<div class="flex items-start justify-between">
+<span class="font-label-sm text-label-sm text-statut-valide uppercase tracking-wider font-bold">Avis Favorables Émis</span>
+<span class="material-symbols-outlined text-statut-valide text-[20px]">check_circle</span>
+</div>
+<div class="flex items-baseline gap-space-xs my-space-xs">
+<span class="font-data-tabular text-[36px] font-bold text-statut-valide leading-none">01</span>
+<span class="font-label-sm text-label-sm text-statut-valide">rectification proposée</span>
+</div>
+<div class="flex items-center gap-space-xs font-body-sm text-body-sm text-[12px] text-statut-valide">
+<span class="material-symbols-outlined text-[14px]">done_all</span>
+<span>Fiche de rectification jointe</span>
+</div>
+</div>
+<!-- Rejetés -->
+<div class="bg-papier-clair p-space-md rounded flex flex-col justify-between shadow-sm relative">
+<div class="flex items-start justify-between">
+<span class="font-label-sm text-label-sm text-rouge-encre uppercase tracking-wider font-bold">Requêtes Rejetées</span>
+<span class="material-symbols-outlined text-rouge-encre text-[20px]">cancel</span>
+</div>
+<div class="flex items-baseline gap-space-xs my-space-xs">
+<span class="font-data-tabular text-[36px] font-bold text-rouge-encre leading-none">01</span>
+<span class="font-label-sm text-label-sm text-rouge-encre">note confirmée</span>
+</div>
+<div class="flex items-center gap-space-xs font-body-sm text-body-sm text-[12px] text-ardoise">
+<span>Conforme au barème officiel</span>
+</div>
+</div>
+</div>
+<!-- Barre de Filtres Règlementaires -->
+<div class="bg-papier-clair p-space-md rounded shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-space-md">
+<div class="flex flex-wrap items-center gap-space-sm">
+<span class="font-label-sm text-label-sm text-ardoise uppercase tracking-wider flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">tune</span> Filtres :
+      </span>
+<!-- Filtre UE -->
+<div class="relative">
+<select class="bg-papier text-encre font-body-sm text-body-sm px-space-sm py-1.5 pr-8 rounded appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-encre">
+<option value="all">Toutes les UEs (4 affectées)</option>
+<option selected="" value="inf301">INF 301 · Algo Avancée (01)</option>
+<option value="inf305">INF 305 · Systèmes Exploit. (01)</option>
+<option value="inf311">INF 311 · Bases de Données (01)</option>
+<option value="inf315">INF 315 · Génie Logiciel (01)</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-2 pointer-events-none text-ardoise text-[18px]">expand_more</span>
+</div>
+<!-- Filtre Motif -->
+<div class="relative">
+<select class="bg-papier text-encre font-body-sm text-body-sm px-space-sm py-1.5 pr-8 rounded appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-encre">
+<option value="all">Tous les motifs de réclamation</option>
+<option selected="" value="transcription">Erreur de transcription de note</option>
+<option value="omission">Copie omise / non répertoriée</option>
+<option value="medical">Justificatif médical / absence autorisée</option>
+<option value="bareme">Contestation de barème / recomptage</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-2 pointer-events-none text-ardoise text-[18px]">expand_more</span>
+</div>
+<!-- Filtre Statut -->
+<div class="relative">
+<select class="bg-papier text-encre font-body-sm text-body-sm px-space-sm py-1.5 pr-8 rounded appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-encre">
+<option value="all">Tous les états de traitement</option>
+<option selected="" value="en_cours">En cours d'examen (02)</option>
+<option value="rendu">Avis Enseignant Rendu (02)</option>
+<option value="transmis">Transmis au Décanat (00)</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-2 pointer-events-none text-ardoise text-[18px]">expand_more</span>
+</div>
+</div>
+<!-- Recherche rapide matricule ou nom -->
+<div class="relative flex items-center min-w-[260px]">
+<input class="w-full bg-papier text-encre font-data-tabular text-body-sm pl-9 pr-3 py-1.5 rounded focus:outline-none focus:ring-2 focus:ring-encre" placeholder="Matricule, nom ou anonymat..." type="text" value="21S04918"/>
+<span class="material-symbols-outlined absolute left-2 text-ardoise text-[18px]">search</span>
+</div>
+</div>
+<!-- Disposition Centrale à 2 Volets (Ledger Master-Detail) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+<!-- Volet Gauche : Liste des dossiers de recours (5 colonnes) -->
+<div class="lg:col-span-5 flex flex-col gap-space-sm">
+<div class="flex items-center justify-between px-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-encre">Registre des Recours</span>
+<span class="bg-encre text-papier-clair font-data-tabular text-[11px] px-1.5 py-0.5 rounded">4 Recours</span>
+</div>
+<span class="font-label-sm text-label-sm text-ardoise">Tri chronologique</span>
+</div>
+<!-- Dossier 1 : TITA MANGA (Sélectionné) -->
+<div class="p-space-md rounded bg-papier-clair shadow-sm cursor-pointer transition-all relative overflow-hidden" style="box-shadow: 4px 4px 0px #1B2942;">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-rouge-encre"></div>
+<div class="flex items-center justify-between pl-space-xs mb-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="font-data-tabular font-bold text-label-md text-rouge-encre">RQ-2024-079</span>
+<span class="font-label-sm text-label-sm bg-papier px-1.5 py-0.5 rounded text-encre font-bold">INF 301</span>
+</div>
+<span class="inline-flex items-center gap-1 font-label-sm text-label-sm px-2 py-0.5 rounded bg-statut-en-attente/10 text-statut-en-attente font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-en-attente animate-pulse"></span>
+            En cours d'instruction
+          </span>
+</div>
+<div class="pl-space-xs">
+<h2 class="font-headline-sm text-headline-sm text-encre font-bold leading-snug">TITA Manga Christian</h2>
+<div class="flex items-center gap-space-sm text-label-sm font-data-tabular text-ardoise my-space-2xs">
+<span>Matr: <strong class="text-encre">21S04918</strong></span>
+<span>·</span>
+<span>Niveau: L3 Math-Info</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2 mt-1 bg-papier/60 p-2 rounded">
+<strong>Motif :</strong> Erreur de report de la note d'examen SN (04/20 affiché au lieu de 14/20 sur la copie anonymée).
+          </p>
+<div class="flex items-center justify-between text-label-sm font-label-sm mt-space-sm pt-space-xs text-ardoise">
+<span>Reçu le : 11 Mars 2024 · 09:14</span>
+<span class="text-rouge-encre font-bold flex items-center gap-0.5">Dossier ouvert <span class="material-symbols-outlined text-[14px]">arrow_forward</span></span>
+</div>
+</div>
+</div>
+<!-- Dossier 2 : MBIA Antoinette (Urgent) -->
+<div class="p-space-md rounded bg-papier-clair shadow-sm hover:bg-surface-container transition-all cursor-pointer relative">
+<div class="flex items-center justify-between mb-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="font-data-tabular font-bold text-label-md text-encre">RQ-2024-081</span>
+<span class="font-label-sm text-label-sm bg-papier px-1.5 py-0.5 rounded text-encre font-bold">INF 311</span>
+</div>
+<span class="inline-flex items-center gap-1 font-label-sm text-label-sm px-2 py-0.5 rounded bg-rouge-encre/10 text-rouge-encre font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-rouge-encre"></span>
+            Urgent · À examiner
+          </span>
+</div>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-encre">MBIA Antoinette</h2>
+<div class="flex items-center gap-space-sm text-label-sm font-data-tabular text-ardoise my-space-2xs">
+<span>Matr: 21S05120</span>
+<span>·</span>
+<span>Niveau: L3 Informatique</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2 mt-1">
+<strong>Motif :</strong> Copie TP SQL non trouvée lors de la publication des procès-verbaux de contrôle continu.
+          </p>
+<div class="flex items-center justify-between text-label-sm font-label-sm mt-space-sm pt-space-xs text-ardoise">
+<span>Reçu le : 11 Mars 2024 · 14:30</span>
+<span class="font-data-tabular text-encre font-semibold">Copies en salle 104</span>
+</div>
+</div>
+</div>
+<!-- Dossier 3 : KAMGA Rostand (Rattrapage accordé) -->
+<div class="p-space-md rounded bg-papier-clair shadow-sm hover:bg-surface-container transition-all cursor-pointer relative opacity-90">
+<div class="flex items-center justify-between mb-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="font-data-tabular font-bold text-label-md text-encre">RQ-2024-075</span>
+<span class="font-label-sm text-label-sm bg-papier px-1.5 py-0.5 rounded text-encre font-bold">INF 305</span>
+</div>
+<span class="inline-flex items-center gap-1 font-label-sm text-label-sm px-2 py-0.5 rounded bg-statut-valide/10 text-statut-valide font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-valide"></span>
+            Rattrapage accordé
+          </span>
+</div>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-encre">KAMGA Rostand</h2>
+<div class="flex items-center gap-space-sm text-label-sm font-data-tabular text-ardoise my-space-2xs">
+<span>Matr: 21S05122</span>
+<span>·</span>
+<span>Niveau: L3 Math-Info</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2 mt-1">
+<strong>Motif :</strong> Absence justifiée au CC avec certificat officiel délivré par le Centre Médico-Social.
+          </p>
+<div class="flex items-center justify-between text-label-sm font-label-sm mt-space-sm pt-space-xs text-ardoise">
+<span>Traité le : 10 Mars 2024</span>
+<span class="text-statut-valide font-semibold">Validé par Décanat</span>
+</div>
+</div>
+</div>
+<!-- Dossier 4 : NDOUMBE Paul (Rejeté) -->
+<div class="p-space-md rounded bg-papier-clair shadow-sm hover:bg-surface-container transition-all cursor-pointer relative opacity-90">
+<div class="flex items-center justify-between mb-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="font-data-tabular font-bold text-label-md text-encre">RQ-2024-068</span>
+<span class="font-label-sm text-label-sm bg-papier px-1.5 py-0.5 rounded text-encre font-bold">INF 315</span>
+</div>
+<span class="inline-flex items-center gap-1 font-label-sm text-label-sm px-2 py-0.5 rounded bg-rouge-encre/10 text-rouge-encre font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-rouge-encre"></span>
+            Rejeté (Note confirmée)
+          </span>
+</div>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-encre">NDOUMBE Paul</h2>
+<div class="flex items-center gap-space-sm text-label-sm font-data-tabular text-ardoise my-space-2xs">
+<span>Matr: 21S05099</span>
+<span>·</span>
+<span>Niveau: L3 Math-Info</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2 mt-1">
+<strong>Motif :</strong> Demande de réévaluation d'exercice 3. Note de 07/20 maintenue après recomptage rigoureux.
+          </p>
+<div class="flex items-center justify-between text-label-sm font-label-sm mt-space-sm pt-space-xs text-ardoise">
+<span>Traité le : 09 Mars 2024</span>
+<span class="text-ardoise font-mono">Clos définitif</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Volet Droit : Fiche d'Instruction détaillée du Recours Sélectionné (7 colonnes) -->
+<div class="lg:col-span-7 flex flex-col gap-space-md bg-papier-clair p-space-xl rounded shadow-md relative">
+<!-- En-tête d'arbitrage officiel -->
+<div class="flex flex-col sm:flex-row sm:items-start justify-between gap-space-md pb-space-md bg-surface-container-low p-space-md rounded">
+<div>
+<div class="flex items-center gap-space-xs text-label-sm font-label-sm text-ardoise uppercase tracking-widest">
+<span>Bordereau de Recours</span>
+<span>·</span>
+<span class="text-rouge-encre font-bold font-data-tabular">RQ-2024-079</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-encre font-bold mt-1">
+            Fiche d'Arbitrage Pédagogique
+          </h2>
+<p class="font-body-sm text-body-sm text-ardoise">
+            Étudiant : <span class="text-encre font-semibold">TITA Manga Christian</span> (Matr. <span class="font-data-tabular text-encre font-bold">21S04918</span>)
+          </p>
+</div>
+<!-- Tag anonymat officiel -->
+<div class="bg-papier p-space-sm rounded text-right shrink-0">
+<div class="font-label-sm text-label-sm text-ardoise uppercase tracking-wider">Feuille d'Examen</div>
+<div class="font-data-tabular text-data-tabular font-bold text-encre">ANONYMAT : AN-8841</div>
+<div class="font-body-sm text-body-sm text-[12px] text-ardoise">Épreuve SN · INF 301 Algorithmique</div>
+</div>
+</div>
+<!-- Recours déposé par l'étudiant -->
+<div class="bg-papier p-space-md rounded flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-ardoise uppercase tracking-wider font-semibold">Déclaration de l'Étudiant Requérant</span>
+<span class="font-label-sm text-label-sm text-ardoise font-data-tabular">Déposée le 11/03/2024 à 09:14</span>
+</div>
+<blockquote class="font-body-md text-body-md text-encre italic pl-space-sm">
+          « Monsieur le Professeur, lors de la publication des résultats provisoires de l'épreuve terminale SN d'INF 301, ma note affichée au tableau est de 04.00/20. Or, ayant traité l'intégralité du barème sur la complexité et les graphes, je sollicite respectueusement la vérification physique de mon anonymat AN-8841. »
+        </blockquote>
+</div>
+<!-- Bloc Comparatif des Notes (Tableau d'écart) -->
+<div class="bg-surface-container p-space-md rounded flex flex-col gap-space-sm">
+<span class="font-label-sm text-label-sm text-ardoise uppercase tracking-wider font-semibold">
+          Examen Contradictoire des Pièces d'Évaluation
+        </span>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-space-sm text-center">
+<!-- Note affichée -->
+<div class="bg-papier-clair p-space-sm rounded flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-ardoise uppercase">Note Publiée (Contestée)</span>
+<div class="flex items-baseline gap-1 my-1">
+<span class="font-data-tabular text-[28px] font-bold text-rouge-encre">04.00</span>
+<span class="font-label-sm text-label-sm text-ardoise">/ 20</span>
+</div>
+<span class="font-body-sm text-body-sm text-[11px] text-statut-manquant font-medium">Report informatisé erroné</span>
+</div>
+<!-- Note réelle sur copie physique -->
+<div class="bg-papier-clair p-space-sm rounded flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-ardoise uppercase">Note Copie Réelle (AN-8841)</span>
+<div class="flex items-baseline gap-1 my-1">
+<span class="font-data-tabular text-[28px] font-bold text-statut-valide">14.00</span>
+<span class="font-label-sm text-label-sm text-ardoise">/ 20</span>
+</div>
+<span class="font-body-sm text-body-sm text-[11px] text-statut-valide font-semibold">Vérifiée en salle des actes</span>
+</div>
+<!-- Écart constaté -->
+<div class="bg-encre text-papier-clair p-space-sm rounded flex flex-col items-center justify-center shadow-sm">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-papier/80">Écart Constaté</span>
+<div class="flex items-baseline gap-1 my-1">
+<span class="font-data-tabular text-[28px] font-bold text-on-primary-container">+ 10.00</span>
+<span class="font-label-sm text-label-sm text-papier/80">pts</span>
+</div>
+<span class="font-body-sm text-body-sm text-[11px] text-on-primary-container font-mono">Erreur matérielle de ligne</span>
+</div>
+</div>
+<!-- Aperçu de la copie matérielle / scan -->
+<div class="flex items-center justify-between p-space-sm bg-papier-clair rounded mt-space-xs">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-rouge-encre text-[24px]">description</span>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm font-semibold text-encre">Copie_SN_INF301_AN8841_TITA.pdf</span>
+<span class="font-label-sm text-label-sm text-ardoise">Feuillet d'examen original · Empreinte archivée au décanat</span>
+</div>
+</div>
+<button class="px-space-sm py-1 bg-papier hover:bg-surface text-encre rounded font-label-sm text-label-sm uppercase tracking-wider flex items-center gap-1 transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>Ouvrir Scan</span>
+</button>
+</div>
+</div>
+<!-- Zone de justification pédagogique officielle -->
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-sm text-label-sm text-ardoise uppercase tracking-wider font-semibold flex items-center justify-between" for="teacher-justification">
+<span>Motivation Décisionnelle de l'Enseignant Titulaire</span>
+<span class="text-or-sceau font-mono text-[11px]">Obligation statutaire Art. 19</span>
+</label>
+<textarea class="w-full bg-papier text-encre font-body-md text-body-md p-space-sm rounded focus:outline-none focus:ring-2 focus:ring-encre leading-relaxed" id="teacher-justification" rows="3">Après vérification physique du paquet de copies anonymées cotées en salle des actes (Paquet Lot-B, INF 301), la note de l'étudiant TITA Manga sur le feuillet officiel portant l'anonymat AN-8841 s'élève bien à 14.00/20. Une interversion de ligne lors de la transcription manuelle vers la grille informatique a été constatée et rectifiée sans réserve.</textarea>
+<div class="flex items-center justify-between text-label-sm font-label-sm text-ardoise">
+<span>Caractères : 374 / 1000 max</span>
+<span>Rédigé par : Pr. Ndongo Marcelin</span>
+</div>
+</div>
+<!-- Sélecteur d'Arbitrage (Décision formelle) -->
+<div class="flex flex-col gap-space-xs">
+<span class="font-label-sm text-label-sm text-ardoise uppercase tracking-wider font-semibold">
+          Décision Pédagogique Arbitrée
+        </span>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-space-sm">
+<!-- Option 1 : Avis Favorable (Actif) -->
+<label class="flex flex-col p-space-sm rounded bg-papier cursor-pointer transition-colors relative" style="outline: 2px solid #8C2F2F;">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm font-bold text-rouge-encre uppercase">Avis Favorable</span>
+<input checked="" class="text-rouge-encre focus:ring-rouge-encre h-4 w-4" name="decision_recours" type="radio" value="favorable"/>
+</div>
+<span class="font-body-sm text-body-sm font-medium text-encre mt-1">Rectification validée</span>
+<span class="font-data-tabular text-[12px] text-statut-valide font-bold">Nouvelle Note : 14.00/20</span>
+</label>
+<!-- Option 2 : Maintien de la note -->
+<label class="flex flex-col p-space-sm rounded bg-papier cursor-pointer hover:bg-surface-container transition-colors">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm font-semibold text-ardoise uppercase">Maintien Note</span>
+<input class="text-encre focus:ring-encre h-4 w-4" name="decision_recours" type="radio" value="rejet"/>
+</div>
+<span class="font-body-sm text-body-sm text-ardoise mt-1">Note initiale confirmée</span>
+<span class="font-data-tabular text-[12px] text-ardoise">Note figée : 04.00/20</span>
+</label>
+<!-- Option 3 : Convocation étudiant -->
+<label class="flex flex-col p-space-sm rounded bg-papier cursor-pointer hover:bg-surface-container transition-colors">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm font-semibold text-ardoise uppercase">Convocation</span>
+<input class="text-encre focus:ring-encre h-4 w-4" name="decision_recours" type="radio" value="convocation"/>
+</div>
+<span class="font-body-sm text-body-sm text-ardoise mt-1">Consultation au bureau</span>
+<span class="font-label-sm text-[12px] text-statut-en-attente">Audition contradictoire</span>
+</label>
+</div>
+</div>
+<!-- Sceau de Signature & Actions de Transmission Décanat -->
+<div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-space-md pt-space-md bg-papier p-space-md rounded">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded bg-papier-clair flex items-center justify-center text-or-sceau shrink-0">
+<span class="material-symbols-outlined text-[24px]">verified_user</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm font-bold text-encre uppercase tracking-wider">Clé de Signature Enseignant</span>
+<span class="font-data-tabular text-ardoise text-[11px]">CERT-MINESUP-CMR-2024-NDONGO</span>
+</div>
+</div>
+<div class="flex flex-col sm:flex-row items-center gap-space-sm">
+<button class="w-full sm:w-auto px-space-md py-2 bg-papier-clair hover:bg-surface text-encre rounded font-label-sm text-label-sm uppercase tracking-wider flex items-center justify-center gap-space-xs transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">fact_check</span>
+<span>Bordereau d'Émargement</span>
+</button>
+<button class="w-full sm:w-auto px-space-md py-2 bg-rouge-encre hover:bg-primary text-papier-clair rounded font-label-sm text-label-sm uppercase tracking-wider font-bold flex items-center justify-center gap-space-xs shadow-md transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">draw</span>
+<span>Signer l'Avis &amp; Transmettre</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Note de Clôture & Cadre Légal Réglementaire LMD MINESUP -->
+<div class="bg-papier-clair p-space-md rounded shadow-sm flex flex-col md:flex-row items-center justify-between gap-space-md text-ardoise">
+<div class="flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-or-sceau text-[20px] shrink-0 mt-0.5">balance</span>
+<p class="font-body-sm text-body-sm text-[13px] leading-relaxed max-w-4xl">
+<strong class="text-encre font-semibold">Article 42 du Régime Général des Études LMD (Arrêté MINESUP) :</strong> Tout étudiant dispose d'un délai impératif de 72 heures ouvrées à compter de l'affichage officiel des résultats provisoires pour introduire une requête motivée auprès du Chef de Département. L'arbitrage de l'enseignant titulaire fait foi pour le jury de délibération finale sous réserve du visa du Doyen de la Faculté des Sciences.
+      </p>
+</div>
+<div class="flex items-center gap-space-xs shrink-0 font-label-sm text-label-sm text-encre bg-papier px-space-sm py-1 rounded">
+<span class="material-symbols-outlined text-[16px] text-statut-valide">verified</span>
+<span>Procédure Conforme CEMAC</span>
+</div>
+</div>
+</div></main><footer class="w-full bg-papier-clair border-t border-ardoise/30 px-space-lg py-space-sm mt-auto"><div class="flex flex-col md:flex-row items-center justify-between gap-space-xs text-ardoise font-label-sm text-label-sm"><div class="flex items-center gap-space-sm"><span>RÉPUBLIQUE DU CAMEROUN · MINESUP</span><span class="text-ardoise/40">|</span><span>SYSTÈME LMD OFFICIEL</span><span class="text-ardoise/40">|</span><span class="text-statut-valide font-bold">REGISTRE LÉGAL SÉCURISÉ</span></div><div class="flex items-center gap-space-xs text-[11px] font-data-tabular"><span class="text-ardoise">EMPREINTE SHA-256 :</span><span class="text-encre font-bold">a8f94e2...890c1f</span></div></div></footer></div></body></html>

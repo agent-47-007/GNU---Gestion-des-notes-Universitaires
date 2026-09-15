@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+
+<html lang="fr"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&amp;family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&amp;family=Space+Mono:ital,wght@0,400;0,700;1,400&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"statut-en-attente":"#C4841F","rouge-encre":"#8C2F2F","surface-tint":"#a03e3d","inverse-on-surface":"#f5f1e1","surface-container":"#f2eede","surface-container-high":"#ece8d9","primary-container":"#8c2f2f","on-tertiary":"#ffffff","on-primary-fixed-variant":"#812728","outline":"#897270","encre":"#1B2942","tertiary-fixed-dim":"#f8bb6a","papier-clair":"#F1EEE2","surface":"#fef9ea","on-error-container":"#93000a","inverse-surface":"#323126","error-container":"#ffdad6","error":"#ba1a1a","on-surface":"#1d1c13","on-primary-fixed":"#410005","on-surface-variant":"#564241","surface-dim":"#dedacb","on-tertiary-fixed-variant":"#643f00","secondary":"#515f7a","on-primary-container":"#ffaba7","on-secondary":"#ffffff","on-primary":"#ffffff","on-tertiary-container":"#f2b665","secondary-container":"#cfddfe","on-secondary-fixed":"#0c1b34","surface-container-highest":"#e7e2d3","primary":"#6d181b","surface-container-low":"#f8f4e4","or-sceau":"#A9762C","statut-manquant":"#8C2F2F","tertiary":"#503100","outline-variant":"#dcc0be","tertiary-fixed":"#ffddb5","on-secondary-container":"#53617d","on-error":"#ffffff","statut-valide":"#3C6E52","papier":"#DEDACB","on-background":"#1d1c13","on-secondary-fixed-variant":"#394761","on-tertiary-fixed":"#2a1800","secondary-fixed":"#d7e2ff","primary-fixed":"#ffdad7","ardoise":"#5B5F66","surface-container-lowest":"#ffffff","primary-fixed-dim":"#ffb3af","inverse-primary":"#ffb3af","secondary-fixed-dim":"#b9c7e7","surface-bright":"#fef9ea","background":"#fef9ea","tertiary-container":"#6f4600","surface-variant":"#e7e2d3"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"margin-mobile":"1rem","space-xs":"0.25rem","col-gutter":"1rem","space-sm":"0.5rem","space-3xl":"4rem","space-lg":"1.5rem","space-2xl":"3rem","margin-desktop":"2.5rem","space-md":"1rem","space-xl":"2rem","space-2xs":"0.125rem"},"fontFamily":{"data-tabular":["Space Mono"],"headline-xl":["EB Garamond"],"headline-lg":["EB Garamond"],"label-md":["Space Mono"],"body-sm":["IBM Plex Sans"],"headline-sm":["EB Garamond"],"body-md":["IBM Plex Sans"],"label-sm":["Space Mono"],"headline-xl-mobile":["EB Garamond"],"body-lg":["IBM Plex Sans"],"headline-md":["EB Garamond"]},"fontSize":{"data-tabular":["15px",{"lineHeight":"20px","fontWeight":"500"}],"headline-xl":["48px",{"lineHeight":"56px","fontWeight":"500"}],"headline-lg":["32px",{"lineHeight":"40px","fontWeight":"500"}],"label-md":["14px",{"lineHeight":"20px","letterSpacing":"0.02em","fontWeight":"400"}],"body-sm":["14px",{"lineHeight":"20px","fontWeight":"400"}],"headline-sm":["20px",{"lineHeight":"28px","fontWeight":"500"}],"body-md":["16px",{"lineHeight":"24px","fontWeight":"400"}],"label-sm":["12px",{"lineHeight":"16px","letterSpacing":"0.04em","fontWeight":"400"}],"headline-xl-mobile":["32px",{"lineHeight":"40px","fontWeight":"500"}],"body-lg":["18px",{"lineHeight":"28px","fontWeight":"400"}],"headline-md":["24px",{"lineHeight":"32px","fontWeight":"500"}]}}}}</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><header class="fixed top-0 left-0 right-0 z-40 bg-papier-clair border-b border-ardoise"><div class="h-20 w-full px-space-lg flex items-center justify-between"><div class="flex items-center gap-space-md"><img alt="Logo officiel GNU pour la gestion des notes universitaires LMD. Emblème vectoriel composé de 5 strates horizontales resserrées vers le haut représentant la hiérarchie académique : Université (encre), Faculté (encre 82%), Département (encre 64%), Filière (encre 46%), et Classe au sommet en rouge-encre (#8C2F2F). Accompagné de la typographie serif prestigieuse 'GNU' et du sous-titre 'Gestion des Notes · Système LMD'.. Brand logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1XDH6Bi7X1hIdgODy7oGFEGu6JhBUc9r9eGw_hk5xQFSZmvSLHtQnY2UkxPZvkeE6W3UZAh4y1DG6MDzIPSF45huGUyNu1X_zcBPSEquGXYBFFPtmCwG9uhA66AdWX1zqV6KnBbXDFjx_1j1j2wUPBrK3PiFdp2uY9Z6M9Zew3X28lyAGRHXXSSiENme8ViRCcxe77bwPthY0fTL6oyahMebolx7-OORp4oGM5C8cjZkX4d1RVwlMMgOPg"/><div class="h-7 w-[1px] bg-ardoise/40 mx-space-xs hidden sm:block"></div><div class="flex flex-col"><div class="flex items-center gap-space-xs font-body-sm text-body-sm text-ardoise"><span class="hover:text-encre transition-colors">Univ. Douala</span><span class="text-ardoise">›</span><span class="hover:text-encre transition-colors">Fac. Sciences</span><span class="text-ardoise">›</span><span class="font-medium text-encre">Dép. Math-Info</span></div><div class="flex items-center gap-space-xs mt-space-2xs"><span class="inline-block w-2 h-2 rounded-full bg-statut-valide"></span><span class="font-label-sm text-label-sm text-encre tracking-wider uppercase">Session Active : Semestre 1 · 2023-2024</span></div></div></div><div class="flex items-center gap-space-md"><div class="hidden lg:flex items-center gap-space-xs px-space-sm py-space-2xs bg-surface-container border border-ardoise/40 rounded"><span class="material-symbols-outlined text-rouge-encre text-[18px]">schedule</span><span class="font-label-sm text-label-sm text-rouge-encre font-medium">Échéance SN : 15 Mars 2024 (J-4)</span></div><button aria-label="Notifications d'échéance" class="relative p-space-xs text-ardoise hover:text-encre transition-colors"><span class="material-symbols-outlined text-[22px]">notifications</span><span class="absolute top-1 right-1 w-2 h-2 bg-rouge-encre rounded-full ring-2 ring-papier-clair"></span></button><div class="h-6 w-[1px] bg-ardoise/30"></div><div class="flex items-center gap-space-sm"><div class="text-right hidden sm:block"><div class="font-body-sm text-body-sm font-semibold text-encre leading-tight">Pr. Ndongo Marcelin</div><div class="font-label-sm text-label-sm text-ardoise">ENS-INFO-02 · Resp. L3</div></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></div></header><aside class="fixed left-0 top-20 bottom-0 w-64 bg-papier border-r border-ardoise z-30 flex flex-col justify-between overflow-y-auto"><div class="p-space-md"><div class="font-label-sm text-label-sm uppercase tracking-widest text-ardoise px-space-sm mb-space-sm border-b border-ardoise/30 pb-space-xs">Registre Académique</div><nav class="flex flex-col gap-space-2xs" data-active-classes="bg-encre text-papier-clair font-medium"><a aria-current="page" class="flex items-center gap-space-sm px-space-sm py-space-xs rounded transition-colors bg-encre text-papier-clair font-medium" data-path="tableau-de-bord" href="#"><span class="material-symbols-outlined text-[20px]">grid_view</span><span class="font-body-sm text-body-sm">Tableau de bord</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-ardoise hover:bg-surface-container-high hover:text-encre transition-colors" data-path="saisie-des-notes" href="#"><span class="material-symbols-outlined text-[20px]">edit_document</span><span class="font-body-sm text-body-sm">Saisie Notes CC/SN</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-ardoise hover:bg-surface-container-high hover:text-encre transition-colors" data-path="pv-de-deliberation" href="#"><span class="material-symbols-outlined text-[20px]">verified</span><span class="font-body-sm text-body-sm">PV de Délibération</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-ardoise hover:bg-surface-container-high hover:text-encre transition-colors" data-path="releves-et-transcriptions" href="#"><span class="material-symbols-outlined text-[20px]">receipt_long</span><span class="font-body-sm text-body-sm">Relevés &amp; Reçus</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-ardoise hover:bg-surface-container-high hover:text-encre transition-colors" data-path="archives-et-statistiques" href="#"><span class="material-symbols-outlined text-[20px]">analytics</span><span class="font-body-sm text-body-sm">Archives &amp; Statistiques</span></a></nav><div class="mt-space-lg pt-space-md border-t border-ardoise/30"><div class="font-label-sm text-label-sm uppercase tracking-widest text-ardoise px-space-sm mb-space-sm">Unités d'Enseignement</div><div class="flex flex-col gap-space-2xs font-data-tabular text-[13px] text-ardoise px-space-sm"><div class="py-space-2xs border-b border-ardoise/20 flex justify-between items-center"><span>INF301 Algorithmique</span><span class="text-statut-valide">42/42</span></div><div class="py-space-2xs border-b border-ardoise/20 flex justify-between items-center"><span>INF305 Systèmes d'Expl.</span><span class="text-statut-en-attente">38/42</span></div><div class="py-space-2xs flex justify-between items-center"><span>INF311 BDD Avancées</span><span class="text-rouge-encre font-bold">00/40</span></div></div></div></div><div class="p-space-md border-t border-ardoise/40 bg-surface-container"><div class="flex items-center gap-space-xs text-ardoise mb-space-2xs"><span class="material-symbols-outlined text-[16px]">lock</span><span class="font-label-sm text-label-sm uppercase">Registre Scellé</span></div><div class="font-label-sm text-[11px] text-on-surface-variant leading-tight">Conforme aux arrêtés MINESUP &amp; standard LMD / CEMAC.</div></div></aside><div class="pl-64"><main class="w-full min-h-[calc(100vh-5rem)] pt-20 px-space-lg pb-space-2xl bg-surface"><div class="flex flex-col w-full gap-space-lg">
+<!-- ==================== BANNIÈRE D'ACCUEIL ADMINISTRATIVE ==================== -->
+<section class="relative w-full bg-encre text-papier-clair rounded p-space-lg overflow-hidden border border-encre">
+<div class="absolute -right-12 -bottom-16 w-80 h-80 rounded-full bg-primary/20 pointer-events-none blur-2xl"></div>
+<div class="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-space-lg">
+<div class="max-w-3xl space-y-space-xs">
+<div class="flex flex-wrap items-center gap-space-xs">
+<span class="px-space-xs py-space-2xs bg-or-sceau/20 text-tertiary-fixed font-label-sm text-label-sm border border-or-sceau/40 rounded uppercase tracking-wider">
+            Portail Enseignant Certifié
+          </span>
+<span class="text-ardoise font-data-tabular text-label-sm">·</span>
+<span class="text-papier-clair/80 font-label-sm text-label-sm">ENS-INFO-02 · L3 Informatique</span>
+<span class="inline-flex items-center gap-1 font-label-sm text-label-sm text-statut-en-attente bg-surface-container-high/10 px-space-xs py-space-2xs rounded">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-en-attente animate-pulse"></span>
+            Session S1 en cours de clôture
+          </span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-papier-clair tracking-tight">
+          Bienvenue, Pr. Ndongo Marcelin
+        </h1>
+<p class="font-body-md text-body-md text-papier-clair/85 max-w-2xl leading-relaxed">
+          Vous avez <span class="font-semibold text-papier-clair underline decoration-rouge-encre underline-offset-4">3 bordereaux de notes</span> en attente de transmission finale à la Cellule Informatique et <span class="font-semibold text-tertiary-fixed">4 requêtes d’étudiants</span> en cours d’arbitrage pour la session normale.
+        </p>
+<div class="pt-space-xs flex flex-wrap items-center gap-space-sm">
+<a class="inline-flex items-center gap-space-xs bg-rouge-encre hover:bg-primary text-papier-clair px-space-md py-space-xs rounded font-label-md text-label-md transition-colors border border-rouge-encre shadow-sm" href="#table-ue">
+<span class="material-symbols-outlined text-[18px]">publish</span>
+<span>Saisir / Importer des Notes</span>
+</a>
+<a class="inline-flex items-center gap-space-xs bg-transparent hover:bg-papier-clair/10 text-papier-clair px-space-md py-space-xs rounded font-label-md text-label-md transition-colors border border-papier-clair/40" href="#requetes">
+<span class="material-symbols-outlined text-[18px]">gavel</span>
+<span>Traiter les requêtes (4)</span>
+</a>
+<span class="text-papier-clair/50 text-label-sm font-data-tabular">| Décret n°008/CAB/MINESUP</span>
+</div>
+</div>
+<!-- Sceau Régalien / Emblème Vectoriel Institutionnel -->
+<div class="hidden xl:flex flex-col items-center justify-center p-space-md bg-surface-container/10 border border-papier-clair/20 rounded w-64 text-center shrink-0">
+<svg class="w-14 h-14 text-tertiary-fixed mb-space-2xs opacity-90" fill="currentColor" viewbox="0 0 64 64">
+<path d="M32 4L8 16V30C8 45.2 18.2 59.3 32 64C45.8 59.3 56 45.2 56 30V16L32 4ZM32 20C34.2 20 36 21.8 36 24C36 26.2 34.2 28 32 28C29.8 28 28 26.2 28 24C28 21.8 29.8 20 32 20ZM44 46H20V42C20 38 28 35.8 32 35.8C36 35.8 44 38 44 42V46Z"></path>
+</svg>
+<div class="font-headline-sm text-headline-sm text-papier-clair">MINESUP CEMAC</div>
+<div class="font-label-sm text-label-sm text-papier-clair/70 mt-space-2xs">Scellement Numérique Actif</div>
+<div class="font-data-tabular text-[11px] text-tertiary-fixed mt-space-2xs">PROTOCOLE ARCHIVAGE LMD-04</div>
+</div>
+</div>
+</section>
+<!-- ==================== CARTES DE SYNTHÈSE / KPIS ==================== -->
+<section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+<!-- KPI 1 : UEs et ECs sous charge -->
+<div class="bg-papier-clair border border-ardoise/40 rounded p-space-md flex flex-col justify-between">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-label-sm text-label-sm uppercase text-ardoise tracking-wider">Charge Pédagogique</span>
+<div class="font-headline-lg text-headline-lg text-encre mt-space-2xs">04 <span class="font-body-sm text-body-sm text-ardoise font-normal">UEs</span></div>
+</div>
+<div class="p-space-xs bg-surface-container rounded border border-ardoise/30 text-encre">
+<span class="material-symbols-outlined text-[22px]">menu_book</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs border-t border-ardoise/20 flex items-center justify-between font-label-sm text-label-sm">
+<span class="text-ardoise">6 Éléments Constitutifs (EC)</span>
+<span class="font-semibold text-statut-valide font-data-tabular">100% Attribués</span>
+</div>
+</div>
+<!-- KPI 2 : Taux global de saisie -->
+<div class="bg-papier-clair border border-ardoise/40 rounded p-space-md flex flex-col justify-between">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-label-sm text-label-sm uppercase text-ardoise tracking-wider">Taux Global de Saisie</span>
+<div class="flex items-baseline gap-space-xs mt-space-2xs">
+<span class="font-headline-lg text-headline-lg text-encre">78</span><span class="font-data-tabular text-body-lg text-encre">%</span>
+<span class="font-label-sm text-label-sm text-statut-valide">(+12% j-3)</span>
+</div>
+</div>
+<!-- Progress mini gauge -->
+<svg class="w-12 h-12 -mr-1" viewbox="0 0 36 36">
+<path class="text-surface-container-high" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3.5"></path>
+<path class="text-encre" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="78, 100" stroke-linecap="round" stroke-width="3.5"></path>
+</svg>
+</div>
+<div class="mt-space-md pt-space-xs border-t border-ardoise/20 flex justify-between font-data-tabular text-[11px] text-ardoise">
+<span>CC: <strong class="text-encre">92%</strong></span>
+<span>TP: <strong class="text-encre">85%</strong></span>
+<span>SN: <strong class="text-rouge-encre">45%</strong></span>
+</div>
+</div>
+<!-- KPI 3 : Notes Manquantes -->
+<div class="bg-papier-clair border border-rouge-encre/50 rounded p-space-md flex flex-col justify-between">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-label-sm text-label-sm uppercase text-rouge-encre tracking-wider font-semibold">Notes Manquantes</span>
+<div class="font-headline-lg text-headline-lg text-rouge-encre mt-space-2xs">18 <span class="font-body-sm text-body-sm text-rouge-encre font-normal">copies</span></div>
+</div>
+<div class="p-space-xs bg-error-container text-rouge-encre rounded border border-rouge-encre/30">
+<span class="material-symbols-outlined text-[22px]">error</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs border-t border-rouge-encre/20 flex items-center justify-between font-label-sm text-label-sm">
+<span class="text-rouge-encre font-medium">Blocage pré-jury</span>
+<span class="font-data-tabular text-rouge-encre font-bold">J-4 avant clôture</span>
+</div>
+</div>
+<!-- KPI 4 : Bordereaux Transmis -->
+<div class="bg-papier-clair border border-ardoise/40 rounded p-space-md flex flex-col justify-between">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-label-sm text-label-sm uppercase text-ardoise tracking-wider">Bordereaux Scellés</span>
+<div class="font-headline-lg text-headline-lg text-encre mt-space-2xs">02 <span class="font-body-sm text-body-sm text-ardoise font-normal">sur 05</span></div>
+</div>
+<div class="p-space-xs bg-surface-container rounded border border-ardoise/30 text-statut-valide">
+<span class="material-symbols-outlined text-[22px]">verified_user</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs border-t border-ardoise/20 flex items-center justify-between font-label-sm text-label-sm">
+<span class="text-ardoise">Cellule Informatique</span>
+<span class="font-data-tabular text-statut-en-attente">3 en attente</span>
+</div>
+</div>
+</section>
+<!-- ==================== CORPS PRINCIPAL : GRILLE 8 / 4 ==================== -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+<!-- COLONNE GAUCHE (8 COLONNES) : TABLEAU DE SUIVI DES UEs & ECs -->
+<section class="lg:col-span-8 space-y-space-md" id="table-ue">
+<!-- Barre d'outils et titre de section -->
+<div class="bg-papier-clair border border-ardoise/40 rounded p-space-md flex flex-col sm:flex-row justify-between items-start sm:items-center gap-space-sm">
+<div>
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-encre text-[20px]">assignment</span>
+<h2 class="font-headline-md text-headline-md text-encre">Suivi des UEs &amp; Éléments Constitutifs (EC)</h2>
+</div>
+<p class="font-body-sm text-body-sm text-ardoise">Semestre 1 · Licence 3 Informatique Fondamentale</p>
+</div>
+<div class="flex items-center gap-space-xs self-stretch sm:self-auto">
+<button class="px-space-sm py-space-2xs rounded text-label-sm font-label-sm bg-encre text-papier-clair transition-colors" id="filter-all">Toutes (4)</button>
+<button class="px-space-sm py-space-2xs rounded text-label-sm font-label-sm bg-surface-container border border-ardoise/30 text-ardoise hover:text-encre transition-colors" id="filter-sn">SN En cours</button>
+<button class="px-space-sm py-space-2xs rounded text-label-sm font-label-sm bg-surface-container border border-rouge-encre/40 text-rouge-encre hover:bg-rouge-encre hover:text-papier-clair transition-colors" id="filter-alert">Alertes (1)</button>
+</div>
+</div>
+<!-- Registre Académique / Table des UEs -->
+<div class="bg-papier-clair border border-ardoise/40 rounded overflow-hidden">
+<!-- En-tête du registre -->
+<div class="bg-encre text-papier-clair px-space-md py-space-xs grid grid-cols-12 font-label-sm text-label-sm uppercase tracking-wider">
+<div class="col-span-4 sm:col-span-4">Unité d'Enseignement &amp; ECs</div>
+<div class="col-span-3 sm:col-span-2 text-center">Taux CC / TP</div>
+<div class="col-span-3 sm:col-span-2 text-center">Session Norm.</div>
+<div class="hidden sm:block sm:col-span-2 text-center">Statut Bordereau</div>
+<div class="col-span-2 sm:col-span-2 text-right">Opérations</div>
+</div>
+<!-- Ligne 1 : INF301 -->
+<div class="p-space-md border-b border-ardoise/30 hover:bg-surface-container transition-colors">
+<div class="grid grid-cols-12 items-center gap-y-space-xs">
+<div class="col-span-12 sm:col-span-4">
+<div class="flex items-center gap-space-xs">
+<span class="font-data-tabular text-[13px] font-bold text-encre bg-surface-container px-space-xs py-space-2xs rounded border border-ardoise/30">INF301</span>
+<span class="font-body-md text-body-md font-medium text-encre">Algorithmique &amp; Structures</span>
+</div>
+<div class="text-ardoise font-label-sm text-[11px] mt-1 pl-1">
+                EC1 : Algorithmique Avancée (60h) · EC2 : Arbres &amp; Graphes (40h)
+              </div>
+</div>
+<div class="col-span-4 sm:col-span-2 text-center font-data-tabular text-[13px]">
+<span class="text-statut-valide font-semibold">100%</span>
+<span class="text-ardoise text-[11px] block">(86/86 inscrits)</span>
+</div>
+<div class="col-span-4 sm:col-span-2 text-center font-data-tabular text-[13px]">
+<span class="text-statut-valide font-semibold">86/86</span>
+<span class="text-statut-valide text-[11px] block">Complet</span>
+</div>
+<div class="hidden sm:flex sm:col-span-2 justify-center">
+<span class="inline-flex items-center gap-1 font-label-sm text-[11px] px-2 py-0.5 rounded bg-statut-valide/10 text-statut-valide border border-statut-valide/30 font-medium">
+<span class="material-symbols-outlined text-[14px]">lock</span>
+                Transmis (Scellé)
+              </span>
+</div>
+<div class="col-span-4 sm:col-span-2 flex justify-end gap-space-2xs">
+<button class="p-1 text-ardoise hover:text-encre hover:bg-papier rounded transition-colors" title="Consulter le bordereau scellé">
+<span class="material-symbols-outlined text-[18px]">receipt_long</span>
+</button>
+<button class="p-1 text-ardoise hover:text-encre hover:bg-papier rounded transition-colors" title="Télécharger PV signé">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+</div>
+</div>
+<!-- Hash régalien de certification -->
+<div class="mt-space-xs pt-space-2xs border-t border-ardoise/15 flex items-center justify-between text-[11px] font-data-tabular text-ardoise">
+<span>Certificat Cellule : <strong class="text-encre font-normal">SHA256: 9b2d...f74a</strong></span>
+<span class="text-statut-valide">Validé le 08 Mars 2024</span>
+</div>
+</div>
+<!-- Ligne 2 : INF305 -->
+<div class="p-space-md border-b border-ardoise/30 hover:bg-surface-container transition-colors">
+<div class="grid grid-cols-12 items-center gap-y-space-xs">
+<div class="col-span-12 sm:col-span-4">
+<div class="flex items-center gap-space-xs">
+<span class="font-data-tabular text-[13px] font-bold text-encre bg-surface-container px-space-xs py-space-2xs rounded border border-ardoise/30">INF305</span>
+<span class="font-body-md text-body-md font-medium text-encre">Systèmes d'Exploitation</span>
+</div>
+<div class="text-ardoise font-label-sm text-[11px] mt-1 pl-1">
+                EC1 : Concurrence &amp; Threads POSIX (50h)
+              </div>
+</div>
+<div class="col-span-4 sm:col-span-2 text-center font-data-tabular text-[13px]">
+<span class="text-statut-valide font-semibold">100%</span>
+<span class="text-ardoise text-[11px] block">(86/86 CC &amp; TP)</span>
+</div>
+<div class="col-span-4 sm:col-span-2 text-center font-data-tabular text-[13px]">
+<span class="text-statut-en-attente font-semibold">52 / 86</span>
+<span class="text-statut-en-attente text-[11px] block">34 copies rest.</span>
+</div>
+<div class="hidden sm:flex sm:col-span-2 justify-center">
+<span class="inline-flex items-center gap-1 font-label-sm text-[11px] px-2 py-0.5 rounded bg-statut-en-attente/10 text-statut-en-attente border border-statut-en-attente/40 font-medium">
+<span class="material-symbols-outlined text-[14px]">edit_note</span>
+                Saisie partielle
+              </span>
+</div>
+<div class="col-span-4 sm:col-span-2 flex justify-end gap-space-2xs">
+<button class="px-space-xs py-space-2xs bg-encre hover:bg-secondary text-papier-clair rounded font-label-sm text-[12px] flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-[14px]">edit</span>
+<span>Compléter</span>
+</button>
+</div>
+</div>
+<!-- Barre d'avancement graphique -->
+<div class="mt-space-xs pt-space-2xs border-t border-ardoise/15 flex items-center gap-space-sm">
+<span class="font-label-sm text-[11px] text-ardoise whitespace-nowrap">Avancement SN :</span>
+<div class="w-full bg-surface-container rounded h-2 overflow-hidden border border-ardoise/20">
+<div class="bg-statut-en-attente h-full rounded" style="width: 60%;"></div>
+</div>
+<span class="font-data-tabular text-[11px] text-ardoise">60%</span>
+</div>
+</div>
+<!-- Ligne 3 : INF311 (Alerte rouge-encre) -->
+<div class="p-space-md border-b border-ardoise/30 bg-rouge-encre/5 hover:bg-rouge-encre/10 transition-colors">
+<div class="grid grid-cols-12 items-center gap-y-space-xs">
+<div class="col-span-12 sm:col-span-4">
+<div class="flex items-center gap-space-xs">
+<span class="font-data-tabular text-[13px] font-bold text-rouge-encre bg-surface-container px-space-xs py-space-2xs rounded border border-rouge-encre/40">INF311</span>
+<span class="font-body-md text-body-md font-medium text-encre">Bases de Données Avancées</span>
+</div>
+<div class="text-ardoise font-label-sm text-[11px] mt-1 pl-1">
+                EC1 : Relationnel &amp; SQL · EC2 : NoSQL &amp; Indexation
+              </div>
+</div>
+<div class="col-span-4 sm:col-span-2 text-center font-data-tabular text-[13px]">
+<span class="text-rouge-encre font-bold">70 / 84</span>
+<span class="text-rouge-encre text-[11px] block font-semibold">14 manquant(s)</span>
+</div>
+<div class="col-span-4 sm:col-span-2 text-center font-data-tabular text-[13px]">
+<span class="text-ardoise">00 / 84</span>
+<span class="text-ardoise text-[11px] block">Non débuté</span>
+</div>
+<div class="hidden sm:flex sm:col-span-2 justify-center">
+<span class="inline-flex items-center gap-1 font-label-sm text-[11px] px-2 py-0.5 rounded bg-error-container text-rouge-encre border border-rouge-encre/40 font-medium">
+<span class="material-symbols-outlined text-[14px]">warning</span>
+                Blocage Délib.
+              </span>
+</div>
+<div class="col-span-4 sm:col-span-2 flex justify-end gap-space-2xs">
+<button class="px-space-xs py-space-2xs bg-rouge-encre hover:bg-primary text-papier-clair rounded font-label-sm text-[12px] flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-[14px]">add_box</span>
+<span>Régulariser</span>
+</button>
+</div>
+</div>
+<!-- Motif d'alerte administratif -->
+<div class="mt-space-xs pt-space-2xs border-t border-rouge-encre/20 flex items-center justify-between text-[11px] font-data-tabular text-rouge-encre">
+<span>Rapport d'anomalie : CC non renseigné pour 14 étudiants (Groupe TD-2)</span>
+<span class="font-bold underline cursor-pointer hover:text-encre">Voir liste des 14 matricules</span>
+</div>
+</div>
+<!-- Ligne 4 : INF315 -->
+<div class="p-space-md hover:bg-surface-container transition-colors">
+<div class="grid grid-cols-12 items-center gap-y-space-xs">
+<div class="col-span-12 sm:col-span-4">
+<div class="flex items-center gap-space-xs">
+<span class="font-data-tabular text-[13px] font-bold text-encre bg-surface-container px-space-xs py-space-2xs rounded border border-ardoise/30">INF315</span>
+<span class="font-body-md text-body-md font-medium text-encre">Réseaux &amp; Protocoles</span>
+</div>
+<div class="text-ardoise font-label-sm text-[11px] mt-1 pl-1">
+                EC2 : Réseaux Sans Fil &amp; Mobilité (dispensé par Pr. Ndongo)
+              </div>
+</div>
+<div class="col-span-4 sm:col-span-2 text-center font-data-tabular text-[13px]">
+<span class="text-statut-valide font-semibold">100%</span>
+<span class="text-ardoise text-[11px] block">(84/84)</span>
+</div>
+<div class="col-span-4 sm:col-span-2 text-center font-data-tabular text-[13px]">
+<span class="text-statut-en-attente font-semibold">18 / 84</span>
+<span class="text-ardoise text-[11px] block">Débuté</span>
+</div>
+<div class="hidden sm:flex sm:col-span-2 justify-center">
+<span class="inline-flex items-center gap-1 font-label-sm text-[11px] px-2 py-0.5 rounded bg-surface-container-high text-ardoise border border-ardoise/30 font-medium">
+<span class="material-symbols-outlined text-[14px]">pending</span>
+                À clôturer
+              </span>
+</div>
+<div class="col-span-4 sm:col-span-2 flex justify-end gap-space-2xs">
+<button class="px-space-xs py-space-2xs border border-encre hover:bg-encre hover:text-papier-clair text-encre rounded font-label-sm text-[12px] flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-[14px]">upload_file</span>
+<span>Import CSV</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Module d'Assistance à la Saisie Rapide (Format Registre / Double Hairline) -->
+<div class="bg-papier-clair border border-ardoise/40 rounded p-space-md">
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-space-sm pb-space-sm border-b border-ardoise/30">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-encre">Saisie Expéditive / Alignement Clavier</h3>
+<p class="font-body-sm text-body-sm text-ardoise">Navigation par touches Tab / Entrée pour inscription continue des notes SN</p>
+</div>
+<div class="flex items-center gap-space-xs text-ardoise font-data-tabular text-label-sm">
+<span class="material-symbols-outlined text-[16px]">keyboard</span>
+<span>Raccourcis activés</span>
+</div>
+</div>
+<!-- Formulaire tabulaire miniature de test -->
+<div class="pt-space-md grid grid-cols-1 md:grid-cols-4 gap-space-sm items-end">
+<div class="space-y-1">
+<label class="font-label-sm text-label-sm text-ardoise uppercase">Sélection EC</label>
+<select class="w-full bg-surface-container-lowest border border-ardoise text-encre font-body-sm text-body-sm rounded p-space-xs focus:outline-none focus:ring-1 focus:ring-encre">
+<option>INF305 - Concurrence POSIX (EC1)</option>
+<option>INF311 - Relations &amp; SQL (EC1)</option>
+<option>INF315 - Réseaux Sans Fil (EC2)</option>
+</select>
+</div>
+<div class="space-y-1">
+<label class="font-label-sm text-label-sm text-ardoise uppercase">Matricule Étudiant</label>
+<input class="w-full bg-surface-container-lowest border border-ardoise text-encre font-data-tabular text-data-tabular rounded p-space-xs uppercase focus:outline-none focus:ring-1 focus:ring-encre" placeholder="Ex: 21S05120" type="text"/>
+</div>
+<div class="space-y-1">
+<label class="font-label-sm text-label-sm text-ardoise uppercase">Note SN (/20)</label>
+<input class="w-full bg-surface-container-lowest border border-ardoise text-encre font-data-tabular text-data-tabular text-right rounded p-space-xs focus:outline-none focus:ring-1 focus:ring-encre" max="20" min="0" placeholder="14.50" step="0.25" type="number"/>
+</div>
+<div>
+<button class="w-full bg-encre hover:bg-secondary text-papier-clair font-label-md text-label-md py-space-xs px-space-md rounded flex items-center justify-center gap-space-xs transition-colors border border-encre">
+<span class="material-symbols-outlined text-[18px]">add_circle</span>
+<span>Enregistrer</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- COLONNE DROITE (4 COLONNES) : CALENDRIER & REQUÊTES ÉTUDIANTES -->
+<aside class="lg:col-span-4 space-y-space-md">
+<!-- Module Calendrier Ministériel & Échéancier -->
+<div class="bg-papier-clair border border-ardoise/40 rounded p-space-md">
+<div class="flex items-center justify-between pb-space-xs border-b border-ardoise/30">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-encre text-[20px]">calendar_month</span>
+<span class="font-headline-sm text-headline-sm text-encre">Mars 2024</span>
+</div>
+<span class="font-label-sm text-label-sm text-rouge-encre font-bold uppercase">Semaine 11</span>
+</div>
+<!-- Vue calendrier compacte façon registre -->
+<div class="mt-space-sm">
+<div class="grid grid-cols-7 text-center font-data-tabular text-[11px] text-ardoise uppercase py-1 border-b border-ardoise/20">
+<span>Lun</span><span>Mar</span><span>Mer</span><span>Jeu</span><span>Ven</span><span>Sam</span><span>Dim</span>
+</div>
+<div class="grid grid-cols-7 text-center font-data-tabular text-[12px] gap-y-1 py-space-xs text-encre">
+<span class="text-ardoise/40">26</span><span class="text-ardoise/40">27</span><span class="text-ardoise/40">28</span><span class="text-ardoise/40">29</span>
+<span>01</span><span>02</span><span>03</span>
+<span>04</span><span>05</span><span>06</span><span>07</span><span>08</span><span>09</span><span>10</span>
+<span class="font-semibold text-encre">11</span>
+<span class="font-semibold text-encre">12</span>
+<span class="font-semibold text-encre">13</span>
+<span class="font-semibold text-encre">14</span>
+<!-- 15 Mars : Date limite (cercle rouge-encre) -->
+<span class="bg-rouge-encre text-papier-clair rounded-full font-bold relative flex items-center justify-center h-6 w-6 mx-auto" title="Clôture irrévocable">
+              15
+            </span>
+<span class="text-ardoise">16</span><span class="text-ardoise">17</span>
+<span>18</span><span>19</span>
+<!-- 20 Mars : Dépôt officiel -->
+<span class="bg-encre text-papier-clair rounded-full font-bold h-6 w-6 flex items-center justify-center mx-auto" title="Dépôt officiel">20</span>
+<span>21</span><span>22</span><span>23</span><span>24</span>
+<!-- 25 Mars : Pré-jury -->
+<span class="bg-or-sceau text-papier-clair rounded-full font-bold h-6 w-6 flex items-center justify-center mx-auto" title="Pré-jury">25</span>
+<span>26</span><span>27</span><span>28</span><span>29</span><span>30</span><span>31</span>
+</div>
+</div>
+<!-- Liste des dates limites ministérielles -->
+<div class="mt-space-sm pt-space-sm border-t border-ardoise/20 space-y-space-xs font-body-sm text-body-sm">
+<div class="flex items-start gap-space-xs">
+<span class="w-2 h-2 rounded-full bg-rouge-encre mt-1.5 shrink-0"></span>
+<div>
+<strong class="text-encre font-data-tabular">15 Mars (23h59) :</strong>
+<span class="text-on-surface-variant block text-[13px]">Clôture irrévocable de la saisie CC/TP par la Cellule Informatique.</span>
+</div>
+</div>
+<div class="flex items-start gap-space-xs">
+<span class="w-2 h-2 rounded-full bg-encre mt-1.5 shrink-0"></span>
+<div>
+<strong class="text-encre font-data-tabular">20 Mars :</strong>
+<span class="text-on-surface-variant block text-[13px]">Dépôt physique des bordereaux cotés et paraphés au Décanat.</span>
+</div>
+</div>
+<div class="flex items-start gap-space-xs">
+<span class="w-2 h-2 rounded-full bg-or-sceau mt-1.5 shrink-0"></span>
+<div>
+<strong class="text-encre font-data-tabular">25 Mars :</strong>
+<span class="text-on-surface-variant block text-[13px]">Pré-jury de délibération Licence 3 (Salle des Actes).</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Section : Requêtes d'Étudiants en Attente d'Arbitrage (Inspiré de New Applicants) -->
+<div class="bg-papier-clair border border-ardoise/40 rounded p-space-md" id="requetes">
+<div class="flex items-center justify-between pb-space-xs border-b border-ardoise/30">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-encre">Requêtes d'Étudiants</h3>
+<p class="font-label-sm text-label-sm text-ardoise">Recours académiques reçus (4)</p>
+</div>
+<a class="font-label-sm text-label-sm text-encre hover:text-rouge-encre uppercase underline font-semibold" href="#">Voir tout</a>
+</div>
+<!-- Liste des requêtes -->
+<div class="mt-space-sm divide-y divide-ardoise/20">
+<!-- Requête 1 -->
+<div class="py-space-sm space-y-space-2xs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<div class="w-7 h-7 rounded bg-encre text-papier-clair font-data-tabular text-[11px] flex items-center justify-center font-bold">
+                  MA
+                </div>
+<div>
+<div class="font-body-sm text-body-sm font-semibold text-encre">MBIA Antoinette</div>
+<div class="font-data-tabular text-[11px] text-ardoise">Matr: 21S05120 · INF311</div>
+</div>
+</div>
+<span class="px-1.5 py-0.5 rounded font-label-sm text-[11px] bg-statut-en-attente/10 text-statut-en-attente border border-statut-en-attente/30 font-medium">À examiner</span>
+</div>
+<p class="font-body-sm text-[13px] text-on-surface-variant pl-9 leading-tight">
+              « Copie de TP SQL non répertoriée en salle machine le 12 Fév. »
+            </p>
+<div class="pl-9 pt-1 flex items-center gap-space-sm">
+<button class="font-label-sm text-[11px] text-encre underline hover:text-rouge-encre font-semibold">Ouvrir l'émargement</button>
+<button class="font-label-sm text-[11px] text-statut-valide font-bold hover:underline">Valider (12/20)</button>
+</div>
+</div>
+<!-- Requête 2 -->
+<div class="py-space-sm space-y-space-2xs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<div class="w-7 h-7 rounded bg-surface-container-high text-encre font-data-tabular text-[11px] flex items-center justify-center font-bold border border-ardoise/30">
+                  KR
+                </div>
+<div>
+<div class="font-body-sm text-body-sm font-semibold text-encre">KAMGA Rostand</div>
+<div class="font-data-tabular text-[11px] text-ardoise">Matr: 21A044 · INF305</div>
+</div>
+</div>
+<span class="px-1.5 py-0.5 rounded font-label-sm text-[11px] bg-statut-valide/10 text-statut-valide border border-statut-valide/30 font-medium">Justifié CMS</span>
+</div>
+<p class="font-body-sm text-[13px] text-on-surface-variant pl-9 leading-tight">
+              « Certificat médical délivré par le Centre Médico-Social de l'université. »
+            </p>
+<div class="pl-9 pt-1 flex items-center gap-space-sm">
+<span class="font-data-tabular text-[11px] text-ardoise">Session rattrapage autorisée</span>
+</div>
+</div>
+<!-- Requête 3 : Urgent Rouge -->
+<div class="py-space-sm space-y-space-2xs bg-rouge-encre/5 -mx-space-md px-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<div class="w-7 h-7 rounded bg-rouge-encre text-papier-clair font-data-tabular text-[11px] flex items-center justify-center font-bold">
+                  TM
+                </div>
+<div>
+<div class="font-body-sm text-body-sm font-semibold text-rouge-encre">TITA Manga</div>
+<div class="font-data-tabular text-[11px] text-ardoise">Matr: 21S04918 · INF301</div>
+</div>
+</div>
+<span class="px-1.5 py-0.5 rounded font-label-sm text-[11px] bg-error-container text-rouge-encre border border-rouge-encre/40 font-bold">Urgent</span>
+</div>
+<p class="font-body-sm text-[13px] text-on-surface-variant pl-9 leading-tight">
+              « Erreur de transcription : note saisie 04/20 au lieu de 14/20 sur la copie anonymée. »
+            </p>
+<div class="pl-9 pt-1 flex items-center gap-space-sm">
+<button class="font-label-sm text-[11px] text-rouge-encre underline font-bold">Rectifier la note</button>
+<button class="font-label-sm text-[11px] text-ardoise hover:underline">Voir l'anonymat</button>
+</div>
+</div>
+<!-- Requête 4 -->
+<div class="py-space-sm space-y-space-2xs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<div class="w-7 h-7 rounded bg-surface-container-high text-encre font-data-tabular text-[11px] flex items-center justify-center font-bold border border-ardoise/30">
+                  FJ
+                </div>
+<div>
+<div class="font-body-sm text-body-sm font-semibold text-encre">FOUDA Jean-B.</div>
+<div class="font-data-tabular text-[11px] text-ardoise">Matr: 20T389 · Dép. Info</div>
+</div>
+</div>
+<span class="px-1.5 py-0.5 rounded font-label-sm text-[11px] bg-surface-container-high text-ardoise border border-ardoise/30 font-medium">Équivalence</span>
+</div>
+<p class="font-body-sm text-[13px] text-on-surface-variant pl-9 leading-tight">
+              « Demande d'équivalence de crédits transférés depuis l'IUT de Bandjoun. »
+            </p>
+</div>
+</div>
+</div>
+<!-- Outils Régaliens d'Export et Modèles Conformes CEMAC -->
+<div class="bg-surface-container border border-ardoise/40 rounded p-space-md space-y-space-xs">
+<span class="font-label-sm text-label-sm uppercase text-ardoise tracking-wider block">Gabarits Officiels MINESUP</span>
+<a class="flex items-center justify-between p-space-xs bg-papier-clair rounded border border-ardoise/30 hover:border-encre transition-colors text-encre group" href="#">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-statut-valide text-[20px]">table_view</span>
+<span class="font-body-sm text-body-sm font-medium">Modèle Excel Grille CEMAC (.xlsx)</span>
+</div>
+<span class="material-symbols-outlined text-[18px] text-ardoise group-hover:text-encre">download</span>
+</a>
+<a class="flex items-center justify-between p-space-xs bg-papier-clair rounded border border-ardoise/30 hover:border-encre transition-colors text-encre group" href="#">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-encre text-[20px]">print</span>
+<span class="font-body-sm text-body-sm font-medium">Bordereau Vierge d'Émargement</span>
+</div>
+<span class="material-symbols-outlined text-[18px] text-ardoise group-hover:text-encre">download</span>
+</a>
+</div>
+</aside>
+</div>
+<!-- ==================== BANDEAU D'INTÉGRITÉ & CONFORMITÉ LMD ==================== -->
+<section class="bg-papier-clair border border-ardoise/40 rounded p-space-md flex flex-col md:flex-row items-center justify-between gap-space-md text-ardoise">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-or-sceau text-[28px]">verified</span>
+<div class="font-body-sm text-body-sm">
+<strong class="text-encre">Intégrité des Données Universitaires :</strong>
+        Conformément à l’arrêté ministériel n°18/0056/MINESUP/SG, tout bordereau transmis est horodaté et inaltérable.
+      </div>
+</div>
+<div class="font-data-tabular text-[12px] text-encre shrink-0 bg-surface-container px-space-sm py-space-2xs rounded border border-ardoise/30">
+      IP SCELLEMENT : 192.168.4.12 · NO-LOG REQ: OK
+    </div>
+</section>
+</div>
+<script>
+  // Interactions légères de filtrage pour les UEs
+  const btnAll = document.getElementById('filter-all');
+  const btnSN = document.getElementById('filter-sn');
+  const btnAlert = document.getElementById('filter-alert');
+
+  if (btnAll && btnSN && btnAlert) {
+    const setActive = (btn) => {
+      [btnAll, btnSN, btnAlert].forEach(b => {
+        b.className = "px-space-sm py-space-2xs rounded text-label-sm font-label-sm bg-surface-container border border-ardoise/30 text-ardoise hover:text-encre transition-colors";
+      });
+      btn.className = "px-space-sm py-space-2xs rounded text-label-sm font-label-sm bg-encre text-papier-clair transition-colors";
+    };
+
+    btnAll.addEventListener('click', () => setActive(btnAll));
+    btnSN.addEventListener('click', () => setActive(btnSN));
+    btnAlert.addEventListener('click', () => setActive(btnAlert));
+  }
+</script></main><footer class="w-full bg-papier border-t border-ardoise py-space-md px-space-lg text-ardoise"><div class="flex flex-col md:flex-row justify-between items-center gap-space-sm text-center md:text-left font-body-sm text-body-sm"><div class="flex items-center gap-space-sm"><span class="font-label-sm text-label-sm text-encre uppercase font-bold">GNU LMD</span><span>·</span><span>République du Cameroun — Ministère de l'Enseignement Supérieur (MINESUP)</span></div><div class="font-data-tabular text-label-sm text-ardoise">SHA-256 SCELLEMENT : 8F3D...4A01 · SESSION CERTIFIÉE CEMAC</div></div></footer></div></body></html>

@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+
+<html lang="fr"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&amp;family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&amp;family=Space+Mono:ital,wght@0,400;0,700;1,400&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "encre": "#1B2942",
+          "error-container": "#ffdad6",
+          "on-tertiary-fixed": "#2a1800",
+          "surface-container-highest": "#e7e2d3",
+          "surface": "#fef9ea",
+          "primary-fixed-dim": "#ffb3af",
+          "on-surface": "#1d1c13",
+          "papier": "#DEDACB",
+          "on-secondary-fixed": "#0c1b34",
+          "on-primary-fixed": "#410005",
+          "on-error-container": "#93000a",
+          "ardoise": "#5B5F66",
+          "background": "#fef9ea",
+          "on-primary": "#ffffff",
+          "or-sceau": "#A9762C",
+          "on-error": "#ffffff",
+          "tertiary-fixed-dim": "#f8bb6a",
+          "on-primary-container": "#ffaba7",
+          "rouge-encre": "#8C2F2F",
+          "inverse-on-surface": "#f5f1e1",
+          "on-secondary": "#ffffff",
+          "secondary": "#515f7a",
+          "statut-manquant": "#8C2F2F",
+          "surface-container-lowest": "#ffffff",
+          "outline-variant": "#dcc0be",
+          "secondary-container": "#cfddfe",
+          "surface-container-low": "#f8f4e4",
+          "surface-variant": "#e7e2d3",
+          "inverse-surface": "#323126",
+          "on-tertiary-fixed-variant": "#643f00",
+          "statut-en-attente": "#C4841F",
+          "primary": "#6d181b",
+          "on-secondary-container": "#53617d",
+          "outline": "#897270",
+          "error": "#ba1a1a",
+          "on-surface-variant": "#564241",
+          "surface-container-high": "#ece8d9",
+          "secondary-fixed": "#d7e2ff",
+          "primary-container": "#8c2f2f",
+          "surface-dim": "#dedacb",
+          "papier-clair": "#F1EEE2",
+          "secondary-fixed-dim": "#b9c7e7",
+          "on-primary-fixed-variant": "#812728",
+          "on-tertiary": "#ffffff",
+          "surface-tint": "#a03e3d",
+          "on-tertiary-container": "#f2b665",
+          "primary-fixed": "#ffdad7",
+          "tertiary-container": "#6f4600",
+          "surface-container": "#f2eede",
+          "tertiary": "#503100",
+          "statut-valide": "#3C6E52",
+          "tertiary-fixed": "#ffddb5",
+          "inverse-primary": "#ffb3af",
+          "on-secondary-fixed-variant": "#394761",
+          "on-background": "#1d1c13",
+          "surface-bright": "#fef9ea"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.125rem",
+          "lg": "0.25rem",
+          "xl": "0.5rem",
+          "full": "0.75rem"
+        },
+        "spacing": {
+          "space-xl": "2rem",
+          "space-3xl": "4rem",
+          "space-2xs": "0.125rem",
+          "space-lg": "1.5rem",
+          "space-sm": "0.5rem",
+          "margin-mobile": "1rem",
+          "space-xs": "0.25rem",
+          "col-gutter": "1rem",
+          "margin-desktop": "2.5rem",
+          "space-2xl": "3rem",
+          "space-md": "1rem"
+        },
+        "fontFamily": {
+          "label-sm": [
+            "Space Mono"
+          ],
+          "body-sm": [
+            "IBM Plex Sans"
+          ],
+          "body-lg": [
+            "IBM Plex Sans"
+          ],
+          "data-tabular": [
+            "Space Mono"
+          ],
+          "label-md": [
+            "Space Mono"
+          ],
+          "body-md": [
+            "IBM Plex Sans"
+          ],
+          "headline-sm": [
+            "EB Garamond"
+          ],
+          "headline-xl": [
+            "EB Garamond"
+          ],
+          "headline-xl-mobile": [
+            "EB Garamond"
+          ],
+          "headline-lg": [
+            "EB Garamond"
+          ],
+          "headline-md": [
+            "EB Garamond"
+          ]
+        },
+        "fontSize": {
+          "label-sm": [
+            "12px",
+            {
+              "lineHeight": "16px",
+              "letterSpacing": "0.04em",
+              "fontWeight": "400"
+            }
+          ],
+          "body-sm": [
+            "14px",
+            {
+              "lineHeight": "20px",
+              "fontWeight": "400"
+            }
+          ],
+          "body-lg": [
+            "18px",
+            {
+              "lineHeight": "28px",
+              "fontWeight": "400"
+            }
+          ],
+          "data-tabular": [
+            "15px",
+            {
+              "lineHeight": "20px",
+              "fontWeight": "500"
+            }
+          ],
+          "label-md": [
+            "14px",
+            {
+              "lineHeight": "20px",
+              "letterSpacing": "0.02em",
+              "fontWeight": "400"
+            }
+          ],
+          "body-md": [
+            "16px",
+            {
+              "lineHeight": "24px",
+              "fontWeight": "400"
+            }
+          ],
+          "headline-sm": [
+            "20px",
+            {
+              "lineHeight": "28px",
+              "fontWeight": "500"
+            }
+          ],
+          "headline-xl": [
+            "48px",
+            {
+              "lineHeight": "56px",
+              "fontWeight": "500"
+            }
+          ],
+          "headline-xl-mobile": [
+            "32px",
+            {
+              "lineHeight": "40px",
+              "fontWeight": "500"
+            }
+          ],
+          "headline-lg": [
+            "32px",
+            {
+              "lineHeight": "40px",
+              "fontWeight": "500"
+            }
+          ],
+          "headline-md": [
+            "24px",
+            {
+              "lineHeight": "32px",
+              "fontWeight": "500"
+            }
+          ]
+        }
+      },
+    },
+  }</script></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-72 bg-papier z-50 flex flex-col justify-between border-r border-ardoise"><div class="flex flex-col"><div class="h-16 px-space-md border-b border-ardoise flex items-center gap-space-sm bg-papier-clair"><span class="material-symbols-outlined text-encre text-[20px]">account_balance</span><div><div class="font-label-sm text-label-sm text-encre font-bold uppercase tracking-wider">RÉPERTOIRE RÉGALIEN</div><div class="font-label-sm text-[10px] text-ardoise">MINESUP · ARCHITECTURE LMD</div></div></div><div class="px-space-md py-space-sm border-b border-ardoise bg-papier/60"><div class="font-label-sm text-[11px] text-ardoise uppercase tracking-widest">Navigation Magistrale</div></div><nav class="flex flex-col py-space-xs" data-active-classes="bg-primary-container text-on-primary font-semibold border-l-4 border-rouge-encre pl-3"><a aria-current="page" class="flex items-center gap-space-sm px-space-md py-space-sm transition-colors bg-primary-container text-on-primary font-semibold border-l-4 border-rouge-encre pl-3" data-path="tableau-de-bord" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">dashboard</span><span>Tableau de Bord Régalien</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors" data-path="structure-universitaire" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">domain</span><span>Structure Universitaire</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors" data-path="etudiants-et-comptes" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">badge</span><span>Étudiants &amp; Comptes</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors" data-path="matieres-et-ues" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">menu_book</span><span>Matières, UEs &amp; Cours</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors" data-path="saisie-et-numerisation-des-notes" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">edit_document</span><span>Saisie des Notes (CC, TP, SN)</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors" data-path="moteur-mgp-et-deliberations" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">calculate</span><span>Moteur MGP &amp; 30 ECTS</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors" data-path="bulletins-et-publications-minesup" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">history_edu</span><span>Bulletins &amp; MINESUP</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm text-on-surface hover:bg-papier-clair hover:text-encre transition-colors" data-path="journal-daudit-et-scellement" href="#"><span class="material-symbols-outlined text-[18px] text-ardoise">verified</span><span>Audit &amp; Scellement SHA-256</span></a></nav></div><div class="p-space-md border-t border-ardoise bg-papier-clair"><div class="flex items-center justify-between"><span class="font-label-sm text-[10px] uppercase text-ardoise tracking-wider">Intégrité Registre</span><span class="font-data-tabular text-[11px] text-statut-valide font-bold">SHA-256 OK</span></div><div class="mt-1 text-[11px] font-label-sm text-ardoise truncate">Nœud Juridique: DGS-CMR-04</div></div></aside><div class="pl-72"><header class="fixed top-0 left-72 right-0 h-16 bg-papier-clair z-40 border-b border-ardoise"><div class="h-16 w-full px-space-md flex items-center justify-between"><div class="flex items-center gap-space-md"><img alt="Logo officiel GNU pour la gestion des notes universitaires LMD. Emblème vectoriel composé de 5 strates horizontales resserrées vers le haut représentant la hiérarchie académique : Université (encre), Faculté (encre 82%), Département (encre 64%), Filière (encre 46%), et Classe au sommet en rouge-encre (#8C2F2F). Accompagné de la typographie serif prestigieuse 'GNU' et du sous-titre 'Gestion des Notes · Système LMD'.. Brand logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1XDH6Bi7X1hIdgODy7oGFEGu6JhBUc9r9eGw_hk5xQFSZmvSLHtQnY2UkxPZvkeE6W3UZAh4y1DG6MDzIPSF45huGUyNu1X_zcBPSEquGXYBFFPtmCwG9uhA66AdWX1zqV6KnBbXDFjx_1j1j2wUPBrK3PiFdp2uY9Z6M9Zew3X28lyAGRHXXSSiENme8ViRCcxe77bwPthY0fTL6oyahMebolx7-OORp4oGM5C8cjZkX4d1RVwlMMgOPg"/><div class="h-6 w-px bg-ardoise/40"></div><div class="flex items-center gap-space-sm"><span class="font-headline-sm text-headline-sm text-encre font-bold">GNU LMD</span><span class="font-body-sm text-body-sm text-ardoise">|</span><span class="font-body-sm text-body-sm text-ardoise">Cellule Informatique</span></div><div class="flex items-center gap-1.5 px-2 py-0.5 border border-ardoise bg-papier text-encre font-label-sm text-label-sm"><span class="inline-block w-2 h-2 rounded-full bg-statut-valide"></span><span>SESSION ACTIVE</span></div></div><div class="flex items-center gap-space-md"><div class="hidden md:flex flex-col text-right"><span class="font-label-sm text-label-sm text-encre font-bold">Agent Administrateur Système</span><span class="font-label-sm text-[11px] text-ardoise">Matricule : ADM-CI-8842</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="relative pt-16 bg-surface min-h-screen"><div class="flex flex-col w-full">
+<!-- BANDEAU OFFICIEL RÉGALIEN MINESUP / CEMAC -->
+<section class="bg-encre text-on-primary px-space-md py-space-sm border-b border-ardoise">
+<div class="flex flex-wrap items-center justify-between gap-space-sm text-body-sm">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="material-symbols-outlined text-or-sceau text-[18px]">verified_user</span>
+<span class="font-label-sm text-[11px] tracking-wider uppercase text-papier-clair truncate">
+          RÉPUBLIQUE DU CAMEROUN · MINESUP · DGS · UNIV. DOUALA › DÉLIBÉRATION DES CRÉDITS &amp; CALCUL MGP (CEMAC)
+        </span>
+</div>
+<div class="flex items-center gap-space-md font-label-sm text-[11px] text-surface-container-high">
+<span class="px-2 py-0.5 bg-papier/10 border border-ardoise/40 text-surface-bright">Session Normale S5 (2024-2025)</span>
+<span class="text-or-sceau">HORODATEUR : 24.10.2024 · 15:10:22 GMT+1</span>
+</div>
+</div>
+</section>
+<!-- ENTÊTE DE PAGE & ACTIONS DIRECTRICES -->
+<section class="px-space-md py-space-md bg-surface-container border-b border-ardoise">
+<div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-space-md">
+<div class="space-y-1">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 bg-rouge-encre/10 border border-rouge-encre text-rouge-encre font-label-sm text-[11px] font-bold tracking-widest uppercase">
+            MOTEUR DÉCISIONNEL LMD · DÉLIBÉRATION SEMESTRIELLE S5 / 30 ECTS
+          </span>
+<span class="font-label-sm text-[11px] text-statut-valide font-semibold">● ALGORITHME ACTIF</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-encre tracking-tight font-medium">
+          Calcul MGP, Capitalisation &amp; Validation des 30 ECTS
+        </h1>
+<p class="font-body-sm text-body-sm text-ardoise max-w-4xl">
+          Application stricte de l'algorithme officiel CEMAC d'attribution des crédits transférables, calcul de la Moyenne Générale Pondérée (MGP sur 4.00), compensation inter-UEs, détection des dettes académiques et scellement du procès-verbal de jury.
+        </p>
+</div>
+<!-- BOUTONS ACTIONS PRINCIPALES -->
+<div class="flex flex-wrap items-center gap-space-sm shrink-0">
+<button class="inline-flex items-center gap-2 px-4 py-2.5 bg-rouge-encre text-papier-clair text-body-sm font-semibold rounded-[3px] border border-rouge-encre hover:bg-[#702323] transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">settings_suggest</span>
+<span>Exécuter Calcul MGP (Batch)</span>
+</button>
+<button class="inline-flex items-center gap-2 px-3.5 py-2.5 bg-papier-clair text-encre text-body-sm font-semibold rounded-[3px] border border-encre hover:bg-encre hover:text-papier-clair transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">balance</span>
+<span>Simuler Compensation Jurys</span>
+</button>
+<button class="inline-flex items-center gap-2 px-3.5 py-2.5 bg-papier-clair text-encre text-body-sm font-semibold rounded-[3px] border border-encre hover:bg-encre hover:text-papier-clair transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">history_edu</span>
+<span>Éditer PV Scellé</span>
+</button>
+</div>
+</div>
+<!-- INDICATEURS CLÉS DU MOTEUR (KPIS RÉGALIENS) -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mt-space-md">
+<div class="bg-papier-clair border border-ardoise p-space-sm flex flex-col justify-between">
+<span class="font-label-sm text-[10px] text-ardoise uppercase tracking-wider">Auditeurs Évalués</span>
+<div class="flex items-baseline justify-between mt-1">
+<span class="font-data-tabular text-headline-sm text-encre font-bold">54</span>
+<span class="font-label-sm text-[11px] text-ardoise">Cohorte L3-GLSR</span>
+</div>
+<div class="mt-2 text-[11px] font-body-sm text-ardoise flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">groups</span>
+<span>Inscrits pédagogiques</span>
+</div>
+</div>
+<div class="bg-papier-clair border border-ardoise p-space-sm flex flex-col justify-between">
+<span class="font-label-sm text-[10px] text-statut-valide uppercase tracking-wider font-semibold">Crédits Validés (30 ECTS)</span>
+<div class="flex items-baseline justify-between mt-1">
+<span class="font-data-tabular text-headline-sm text-statut-valide font-bold">42</span>
+<span class="font-label-sm text-[11px] text-statut-valide font-bold">77.8% direct</span>
+</div>
+<div class="w-full bg-papier h-1.5 mt-2 overflow-hidden">
+<div class="bg-statut-valide h-full" style="width: 77.8%;"></div>
+</div>
+</div>
+<div class="bg-papier-clair border border-ardoise p-space-sm flex flex-col justify-between">
+<span class="font-label-sm text-[10px] text-statut-en-attente uppercase tracking-wider font-semibold">Admis par Compensation</span>
+<div class="flex items-baseline justify-between mt-1">
+<span class="font-data-tabular text-headline-sm text-statut-en-attente font-bold">07</span>
+<span class="font-label-sm text-[11px] text-encre">MGP ≥ 2.00</span>
+</div>
+<div class="mt-2 text-[11px] font-body-sm text-ardoise flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-statut-en-attente">published_with_changes</span>
+<span>Aucune note &lt; 07/20</span>
+</div>
+</div>
+<div class="bg-papier-clair border border-ardoise p-space-sm flex flex-col justify-between">
+<span class="font-label-sm text-[10px] text-statut-manquant uppercase tracking-wider font-semibold">Ajournés / Crédits Résiduels</span>
+<div class="flex items-baseline justify-between mt-1">
+<span class="font-data-tabular text-headline-sm text-statut-manquant font-bold">05</span>
+<span class="font-label-sm text-[11px] text-statut-manquant font-bold">Dettes ECTS</span>
+</div>
+<div class="mt-2 text-[11px] font-body-sm text-ardoise flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-statut-manquant">warning</span>
+<span>Session rattrapage requise</span>
+</div>
+</div>
+<div class="bg-encre text-on-primary border border-ardoise p-space-sm flex flex-col justify-between">
+<span class="font-label-sm text-[10px] text-or-sceau uppercase tracking-wider font-semibold">Norme Délibération</span>
+<div class="flex items-center gap-2 mt-1">
+<span class="material-symbols-outlined text-or-sceau text-[22px]">gavel</span>
+<span class="font-data-tabular text-body-sm font-bold text-surface-bright truncate">CEMAC 01/06</span>
+</div>
+<div class="mt-2 font-label-sm text-[10px] text-papier-clair truncate">
+          Échelle 4.00 · Barème A à E
+        </div>
+</div>
+</div>
+</section>
+<!-- FILTRES & PÉRIMÈTRE ACADÉMIQUE -->
+<section class="p-space-md bg-surface border-b border-ardoise space-y-space-sm">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-space-sm">
+<div class="flex flex-col gap-1">
+<label class="font-label-sm text-[11px] text-ardoise uppercase">Établissement</label>
+<select class="px-2.5 py-1.5 bg-papier-clair border border-ardoise font-body-sm text-encre focus:border-encre focus:ring-0 focus:outline-none rounded-[2px]">
+<option selected="">Faculté des Sciences (FS)</option>
+<option>Faculté de Génie Industriel (FGI)</option>
+<option>IUT de Douala</option>
+</select>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-sm text-[11px] text-ardoise uppercase">Département</label>
+<select class="px-2.5 py-1.5 bg-papier-clair border border-ardoise font-body-sm text-encre focus:border-encre focus:ring-0 focus:outline-none rounded-[2px]">
+<option selected="">Mathématiques &amp; Informatique (DMI)</option>
+<option>Physique Appliquée</option>
+<option>Chimie &amp; Biochimie</option>
+</select>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-sm text-[11px] text-ardoise uppercase">Filière &amp; Niveau</label>
+<select class="px-2.5 py-1.5 bg-papier-clair border border-ardoise font-body-sm text-encre focus:border-encre focus:ring-0 focus:outline-none rounded-[2px]">
+<option selected="">Licence Génie Logiciel (GLSR) - L3</option>
+<option>Licence Sécurité Réseaux (SR) - L3</option>
+<option>Master Informatique Fondamentale - M1</option>
+</select>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-sm text-[11px] text-ardoise uppercase">Semestre Pédagogique</label>
+<select class="px-2.5 py-1.5 bg-papier-clair border border-ardoise font-body-sm text-encre focus:border-encre focus:ring-0 focus:outline-none rounded-[2px]">
+<option selected="">Semestre 5 (Impair · 30 ECTS)</option>
+<option>Semestre 6 (Pair · 30 ECTS)</option>
+</select>
+</div>
+</div>
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-sm pt-2">
+<div class="flex flex-wrap items-center gap-1.5">
+<span class="font-label-sm text-[11px] text-ardoise uppercase mr-1">Filtres :</span>
+<button class="px-2.5 py-1 bg-encre text-papier-clair font-label-sm text-[11px] font-semibold border border-encre" type="button">
+          Tous (54)
+        </button>
+<button class="px-2.5 py-1 bg-papier-clair hover:bg-papier text-encre font-label-sm text-[11px] border border-ardoise" type="button">
+          30 ECTS Validés (42)
+        </button>
+<button class="px-2.5 py-1 bg-papier-clair hover:bg-papier text-encre font-label-sm text-[11px] border border-ardoise" type="button">
+          Compensés (7)
+        </button>
+<button class="px-2.5 py-1 bg-papier-clair hover:bg-papier text-rouge-encre font-label-sm text-[11px] font-semibold border border-ardoise" type="button">
+          Ajournés (5)
+        </button>
+<button class="px-2.5 py-1 bg-papier-clair hover:bg-papier text-or-sceau font-label-sm text-[11px] font-semibold border border-ardoise" type="button">
+          Mentions TB / B (14)
+        </button>
+</div>
+<div class="relative w-full md:w-72">
+<span class="material-symbols-outlined absolute left-2.5 top-2 text-ardoise text-[16px]">search</span>
+<input class="w-full pl-8 pr-3 py-1 bg-papier-clair border border-ardoise font-body-sm text-body-sm text-encre focus:border-encre focus:outline-none rounded-[2px]" placeholder="Recherche matricule ou nom..." type="text"/>
+</div>
+</div>
+</section>
+<!-- GRAND REGISTRE DE DÉLIBÉRATION (TABLEAU DENSE RÉGALIEN) -->
+<section class="p-space-md overflow-x-auto bg-surface">
+<div class="border border-ardoise bg-papier-clair min-w-[1240px]">
+<table class="w-full border-collapse text-left">
+<thead>
+<tr class="bg-encre text-papier-clair font-label-sm text-[11px] uppercase tracking-wider">
+<th class="py-2.5 px-3 border-b border-ardoise font-semibold w-28">Matricule</th>
+<th class="py-2.5 px-3 border-b border-ardoise font-semibold w-56">Étudiant (Nom &amp; Prénoms)</th>
+<th class="py-2.5 px-2 border-b border-ardoise font-semibold text-center w-20">INF 311<br/><span class="text-[9px] text-or-sceau font-normal">6 ECTS</span></th>
+<th class="py-2.5 px-2 border-b border-ardoise font-semibold text-center w-20">INF 312<br/><span class="text-[9px] text-or-sceau font-normal">5 ECTS</span></th>
+<th class="py-2.5 px-2 border-b border-ardoise font-semibold text-center w-20">INF 313<br/><span class="text-[9px] text-or-sceau font-normal">5 ECTS</span></th>
+<th class="py-2.5 px-2 border-b border-ardoise font-semibold text-center w-20">MAT 314<br/><span class="text-[9px] text-or-sceau font-normal">4 ECTS</span></th>
+<th class="py-2.5 px-2 border-b border-ardoise font-semibold text-center w-20">ANG 315<br/><span class="text-[9px] text-or-sceau font-normal">3 ECTS</span></th>
+<th class="py-2.5 px-2 border-b border-ardoise font-semibold text-center w-20">PRO 316<br/><span class="text-[9px] text-or-sceau font-normal">7 ECTS</span></th>
+<th class="py-2.5 px-2 border-b border-ardoise font-semibold text-center bg-encre/90 w-20">Crédits<br/><span class="text-[9px] text-papier-clair font-normal">/ 30</span></th>
+<th class="py-2.5 px-2 border-b border-ardoise font-semibold text-center w-20">Moy./20</th>
+<th class="py-2.5 px-2 border-b border-ardoise font-semibold text-center bg-encre/90 w-24">MGP<br/><span class="text-[9px] text-or-sceau font-normal">/ 4.00</span></th>
+<th class="py-2.5 px-2 border-b border-ardoise font-semibold text-center w-14">Grade</th>
+<th class="py-2.5 px-3 border-b border-ardoise font-semibold text-center w-40">Décision Jury</th>
+<th class="py-2.5 px-3 border-b border-ardoise font-semibold w-28">Mention</th>
+<th class="py-2.5 px-2 border-b border-ardoise font-semibold text-center w-16">Acte</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-ardoise/40 font-body-sm text-body-sm text-on-surface">
+<!-- ÉTUDIANT 1 : ADMIS DIRECT MENTION TRÈS BIEN -->
+<tr class="hover:bg-papier/40 transition-colors">
+<td class="py-2 px-3 font-data-tabular text-[13px] text-encre font-bold">21S04918</td>
+<td class="py-2 px-3 font-semibold text-encre">ABENG MBALLA Christian</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">15.50</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">16.00</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">14.75</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">13.25</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">17.00</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">15.00</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center font-bold bg-statut-valide/10 text-statut-valide">30/30</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center font-semibold">15.33</td>
+<td class="py-2 px-2 font-data-tabular text-[14px] text-center font-bold text-encre bg-papier/70">3.65</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center font-bold text-encre">A</td>
+<td class="py-2 px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 border border-statut-valide bg-statut-valide/15 text-statut-valide font-label-sm text-[10px] font-bold uppercase">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-valide"></span> ADMIS
+              </span>
+</td>
+<td class="py-2 px-3 font-label-sm text-[12px] font-semibold text-or-sceau">Très Bien</td>
+<td class="py-2 px-2 text-center">
+<button class="text-ardoise hover:text-encre p-1" title="Détail calcul">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+</td>
+</tr>
+<!-- ÉTUDIANT 2 : ADMIS DIRECT MENTION BIEN -->
+<tr class="hover:bg-papier/40 transition-colors">
+<td class="py-2 px-3 font-data-tabular text-[13px] text-encre font-bold">21S05120</td>
+<td class="py-2 px-3 font-semibold text-encre">BEKOLO NDOUMBE Thierry</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">13.00</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">14.50</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">12.50</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">13.00</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">15.50</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">13.50</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center font-bold bg-statut-valide/10 text-statut-valide">30/30</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center font-semibold">13.65</td>
+<td class="py-2 px-2 font-data-tabular text-[14px] text-center font-bold text-encre bg-papier/70">3.15</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center font-bold text-encre">B</td>
+<td class="py-2 px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 border border-statut-valide bg-statut-valide/15 text-statut-valide font-label-sm text-[10px] font-bold uppercase">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-valide"></span> ADMIS
+              </span>
+</td>
+<td class="py-2 px-3 font-label-sm text-[12px] font-semibold text-or-sceau">Bien</td>
+<td class="py-2 px-2 text-center">
+<button class="text-ardoise hover:text-encre p-1" title="Détail calcul">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+</td>
+</tr>
+<!-- ÉTUDIANT 3 : ADMIS PAR COMPENSATION (MAT 314 COMPENSÉE) -->
+<tr class="hover:bg-papier/40 transition-colors">
+<td class="py-2 px-3 font-data-tabular text-[13px] text-encre font-bold">21S05332</td>
+<td class="py-2 px-3 font-semibold text-encre">DJOUKENG FEUDJIO Raoul</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">11.55</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">10.00</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">12.00</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-en-attente font-bold" title="Compensée par délibération">08.50*</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">13.00</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">10.50</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center font-bold bg-statut-en-attente/10 text-statut-en-attente">30/30</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center font-semibold">11.20</td>
+<td class="py-2 px-2 font-data-tabular text-[14px] text-center font-bold text-encre bg-papier/70">2.25</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center font-bold text-encre">C</td>
+<td class="py-2 px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 border border-statut-en-attente bg-statut-en-attente/15 text-encre font-label-sm text-[10px] font-bold uppercase">
+<span class="w-1.5 h-1.5 rounded-full bg-statut-en-attente"></span> COMPENSÉ
+              </span>
+</td>
+<td class="py-2 px-3 font-label-sm text-[12px] text-ardoise">Passable</td>
+<td class="py-2 px-2 text-center">
+<button class="text-ardoise hover:text-encre p-1" title="Détail calcul">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+</td>
+</tr>
+<!-- ÉTUDIANT 4 : AJOURNÉ AVEC CRÉDITS CAPITALISÉS (DETTE PRO 316) -->
+<tr class="hover:bg-papier/40 transition-colors bg-rouge-encre/[0.02]">
+<td class="py-2 px-3 font-data-tabular text-[13px] text-rouge-encre font-bold">21S05611</td>
+<td class="py-2 px-3 font-semibold text-encre">FOTSING KAMGA Kevin</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">12.00</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">11.00</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">10.50</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">10.00</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">12.50</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-rouge-encre font-bold bg-rouge-encre/10" title="Non capitalisé - Crédit manquant">09.00</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center font-bold bg-rouge-encre/10 text-rouge-encre">23/30</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center font-semibold text-rouge-encre">10.15</td>
+<td class="py-2 px-2 font-data-tabular text-[14px] text-center font-bold text-rouge-encre bg-papier/70">1.85</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center font-bold text-rouge-encre">D</td>
+<td class="py-2 px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 border border-rouge-encre bg-rouge-encre/15 text-rouge-encre font-label-sm text-[10px] font-bold uppercase">
+<span class="w-1.5 h-1.5 rounded-full bg-rouge-encre"></span> AJOURNÉ (7 ECTS)
+              </span>
+</td>
+<td class="py-2 px-3 font-label-sm text-[12px] text-ardoise italic">Sans mention</td>
+<td class="py-2 px-2 text-center">
+<button class="text-ardoise hover:text-encre p-1" title="Détail calcul">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+</td>
+</tr>
+<!-- ÉTUDIANT 5 : AJOURNÉ MAJEUR (DETTES 19 ECTS) -->
+<tr class="hover:bg-papier/40 transition-colors bg-rouge-encre/[0.04]">
+<td class="py-2 px-3 font-data-tabular text-[13px] text-rouge-encre font-bold">21S05890</td>
+<td class="py-2 px-3 font-semibold text-encre">MADJOU TALLA Solange</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">10.00</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-rouge-encre font-bold bg-rouge-encre/10">06.50</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-rouge-encre font-bold bg-rouge-encre/10" title="Absence Session Normale">ABS</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-en-attente font-semibold">08.00</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-statut-valide font-semibold">11.00</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center text-rouge-encre font-bold bg-rouge-encre/10" title="Non validé">05.00</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center font-bold bg-rouge-encre/15 text-rouge-encre">11/30</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center font-bold text-rouge-encre">06.40</td>
+<td class="py-2 px-2 font-data-tabular text-[14px] text-center font-bold text-rouge-encre bg-papier/70">0.90</td>
+<td class="py-2 px-2 font-data-tabular text-[13px] text-center font-bold text-rouge-encre">E</td>
+<td class="py-2 px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 border border-rouge-encre bg-rouge-encre text-papier-clair font-label-sm text-[10px] font-bold uppercase">
+<span class="w-1.5 h-1.5 rounded-full bg-papier-clair"></span> AJOURNÉ (19 ECTS)
+              </span>
+</td>
+<td class="py-2 px-3 font-label-sm text-[12px] text-rouge-encre font-semibold">Ajourné</td>
+<td class="py-2 px-2 text-center">
+<button class="text-ardoise hover:text-encre p-1" title="Détail calcul">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+</td>
+</tr>
+</tbody>
+<!-- LIGNE STATISTIQUE SYNTHÉTIQUE -->
+<tfoot>
+<tr class="bg-papier border-t-2 border-encre text-encre font-label-sm text-[11px]">
+<td class="py-2.5 px-3 font-bold uppercase text-encre" colspan="2">Moyenne de Promotion &amp; Taux de Validation</td>
+<td class="py-2.5 px-2 text-center font-data-tabular font-bold">12.41</td>
+<td class="py-2.5 px-2 text-center font-data-tabular font-bold">12.80</td>
+<td class="py-2.5 px-2 text-center font-data-tabular font-bold">11.95</td>
+<td class="py-2.5 px-2 text-center font-data-tabular font-bold">10.85</td>
+<td class="py-2.5 px-2 text-center font-data-tabular font-bold">13.80</td>
+<td class="py-2.5 px-2 text-center font-data-tabular font-bold">11.60</td>
+<td class="py-2.5 px-2 text-center font-data-tabular font-bold text-statut-valide">90.7%</td>
+<td class="py-2.5 px-2 text-center font-data-tabular font-bold">12.23</td>
+<td class="py-2.5 px-2 text-center font-data-tabular font-bold text-or-sceau">2.76</td>
+<td class="py-2.5 px-2 text-center font-data-tabular font-bold">B-</td>
+<td class="py-2.5 px-3 text-right font-label-sm text-[11px] text-ardoise" colspan="3">
+              Total Validations complètes : <strong class="text-encre font-data-tabular">49/54 (90.7%)</strong>
+</td>
+</tr>
+</tfoot>
+</table>
+</div>
+</section>
+<!-- PANNEAUX INFÉRIEURS : BARÈMES CEMAC, RÈGLES DE JURY & SCEAU CRYPTOGRAPHIQUE -->
+<section class="p-space-md grid grid-cols-1 lg:grid-cols-3 gap-space-md bg-surface">
+<!-- COL 1 : BARÈME CEMAC OFFICIEL -->
+<div class="border border-ardoise bg-papier-clair p-space-md flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between border-b border-ardoise pb-2 mb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-or-sceau text-[20px]">table_chart</span>
+<h3 class="font-headline-sm text-headline-sm text-encre font-semibold">Barème CEMAC 4.00</h3>
+</div>
+<span class="font-label-sm text-[10px] text-ardoise uppercase">Norme 01/06</span>
+</div>
+<table class="w-full text-left font-body-sm text-[12px] border-collapse">
+<thead>
+<tr class="font-label-sm text-[10px] text-ardoise border-b border-ardoise/60">
+<th class="py-1">Note /20</th>
+<th class="py-1">MGP</th>
+<th class="py-1">Grade</th>
+<th class="py-1">Mention</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-ardoise/30 font-data-tabular text-[12px]">
+<tr>
+<td class="py-1.5 text-encre font-bold">16.00 – 20.00</td>
+<td class="py-1.5 font-bold text-statut-valide">3.70 – 4.00</td>
+<td class="py-1.5 font-bold">A</td>
+<td class="py-1.5 font-body-sm text-or-sceau font-semibold">Très Bien</td>
+</tr>
+<tr>
+<td class="py-1.5 text-encre">14.00 – 15.99</td>
+<td class="py-1.5 font-semibold text-statut-valide">3.30 – 3.69</td>
+<td class="py-1.5 font-bold">B+ / B</td>
+<td class="py-1.5 font-body-sm text-encre">Bien</td>
+</tr>
+<tr>
+<td class="py-1.5 text-encre">12.00 – 13.99</td>
+<td class="py-1.5 font-semibold">2.70 – 3.29</td>
+<td class="py-1.5 font-bold">B- / C+</td>
+<td class="py-1.5 font-body-sm text-encre">Assez Bien</td>
+</tr>
+<tr>
+<td class="py-1.5 text-encre">10.00 – 11.99</td>
+<td class="py-1.5 font-semibold">2.00 – 2.69</td>
+<td class="py-1.5 font-bold">C</td>
+<td class="py-1.5 font-body-sm text-ardoise">Passable (Seuil)</td>
+</tr>
+<tr class="bg-rouge-encre/10">
+<td class="py-1.5 text-rouge-encre font-bold">00.00 – 09.99</td>
+<td class="py-1.5 text-rouge-encre font-bold">0.00 – 1.99</td>
+<td class="py-1.5 font-bold text-rouge-encre">E / F</td>
+<td class="py-1.5 font-body-sm text-rouge-encre font-semibold">Rattrapage</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="mt-4 pt-2 border-t border-ardoise font-label-sm text-[10px] text-ardoise">
+        Index de pondération calculé au prorata des crédits ECTS alloués à chaque UE.
+      </div>
+</div>
+<!-- COL 2 : RÈGLES ALGORITHMIQUES DE DÉLIBÉRATION -->
+<div class="border border-ardoise bg-papier-clair p-space-md flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between border-b border-ardoise pb-2 mb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-rouge-encre text-[20px]">rule</span>
+<h3 class="font-headline-sm text-headline-sm text-encre font-semibold">Règles de Compensation</h3>
+</div>
+<span class="font-label-sm text-[10px] text-statut-valide uppercase">3 Règles Actives</span>
+</div>
+<ul class="space-y-3 font-body-sm text-body-sm text-encre">
+<li class="flex items-start gap-2">
+<span class="font-data-tabular text-rouge-encre font-bold">01.</span>
+<div>
+<strong class="font-semibold text-encre">Compensation Inter-UEs :</strong>
+<p class="text-[13px] text-ardoise mt-0.5">
+                La compensation semestrielle s'applique de plein droit si la Moyenne Générale du semestre est ≥ 10.00/20 ET qu'aucune note individuelle n'est strictement inférieure au plancher éliminatoire de 07.00/20.
+              </p>
+</div>
+</li>
+<li class="flex items-start gap-2">
+<span class="font-data-tabular text-rouge-encre font-bold">02.</span>
+<div>
+<strong class="font-semibold text-encre">Capitalisation Définitive :</strong>
+<p class="text-[13px] text-ardoise mt-0.5">
+                Toute UE ayant obtenu une note brute ≥ 10.00/20 est définitivement capitalisée, transférable et insusceptible de reprise lors des sessions ultérieures.
+              </p>
+</div>
+</li>
+<li class="flex items-start gap-2">
+<span class="font-data-tabular text-rouge-encre font-bold">03.</span>
+<div>
+<strong class="font-semibold text-encre">Dettes &amp; Rattrapage :</strong>
+<p class="text-[13px] text-ardoise mt-0.5">
+                Les crédits non validés d'une session normale imposent l'inscription automatique à la session de rattrapage dédiée avant publication du relevé annuel.
+              </p>
+</div>
+</li>
+</ul>
+</div>
+<div class="mt-4 pt-2 border-t border-ardoise flex items-center justify-between font-label-sm text-[11px]">
+<span class="text-ardoise">Seuil d'élimination :</span>
+<span class="font-data-tabular font-bold text-rouge-encre">&lt; 07.00 / 20</span>
+</div>
+</div>
+<!-- COL 3 : PROCÈS-VERBAL & INTÉGRITÉ CRYPTOGRAPHIQUE -->
+<div class="border border-ardoise bg-papier-clair p-space-md flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between border-b border-ardoise pb-2 mb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-encre text-[20px]">verified</span>
+<h3 class="font-headline-sm text-headline-sm text-encre font-semibold">Visa &amp; Scellement Jury</h3>
+</div>
+<span class="px-2 py-0.5 bg-statut-valide text-on-primary font-label-sm text-[10px] uppercase font-bold">Scellé</span>
+</div>
+<div class="space-y-2.5 font-body-sm text-[13px]">
+<div class="border-b border-ardoise/40 pb-2">
+<span class="font-label-sm text-[10px] text-ardoise uppercase">Président du Jury</span>
+<div class="font-bold text-encre">Pr. EBOMBOU Jean-Paul</div>
+<div class="text-[11px] text-ardoise">Doyen de la Faculté des Sciences · Hors Échelle</div>
+</div>
+<div class="border-b border-ardoise/40 pb-2">
+<span class="font-label-sm text-[10px] text-ardoise uppercase">Rapporteur du Jury</span>
+<div class="font-bold text-encre">Dr. Victorine TCHINDA</div>
+<div class="text-[11px] text-ardoise">Chef de Département DMI · Maître de Conférences</div>
+</div>
+<div>
+<span class="font-label-sm text-[10px] text-ardoise uppercase">Empreinte Cryptographique du PV (SHA-256)</span>
+<div class="font-data-tabular text-[10.5px] text-encre p-2 bg-papier border border-ardoise break-all select-all font-semibold mt-1">
+              e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            </div>
+</div>
+</div>
+</div>
+<div class="mt-4 pt-3 border-t border-ardoise flex items-center justify-between gap-2">
+<button class="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-encre text-papier-clair font-label-sm text-[11px] font-bold uppercase hover:bg-black transition-colors rounded-[2px]" type="button">
+<span class="material-symbols-outlined text-[16px] text-or-sceau">lock</span>
+<span>Apposer Visa Numérique</span>
+</button>
+</div>
+</div>
+</section>
+<!-- PIED DE PAGE OFFICIEL RÉGALIEN -->
+<footer class="mt-space-md border-t-2 border-encre bg-papier-clair px-space-md py-space-sm flex flex-col md:flex-row items-center justify-between gap-2 text-ardoise">
+<div class="flex items-center gap-2 font-label-sm text-[11px] text-left">
+<span class="material-symbols-outlined text-encre text-[16px]">account_balance</span>
+<span>SYSTÈME D'INFORMATION RÉGALIEN DE GESTION DES NOTES (GNU LMD) · CONFORME AUX DIRECTIVES CEMAC 01/06-UEAC-019-CM-14</span>
+</div>
+<div class="font-data-tabular text-[11px] text-encre font-bold">
+      Empreinte Registre : 0x8F3C...41E9 · Nœud Validateur DGS Douala
+    </div>
+</footer>
+</div>
+<script>
+  // Activation visuelle de la ligne de menu "Moteur MGP & 30 ECTS" dans l'App Shell
+  document.addEventListener('DOMContentLoaded', function() {
+    const navLinks = document.querySelectorAll('aside nav a');
+    navLinks.forEach(link => {
+      const href = link.getAttribute('data-path') || link.getAttribute('href');
+      if (href && (href.includes('moteur-mgp') || link.innerText.includes('Moteur MGP'))) {
+        link.className = 'flex items-center gap-space-sm px-space-md py-space-sm font-body-sm text-body-sm bg-rouge-encre text-papier-clair font-semibold border-l-4 border-encre pl-3';
+        const icon = link.querySelector('.material-symbols-outlined');
+        if (icon) icon.className = 'material-symbols-outlined text-[18px] text-papier-clair';
+      }
+    });
+  });
+</script></main></div></body></html>

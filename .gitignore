@@ -46,3 +46,17 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Configuration locale
+.env.local
+
+# Sauvegardes temporaires
+sauvegarde_flutter_frontend/
+*.bak
+
+# Diagnostics locaux
+analyse_dart.txt
+
+# Flutter
+.dart_tool/
+build/

@@ -48,6 +48,45 @@ try {
 
     if ($resource !== 'api') jsonResponse(['name' => 'GNU Gestion des notes', 'docs' => '/api/health']);
 
+if (($parts[1] ?? '') === 'students' && $method === 'GET' && !isset($parts[2])) {
+    $classId = $_GET['class_id'] ?? null;
+
+    $sql = "
+        SELECT
+            e.id,
+            e.matricule,
+            u.nom,
+            u.prenom,
+            c.code_classe
+        FROM etudiant e
+        JOIN utilisateur u
+            ON u.id = e.utilisateur_id
+        JOIN inscription_classe ic
+            ON ic.etudiant_id = e.id
+        JOIN classe c
+            ON c.id = ic.classe_id
+        WHERE ic.statut_inscription = 'VALIDEE'
+    ";
+
+    $params = [];
+
+    if ($classId !== null && $classId !== '') {
+        if (!ctype_digit((string) $classId)) {
+            jsonResponse(['message' => 'class_id invalide'], 422);
+        }
+
+        $sql .= " AND c.id = :class_id";
+        $params['class_id'] = (int) $classId;
+    }
+
+    $sql .= " ORDER BY e.matricule";
+
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
+
+    jsonResponse($stmt->fetchAll());
+}
+
     if (($parts[1] ?? '') === 'dashboard' && $method === 'GET') {
         $pdo = db();
         $queries = [
@@ -66,12 +105,6 @@ try {
         jsonResponse($rows);
     }
 
-    if (($parts[1] ?? '') === 'students' && $method === 'GET' && !isset($parts[2])) {
-        $sql = "SELECT e.id, e.matricule, u.nom, u.prenom, c.code_classe FROM etudiant e JOIN utilisateur u ON u.id=e.utilisateur_id JOIN inscription_classe ic ON ic.etudiant_id=e.id JOIN classe c ON c.id=ic.classe_id WHERE ic.statut_inscription='VALIDEE' AND (:class_id IS NULL OR c.id=:class_id) ORDER BY e.matricule";
-        $stmt = db()->prepare($sql); $classId = $_GET['class_id'] ?? null; $stmt->execute(['class_id' => $classId]);
-        jsonResponse($stmt->fetchAll());
-    }
-
     if (($parts[1] ?? '') === 'students' && isset($parts[2]) && ($parts[3] ?? '') === 'bulletin' && $method === 'GET') {
         $period = $_GET['period'] ?? 'S1';
         $stmt = db()->prepare("SELECT e.matricule, u.nom, u.prenom, ic.id AS inscription_classe_id, gnu.calculer_bulletin(ic.id, :period) AS bulletin FROM etudiant e JOIN utilisateur u ON u.id=e.utilisateur_id JOIN inscription_classe ic ON ic.etudiant_id=e.id WHERE e.matricule=:matricule AND ic.statut_inscription='VALIDEE'");
@@ -86,7 +119,7 @@ try {
         $input = body();
         foreach (['evaluation_id', 'inscription_ue_id', 'valeur_note'] as $field) if (!array_key_exists($field, $input)) jsonResponse(['message' => "Champ requis : $field"], 422);
         if (!is_numeric($input['valeur_note']) || $input['valeur_note'] < 0 || $input['valeur_note'] > 100) jsonResponse(['message' => 'La note doit être comprise entre 0 et 100'], 422);
-        db()->exec("SELECT set_config('gnu.acteur_id', (SELECT id::text FROM utilisateur WHERE role='ENSEIGNANT' ORDER BY id LIMIT 1), false), set_config('gnu.motif', 'Saisie de note depuis la première itération', false), set_config('gnu.origine', 'UTILISATEUR', false)");
+        db()->exec("SELECT set_config('gnu.acteur_id', (SELECT id::text FROM utilisateur WHERE role='ENSEIGNANT' ORDER BY id LIMIT 1), false), set_config('gnu.motif', 'Saisie de note depuis la première itération', false), set_config('gnu.origine', 'SAISIE', false)");
         $stmt = db()->prepare("INSERT INTO note(evaluation_id, inscription_ue_id, valeur_note, situation, statut_note) VALUES (:evaluation_id,:inscription_ue_id,:valeur_note,'NUMERIQUE','BROUILLON') RETURNING id");
         $stmt->execute(['evaluation_id' => $input['evaluation_id'], 'inscription_ue_id' => $input['inscription_ue_id'], 'valeur_note' => $input['valeur_note']]);
         jsonResponse(['id' => (int) $stmt->fetchColumn(), 'status' => 'BROUILLON'], 201);
@@ -95,7 +128,7 @@ try {
     if (($parts[1] ?? '') === 'notes' && isset($parts[2]) && ($parts[3] ?? '') === 'validate' && $method === 'POST') {
         $pdo = db(); $pdo->beginTransaction();
         $pdo->exec("SELECT set_config('gnu.acteur_id', (SELECT id::text FROM utilisateur WHERE role='ENSEIGNANT' ORDER BY id LIMIT 1), true)");
-        $pdo->exec("SELECT set_config('gnu.motif', 'Validation de note depuis la première itération', true), set_config('gnu.origine', 'UTILISATEUR', true)");
+        $pdo->exec("SELECT set_config('gnu.motif', 'Validation de note depuis la première itération', true), set_config('gnu.origine', 'VALIDATION', true)");
         $stmt = $pdo->prepare("UPDATE note SET statut_note='VALIDEE', validateur_id=(SELECT id FROM utilisateur WHERE role='ENSEIGNANT' ORDER BY id LIMIT 1), date_validation=statement_timestamp() WHERE id=:id AND statut_note='BROUILLON' RETURNING id, statut_note");
         $stmt->execute(['id' => $parts[2]]); $row = $stmt->fetch();
         if (!$row) { $pdo->rollBack(); jsonResponse(['message' => 'Note inexistante ou déjà validée'], 404); }

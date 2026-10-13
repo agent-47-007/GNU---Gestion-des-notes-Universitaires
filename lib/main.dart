@@ -22,7 +22,10 @@ const valid = Color(0xFF3C6E52);
 const pending = Color(0xFFC4841F);
 
 class GnuApi {
-  static const String baseUrl = 'http://127.0.0.1:8000/api/v1';
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE',
+    defaultValue: 'http://127.0.0.1:8080/api/v1',
+  );
   static String? token;
   static Map<String, dynamic>? currentUser;
 

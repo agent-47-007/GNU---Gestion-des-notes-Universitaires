@@ -1,0 +1,74 @@
+code_ue,intitule,niveau,semestre,categorie,credits,source
+INF111,Introduction à l'algorithmique et à la programmation,L1,1,FONDAMENTALE,6,Licence 2021
+INF121,Introduction à l'architecture des ordinateurs,L1,1,FONDAMENTALE,6,Licence 2021
+INF131,Introduction aux systèmes et réseaux,L1,1,FONDAMENTALE,6,Licence 2021
+MAT131,Analyse de la droite réelle,L1,1,FONDAMENTALE,6,Licence 2021
+INF141,Introduction à la sécurité informatique,L1,1,OPTIONNELLE,3,Licence 2021
+INF151,Introduction au génie logiciel,L1,1,OPTIONNELLE,3,Licence 2021
+PHY161,Électronique numérique,L1,1,OPTIONNELLE,3,Licence 2021
+FBL111,Formation bilingue I,L1,1,OPTIONNELLE,3,Licence 2021
+INF112,Introduction aux structures de données,L1,2,FONDAMENTALE,6,Licence 2021
+INF122,Fondements mathématiques de l’informatique,L1,2,FONDAMENTALE,6,Licence 2021
+INF132,Programmation structurée en C,L1,2,FONDAMENTALE,6,Licence 2021
+MAT112,Algèbre 1B,L1,2,FONDAMENTALE,6,Licence 2021
+INF142,Introduction à la science des données,L1,2,OPTIONNELLE,3,Licence 2021
+INF152,Systèmes et réseaux,L1,2,OPTIONNELLE,3,Licence 2021
+PPE112,Exploration professionnelle,L1,2,OPTIONNELLE,3,Licence 2021
+INF211,Programmation orientée objet,L2,1,FONDAMENTALE,6,Licence 2021
+INF221,Bases de données et modélisation,L2,1,FONDAMENTALE,6,Licence 2021
+INF231,Méthodes algorithmiques et structures de données,L2,1,FONDAMENTALE,6,Licence 2021
+MAT211,Algèbre 2A : théorie spectrale et algèbre,L2,1,FONDAMENTALE,6,Licence 2021
+INF241,Architecture des ordinateurs,L2,1,OPTIONNELLE,3,Licence 2021
+INF251,Génie logiciel et systèmes d'information,L2,1,OPTIONNELLE,3,Licence 2021
+INF261,Système Windows et protocoles de routage,L2,1,OPTIONNELLE,3,Licence 2021
+FBL211,Formation bilingue II,L2,1,OPTIONNELLE,3,Licence 2021
+INF212,Mathématiques discrètes,L2,2,FONDAMENTALE,6,Licence 2021
+INF222,Programmation web,L2,2,FONDAMENTALE,6,Licence 2021
+INF232,Statistiques et analyse de données,L2,2,FONDAMENTALE,6,Licence 2021
+MAT232,Calcul intégral sur Rn,L2,2,FONDAMENTALE,6,Licence 2021
+INF242,Science des données,L2,2,OPTIONNELLE,3,Licence 2021
+INF252,Sécurité informatique,L2,2,OPTIONNELLE,3,Licence 2021
+INF311,Calcul scientifique,L3,1,FONDAMENTALE,6,Licence 2021
+INF321,Conception et analyse des algorithmes,L3,1,FONDAMENTALE,6,Licence 2021
+INF331,Modélisation du système d'information,L3,1,FONDAMENTALE,6,Licence 2021
+INF341,Réseaux locaux,L3,1,FONDAMENTALE,6,Licence 2021
+INF351,Business intelligence et ERP,L3,1,OPTIONNELLE,3,Licence 2021
+INF361,Administration système et réseaux,L3,1,OPTIONNELLE,3,Licence 2021
+INF371,Informatique décisionnelle et fouille de données,L3,1,OPTIONNELLE,3,Licence 2021
+INF381,Cryptographie classique et investigation numérique,L3,1,OPTIONNELLE,3,Licence 2021
+INF312,Analyses statistiques,L3,2,FONDAMENTALE,6,Licence 2021
+INF322,Bases de données,L3,2,FONDAMENTALE,6,Licence 2021
+INF332,Introduction à la théorie des codes,L3,2,FONDAMENTALE,6,Licence 2021
+INF342,Théorie des langages et compilation,L3,2,FONDAMENTALE,6,Licence 2021
+INF352,Test de logiciel et assurance qualité,L3,2,OPTIONNELLE,3,Licence 2021
+INF362,Programmation système et services réseaux,L3,2,OPTIONNELLE,3,Licence 2021
+INF372,Apprentissage artificiel et traitement d'images,L3,2,OPTIONNELLE,3,Licence 2021
+INF382,Introduction à la théorie des nombres,L3,2,OPTIONNELLE,3,Licence 2021
+INF411,Complexité et algorithmique avancée,M1,1,FONDAMENTALE,6,Master 2021
+INF421,Génie logiciel,M1,1,FONDAMENTALE,6,Master 2021
+INF431,Collecte et analyse des données,M1,1,FONDAMENTALE,6,Master 2021
+INF441,Nouvelles architectures des ordinateurs,M1,1,FONDAMENTALE,6,Master 2021
+INF451,Système d'information et génie logiciel 1,M1,1,OPTIONNELLE,6,Master 2021
+INF461,Systèmes et réseaux 1,M1,1,OPTIONNELLE,6,Master 2021
+INF471,Science de données 1,M1,1,OPTIONNELLE,6,Master 2021
+INF481,Sécurité 1,M1,1,OPTIONNELLE,6,Master 2021
+INF412,Bases de données distribuées,M1,2,FONDAMENTALE,6,Master 2021
+INF422,Compilation,M1,2,FONDAMENTALE,6,Master 2021
+INF432,Calculabilité,M1,2,FONDAMENTALE,6,Master 2021
+INF442,Projet,M1,2,FONDAMENTALE,6,Master 2021
+INF452,Système d'information et génie logiciel 2,M1,2,OPTIONNELLE,6,Master 2021
+INF462,Systèmes et réseaux 2,M1,2,OPTIONNELLE,6,Master 2021
+INF472,Science de données 2,M1,2,OPTIONNELLE,6,Master 2021
+INF482,Sécurité 2,M1,2,OPTIONNELLE,6,Master 2021
+INF511,Veille scientifique et technologique,M2,1,FONDAMENTALE,6,Master 2021
+INF521,Business intelligence,M2,1,FONDAMENTALE,6,Master 2021
+INF531,Cyberattaque et audit des réseaux,M2,1,FONDAMENTALE,6,Master 2021
+INF541,Big Data,M2,1,FONDAMENTALE,6,Master 2021
+INF551,Système d'information et génie logiciel 3,M2,1,OPTIONNELLE,3,Master 2021
+INF561,Systèmes et réseaux 3,M2,1,OPTIONNELLE,3,Master 2021
+INF571,Science des données 3,M2,1,OPTIONNELLE,3,Master 2021
+INF581,Sécurité 3,M2,1,OPTIONNELLE,3,Master 2021
+INF500,Mémoire de recherche,M2,2,FONDAMENTALE,60,Master 2021
+PPE212,Projet professionnel et pré-immersion,L2,2,FONDAMENTALE,3,Licence 2021
+FBL311,Communication expression écrite et parlée pour informatique,L3,1,FONDAMENTALE,3,Licence 2021
+PPE312,Entrepreneuriat et développement personnel,L3,2,FONDAMENTALE,3,Licence 2021

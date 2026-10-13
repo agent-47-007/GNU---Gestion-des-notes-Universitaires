@@ -1,0 +1,14 @@
+\contentsline {section}{\numberline {1}Résumé exécutif}{1}{}%
+\contentsline {section}{\numberline {2}Travaux réalisés}{1}{}%
+\contentsline {subsection}{\numberline {2.1}Sauvegarde et organisation}{1}{}%
+\contentsline {subsection}{\numberline {2.2}Modèle académique}{2}{}%
+\contentsline {subsection}{\numberline {2.3}Catalogue UE et EC}{2}{}%
+\contentsline {subsection}{\numberline {2.4}Année 2025--2026 et étudiants}{2}{}%
+\contentsline {subsection}{\numberline {2.5}Frontend Flutter}{2}{}%
+\contentsline {section}{\numberline {3}Scripts et documents produits}{3}{}%
+\contentsline {section}{\numberline {4}Travaux restant à faire}{3}{}%
+\contentsline {subsection}{\numberline {4.1}Priorité 1 -- API et sécurité}{3}{}%
+\contentsline {subsection}{\numberline {4.2}Priorité 2 -- Fonctionnalités métier}{3}{}%
+\contentsline {subsection}{\numberline {4.3}Priorité 3 -- Qualité et exploitation}{3}{}%
+\contentsline {section}{\numberline {5}État global}{4}{}%
+\contentsline {section}{\numberline {6}Conclusion}{4}{}%

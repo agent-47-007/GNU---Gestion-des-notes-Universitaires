@@ -1,0 +1,12 @@
+{
+  "name": "GNU · Campus numérique",
+  "short_name": "GNU",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#F4F7F8",
+  "theme_color": "#142E3A",
+  "description": "Portail académique GNU — aperçu interactif par rôle.",
+  "lang": "fr",
+  "prefer_related_applications": false,
+  "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

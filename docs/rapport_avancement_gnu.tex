@@ -1,0 +1,127 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{margin=2.3cm}
+
+\title{Rapport d'avancement\\GNU -- Gestion des notes universitaires}
+\author{Projet GNU -- Département d'Informatique}
+\date{13 octobre 2026}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\bigskip
+
+\section{Résumé exécutif}
+Le projet dispose maintenant d'une base PostgreSQL structurée et alimentée par les programmes harmonisés Licence/Master, ainsi que d'un frontend Flutter démontrable pour les trois rôles : étudiant, enseignant et agent informatique. Les données de la classe INF361--SR ont été importées pour l'année 2025--2026 et les inscriptions ont été validées.
+
+Les principaux travaux restants concernent l'intégration réelle entre Flutter, l'API Laravel et PostgreSQL, l'authentification, la gestion des autorisations et la couverture complète des écrans métier.
+
+\section{Travaux réalisés}
+\subsection{Sauvegarde et organisation}
+\begin{itemize}
+  \item Ancienne version conservée dans le dossier de sauvegarde.
+  \item Données organisées par année académique.
+  \item Années de référence enregistrées : 2021--2022, 2024--2025 et 2025--2026.
+\end{itemize}
+
+\subsection{Modèle académique}
+\begin{itemize}
+  \item Filière canonique : \textbf{INF -- Informatique}.
+  \item Spécialités définies : \textbf{GL}, \textbf{SR}, \textbf{SECU} et \textbf{DATA}.
+  \item L1 et L2 considérés comme tronc commun ; la spécialité est portée par le niveau ou la classe lorsque la source le précise.
+  \item L'ancienne référence Génie logiciel a été conservée comme historique.
+  \item INF331 est traitée comme UE fondamentale de la filière Informatique et non comme une spécialité.
+\end{itemize}
+
+\subsection{Catalogue UE et EC}
+\begin{itemize}
+  \item 73 UE importées dans le catalogue Informatique.
+  \item 121 EC extraits des programmes harmonisés et importés.
+  \item 62 UE activées après contrôle de cardinalité.
+  \item Règle appliquée : une UE active possède un ou deux EC.
+  \item Les crédits sont distingués des coefficients ; aucun coefficient artificiel n'a été déduit des PDF.
+  \item Les codes EC du Master sont des identifiants techniques dérivés du code UE et du rang, car les grilles ne fournissent pas de codes EC officiels.
+\end{itemize}
+
+\subsection{Année 2025--2026 et étudiants}
+\begin{itemize}
+  \item Classes Informatique créées pour L1, L2, L3, M1 et M2.
+  \item Classe opérationnelle : \texttt{INF-L3-2025-2026}.
+  \item 35 étudiants INF361--SR importés.
+  \item 35 inscriptions en classe créées et validées.
+  \item 350 inscriptions UE créées et validées.
+  \item Les données historiques de \texttt{L3-GL-A} sont conservées conformément à la décision de ne pas supprimer les références protégées.
+\end{itemize}
+
+\subsection{Frontend Flutter}
+\begin{itemize}
+  \item Parcours de démonstration pour étudiant, enseignant et agent informatique.
+  \item Navigation responsive testée sur petit et grand écran.
+  \item Modules de démonstration : tableau de bord, résultats, inscription, notes, évaluations, requêtes, rattrapages, programmes, comptes, bulletins, audit et publication.
+  \item Thème clair/sombre ajouté avec bascule depuis la barre supérieure.
+  \item Corrections des assertions Flutter liées aux composants \texttt{ListTile} et aux surfaces Material.
+  \item Tests Flutter validés : 13 tests réussis.
+  \item Build Web validé avec \texttt{flutter build web --no-pub}.
+\end{itemize}
+
+\section{Scripts et documents produits}
+\begin{tabular}{p{0.43\textwidth}p{0.48\textwidth}}
+Fichier & Rôle\\\hline
+001\_structure\_academique.sql & structure université, filière, niveaux et années\\
+002\_import\_ue\_catalogue.sql & import idempotent du catalogue UE\\
+003\_specialites\_informatique.sql & spécialités GL, SR, SECU et DATA\\
+005\_rattachement\_historique\_gl.sql & rattachement historique de l'ancienne classe\\
+006\_import\_ec\_catalogue.sql & import et activation contrôlée des EC\\
+007\_classes\_2025\_2026.sql & création des classes annuelles\\
+009\_import\_etudiants\_inf361\_2025\_2026.sql & import étudiants et inscriptions brouillon\\
+010\_valider\_inscriptions\_inf\_l3\_2025\_2026.sql & validation administrative\\
+REGLES\_CATALOGUE.md & décisions de normalisation et règles métier\\
+\end{tabular}
+
+\section{Travaux restant à faire}
+\subsection{Priorité 1 -- API et sécurité}
+\begin{itemize}
+  \item Finaliser l'API Laravel et ses connexions PostgreSQL.
+  \item Remplacer le \texttt{DemoStore} Flutter par des services HTTP réels.
+  \item Implémenter connexion, inscription, renouvellement et réinitialisation de mot de passe.
+  \item Appliquer les autorisations par rôle et par classe/matière.
+  \item Ne plus utiliser de mots de passe temporaires générés lors de l'import étudiant.
+\end{itemize}
+
+\subsection{Priorité 2 -- Fonctionnalités métier}
+\begin{itemize}
+  \item Affectation des enseignants aux EC et classes.
+  \item Configuration des évaluations et pondérations.
+  \item Saisie, contrôle, validation et publication des notes.
+  \item Calcul des résultats, bulletins semestriels et annuels.
+  \item Requêtes, décisions, rattrapages et journal d'audit en données réelles.
+\end{itemize}
+
+\subsection{Priorité 3 -- Qualité et exploitation}
+\begin{itemize}
+  \item Corriger les avertissements de clic hors écran dans les tests UI avec \texttt{ensureVisible}.
+  \item Ajouter tests d'intégration API, tests de sécurité et tests de non-régression.
+  \item Documenter la procédure de démarrage PostgreSQL, Laravel et Flutter.
+  \item Ajouter sauvegardes automatisées et stratégie de restauration.
+  \item Vérifier les écarts de crédits Master actuellement documentés pour INF461, INF561 et INF571 avant publication.
+\end{itemize}
+
+\section{État global}
+\begin{tabular}{p{0.58\textwidth}p{0.25\textwidth}}
+\textbf{Domaine} & \textbf{État}\\\hline
+Structure académique & Réalisé\\
+Catalogue UE/EC & Réalisé avec contrôles documentaires restants\\
+Classes et inscriptions 2025--2026 & Réalisé pour INF361--SR\\
+Frontend de démonstration & Réalisé et testé\\
+Thème clair/sombre & Réalisé\\
+API Laravel réelle & À faire\\
+Authentification et sécurité & À faire\\
+Notes, bulletins et publication réels & À faire\\
+\end{tabular}
+
+\section{Conclusion}
+La fondation fonctionnelle et documentaire du projet est en place. Le prochain jalon est l'intégration API : le frontend devra lire les niveaux, UE, EC, classes, inscriptions et rôles depuis PostgreSQL via Laravel, puis appliquer les mêmes règles de validation que les scripts d'import.
+
+\end{document}

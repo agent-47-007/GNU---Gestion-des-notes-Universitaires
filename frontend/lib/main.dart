@@ -1,13 +1,76 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'agent_portal.dart';
+import 'api_client.dart';
 import 'domain.dart';
 import 'ui.dart';
 import 'pages.dart';
+import 'student_portal.dart';
+import 'teacher_portal.dart';
+import 'local_portal_navigation.dart';
 
-void main() => runApp(const GnuApp());
+const _compiledApiBaseUrl = String.fromEnvironment('GNU_API_BASE_URL');
+
+bool _releaseApiUrlIsValid() {
+  if (!kReleaseMode) return true;
+  final uri = Uri.tryParse(_compiledApiBaseUrl.trim());
+  return uri != null &&
+      uri.scheme == 'https' &&
+      uri.host.isNotEmpty &&
+      !const ['localhost', '127.0.0.1', '::1'].contains(uri.host) &&
+      uri.userInfo.isEmpty &&
+      !uri.hasQuery &&
+      !uri.hasFragment &&
+      uri.path.replaceFirst(RegExp(r'/+$'), '') == '/api/v1';
+}
+
+void main() => runApp(
+  _releaseApiUrlIsValid()
+      ? const GnuApp()
+      : const ProductionConfigurationRequiredApp(),
+);
+
+class ProductionConfigurationRequiredApp extends StatelessWidget {
+  const ProductionConfigurationRequiredApp({super.key});
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    title: 'GNU · Configuration requise',
+    home: Scaffold(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: const Padding(
+            padding: EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Configuration de production requise',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Cette version ne peut pas se connecter au serveur GNU. '
+                  'Recompilez-la avec GNU_API_BASE_URL défini sur l’URL HTTPS '
+                  'de l’API se terminant par /api/v1.',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
 
 class GnuApp extends StatefulWidget {
-  const GnuApp({super.key});
+  const GnuApp({super.key, this.sessionStorage});
+  final SessionStorage? sessionStorage;
   @override
   State<GnuApp> createState() => _GnuAppState();
 }
@@ -16,6 +79,25 @@ class _GnuAppState extends State<GnuApp> {
   final store = DemoStore();
   UserRole? role;
   bool darkMode = false;
+  StudentApiClient? liveStudentApi;
+
+  StudentApiClient _roleClient(UserRole role) {
+    final client = StudentApiClient(
+      storage: widget.sessionStorage,
+      expectedRole: _apiRole(role),
+    );
+    client.onUnauthorized = () async {
+      if (mounted && identical(liveStudentApi, client)) {
+        setState(() {
+          liveStudentApi = null;
+          this.role = null;
+        });
+        client.dispose();
+      }
+    };
+    return client;
+  }
+
   @override
   void dispose() {
     store.dispose();
@@ -26,29 +108,126 @@ class _GnuAppState extends State<GnuApp> {
   Widget build(BuildContext context) => MaterialApp(
     title: 'GNU · Campus numérique',
     debugShowCheckedModeBanner: false,
-    theme: buildTheme(dark: darkMode),
+    theme: buildTheme(),
+    darkTheme: buildTheme(dark: true),
+    themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
     home: role == null
-        ? WelcomePage(onEnter: (value) => setState(() => role = value))
+        ? WelcomePage(onRoleLogin: _loginRole)
         : Portal(
             key: ValueKey(role),
             role: role!,
             store: store,
-            onExit: () => setState(() => role = null),
+            onExit: _exitPortal,
+            apiClient: liveStudentApi,
             darkMode: darkMode,
             onToggleTheme: () => setState(() => darkMode = !darkMode),
           ),
   );
+
+  Future<void> _loginRole(
+    UserRole selectedRole,
+    String login,
+    String password,
+  ) async {
+    final client = _roleClient(selectedRole);
+    try {
+      await client.login(login, password);
+      if (!mounted) {
+        client.dispose();
+        return;
+      }
+      setState(() {
+        liveStudentApi = client;
+        role = selectedRole;
+      });
+    } catch (_) {
+      client.dispose();
+      rethrow;
+    }
+  }
+
+  void _exitPortal() {
+    final client = liveStudentApi;
+    setState(() {
+      role = null;
+      liveStudentApi = null;
+    });
+    if (client != null) {
+      unawaited(
+        client.logout().catchError((_) {}).whenComplete(client.dispose),
+      );
+    }
+  }
 }
 
+String _apiRole(UserRole role) => switch (role) {
+  UserRole.student => 'ETUDIANT',
+  UserRole.teacher => 'ENSEIGNANT',
+  UserRole.agent => 'AGENT',
+};
+
 class WelcomePage extends StatefulWidget {
-  const WelcomePage({super.key, required this.onEnter});
-  final ValueChanged<UserRole> onEnter;
+  const WelcomePage({super.key, required this.onRoleLogin});
+  final Future<void> Function(UserRole role, String login, String password)
+  onRoleLogin;
   @override
   State<WelcomePage> createState() => _WelcomePageState();
 }
 
 class _WelcomePageState extends State<WelcomePage> {
-  UserRole selected = UserRole.student;
+  UserRole selectedRole = UserRole.student;
+  final loginController = TextEditingController();
+  final passwordController = TextEditingController();
+  bool loggingIn = false;
+  String? loginError;
+
+  @override
+  void dispose() {
+    loginController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitLogin() async {
+    setState(() {
+      loggingIn = true;
+      loginError = null;
+    });
+    try {
+      await widget.onRoleLogin(
+        selectedRole,
+        loginController.text,
+        passwordController.text,
+      );
+    } catch (error) {
+      if (mounted) setState(() => loginError = error.toString());
+    } finally {
+      if (mounted) setState(() => loggingIn = false);
+    }
+  }
+
+  void _openLocalTestAccountPortal() {
+    final uri = Uri.tryParse(_compiledApiBaseUrl.trim());
+    if (uri == null ||
+        !const ['localhost', '127.0.0.1', '::1'].contains(uri.host)) {
+      setState(() {
+        loginError = 'Le portail de création est réservé à votre installation locale : http://127.0.0.1:8000/local-test-accounts';
+      });
+      return;
+    }
+
+    final portal = uri.replace(
+      path: '/local-test-accounts',
+      query: null,
+      fragment: null,
+    );
+    if (kIsWeb) {
+      navigateToLocalPortal(portal.toString());
+    } else {
+      setState(() => loginError = 'Ouvrez le portail local : $portal');
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     body: LayoutBuilder(
@@ -143,107 +322,99 @@ class _WelcomePageState extends State<WelcomePage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const StatusBadge('APERÇU INTERACTIF · VERSION 2'),
+                  StatusBadge('PORTAIL ${selectedRole.label.toUpperCase()}'),
                   const SizedBox(height: 25),
                   Text(
                     'Bienvenue sur GNU',
                     style: Theme.of(context).textTheme.headlineLarge,
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Choisissez un espace pour découvrir votre nouveau portail académique.',
+                  Text(
+                    'Choisissez votre espace, puis connectez-vous avec les identifiants fournis pour votre compte ${selectedRole.label.toLowerCase()}.',
                     style: TextStyle(color: muted, height: 1.7),
                   ),
-                  const SizedBox(height: 28),
-                  ...UserRole.values.map(
-                    (role) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Semantics(
-                        selected: selected == role,
-                        child: Material(
-                          color: selected == role
-                              ? const Color(0xFFEBF6F2)
-                              : Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(
-                              color: selected == role ? emerald : stroke,
-                              width: selected == role ? 1.5 : 1,
-                            ),
-                          ),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () => setState(() => selected = role),
-                            child: Padding(
-                              padding: const EdgeInsets.all(18),
-                              child: Row(
-                                children: [
-                                  Icon(switch (role) {
-                                    UserRole.student => Icons.school_outlined,
-                                    UserRole.teacher =>
-                                      Icons.menu_book_outlined,
-                                    UserRole.agent =>
-                                      Icons.admin_panel_settings_outlined,
-                                  }, color: selected == role ? emerald : muted),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          role.label,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          switch (role) {
-                                            UserRole.student =>
-                                              'Mon parcours et mes résultats',
-                                            UserRole.teacher =>
-                                              'Mes cours et mes évaluations',
-                                            UserRole.agent =>
-                                              'Administration et publications',
-                                          },
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: muted,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Icon(
-                                    selected == role
-                                        ? Icons.radio_button_checked
-                                        : Icons.radio_button_off,
-                                    size: 20,
-                                    color: selected == role ? emerald : muted,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                  const SizedBox(height: 22),
+                  SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<UserRole>(
+                      showSelectedIcon: false,
+                      segments: const [
+                        ButtonSegment(
+                          value: UserRole.student,
+                          label: Text('Étudiant'),
+                          icon: Icon(Icons.school_outlined),
                         ),
-                      ),
+                        ButtonSegment(
+                          value: UserRole.teacher,
+                          label: Text('Enseignant'),
+                          icon: Icon(Icons.cast_for_education_outlined),
+                        ),
+                        ButtonSegment(
+                          value: UserRole.agent,
+                          label: Text('Agent'),
+                          icon: Icon(Icons.admin_panel_settings_outlined),
+                        ),
+                      ],
+                      selected: {selectedRole},
+                      onSelectionChanged: loggingIn
+                          ? null
+                          : (selection) =>
+                                setState(() => selectedRole = selection.first),
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  TextField(
+                    controller: loginController,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: 'Identifiant de connexion',
+                      prefixIcon: Icon(Icons.badge_outlined),
                     ),
                   ),
                   const SizedBox(height: 12),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    onSubmitted: (_) => _submitLogin(),
+                    decoration: const InputDecoration(
+                      labelText: 'Mot de passe',
+                      prefixIcon: Icon(Icons.lock_outline),
+                    ),
+                  ),
+                  if (loginError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Text(
+                        loginError!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: () => widget.onEnter(selected),
-                      icon: const Icon(Icons.arrow_forward, size: 18),
-                      label: const Text('Explorer cet espace'),
+                      onPressed: loggingIn ? null : _submitLogin,
+                      icon: const Icon(Icons.login),
+                      label: Text(loggingIn ? 'Connexion…' : 'Se connecter'),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 14),
                   const Text(
-                    'Données fictives · Aucun compte requis\nLes modifications restent dans cette session et sont effacées au rechargement.',
-                    style: TextStyle(color: muted, fontSize: 12, height: 1.7),
+                    'Vous n’avez pas encore de compte ?',
+                    style: TextStyle(color: muted, fontSize: 12, height: 1.6),
                   ),
+                  TextButton.icon(
+                    onPressed: _openLocalTestAccountPortal,
+                    icon: const Icon(Icons.person_add_alt_1_outlined),
+                    label: const Text('Créer un compte de test'),
+                  ),
+                  const Text(
+                    'Ce portail est réservé aux essais sur votre ordinateur. En production, les comptes sont créés par le service compétent.',
+                    style: TextStyle(color: muted, fontSize: 12, height: 1.6),
+                  ),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -293,6 +464,7 @@ List<Destination> destinations(UserRole role) => [
         icon: Icons.playlist_add_check_outlined,
       ),
       (id: 'requests', label: 'Mes requêtes', icon: Icons.chat_bubble_outline),
+      (id: 'retakes', label: 'Mes rattrapages', icon: Icons.event_repeat),
       (
         id: 'profile',
         label: 'Profil & notifications',
@@ -300,20 +472,12 @@ List<Destination> destinations(UserRole role) => [
       ),
     ],
     UserRole.teacher => [
-      (id: 'classes', label: 'Classes & matières', icon: Icons.class_outlined),
-      (id: 'grades', label: 'Saisie des notes', icon: Icons.edit_note),
-      (id: 'evaluations', label: 'Plans d’évaluation', icon: Icons.tune),
-      (
-        id: 'requests',
-        label: 'Requêtes étudiantes',
-        icon: Icons.chat_bubble_outline,
-      ),
-      (id: 'retakes', label: 'Rattrapages', icon: Icons.event_repeat),
+      (id: 'classes', label: 'Mes affectations', icon: Icons.class_outlined),
     ],
     UserRole.agent => [
       (
         id: 'academic',
-        label: 'Structure & programmes',
+        label: 'Structure & catalogue',
         icon: Icons.account_tree_outlined,
       ),
       (
@@ -322,21 +486,32 @@ List<Destination> destinations(UserRole role) => [
         icon: Icons.people_outline,
       ),
       (
-        id: 'bulletins',
-        label: 'Gestion des bulletins',
-        icon: Icons.description_outlined,
-      ),
-      (id: 'audit', label: 'Journal d’audit', icon: Icons.history_outlined),
-      (
         id: 'enrollment',
         label: 'Inscriptions',
         icon: Icons.playlist_add_check_outlined,
       ),
       (
-        id: 'publications',
-        label: 'Validation & publication',
+        id: 'requests',
+        label: 'Requêtes étudiantes',
+        icon: Icons.forum_outlined,
+      ),
+      (
+        id: 'grade-transmissions',
+        label: 'Numérisation des notes',
+        icon: Icons.fact_check_outlined,
+      ),
+      (
+        id: 'retakes',
+        label: 'Sessions de rattrapage',
+        icon: Icons.event_repeat,
+      ),
+      (
+        id: 'bulletins',
+        label: 'Bulletins & publications',
         icon: Icons.publish_outlined,
       ),
+      (id: 'audit', label: 'Journal d’audit', icon: Icons.history_outlined),
+      (id: 'profile', label: 'Mon profil', icon: Icons.account_circle_outlined),
     ],
   },
 ];
@@ -347,12 +522,14 @@ class Portal extends StatefulWidget {
     required this.role,
     required this.store,
     required this.onExit,
+    this.apiClient,
     this.darkMode = false,
     this.onToggleTheme = _noop,
   });
   final UserRole role;
   final DemoStore store;
   final VoidCallback onExit;
+  final StudentApiClient? apiClient;
   final bool darkMode;
   final VoidCallback onToggleTheme;
 
@@ -364,6 +541,72 @@ class Portal extends StatefulWidget {
 class _PortalState extends State<Portal> {
   String page = 'home';
   final scroll = ScrollController();
+  final liveStudentPageKey = GlobalKey<LiveStudentPageState>();
+  List<Map<String, dynamic>> academicYears = [];
+  String? selectedAcademicYearId;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadAcademicYears());
+  }
+
+  Future<void> _loadAcademicYears() async {
+    final api = widget.apiClient;
+    if (api == null) return;
+    try {
+      final years = await api.academicYears();
+      final saved = await api.readAcademicYearPreference();
+      final today = DateTime.now();
+      final current = years.where((year) {
+        final start = DateTime.tryParse('${year['date_debut'] ?? ''}');
+        final end = DateTime.tryParse('${year['date_fin'] ?? ''}');
+        return start != null &&
+            end != null &&
+            !today.isBefore(start) &&
+            !today.isAfter(end);
+      }).toList();
+      final selected = years.any((year) => '${year['id']}' == saved)
+          ? saved
+          : current.isEmpty
+          ? (years.isEmpty ? null : '${years.first['id']}')
+          : '${current.first['id']}';
+      if (selected != null) await api.selectAcademicYear(selected);
+      if (mounted) {
+        setState(() {
+          academicYears = years;
+          selectedAcademicYearId = selected;
+        });
+      }
+    } catch (_) {
+      // Keep the portal usable if the academic reference endpoint is unavailable.
+    }
+  }
+
+  Future<void> _selectAcademicYear(String? id) async {
+    if (id == null || id == selectedAcademicYearId) return;
+    await widget.apiClient?.selectAcademicYear(id);
+    if (!mounted) return;
+    setState(() => selectedAcademicYearId = id);
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => liveStudentPageKey.currentState?.refresh(),
+    );
+  }
+
+  String get _displayName {
+    final user = widget.apiClient?.user;
+    if (user == null) return widget.role.displayName;
+    return '${user['prenom'] ?? ''} ${user['nom'] ?? ''}'.trim();
+  }
+
+  String get _initials {
+    final parts = _displayName
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .take(2);
+    return parts.map((part) => part[0].toUpperCase()).join();
+  }
+
   @override
   void dispose() {
     scroll.dispose();
@@ -376,7 +619,7 @@ class _PortalState extends State<Portal> {
   }
 
   Widget sidebar(bool drawer) => Container(
-    color: Colors.white,
+    color: Theme.of(context).colorScheme.surface,
     child: SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -391,18 +634,18 @@ class _PortalState extends State<Portal> {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: canvas,
+                color: palette(context, canvas),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'ESPACE PERSONNEL',
                     style: TextStyle(
                       fontSize: 9,
                       letterSpacing: 1.5,
-                      color: muted,
+                      color: palette(context, muted),
                     ),
                   ),
                   const SizedBox(height: 5),
@@ -415,11 +658,15 @@ class _PortalState extends State<Portal> {
             ),
           ),
           const SizedBox(height: 27),
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(horizontal: 28),
             child: Text(
               'MON CAMPUS',
-              style: TextStyle(fontSize: 10, letterSpacing: 1.5, color: muted),
+              style: TextStyle(
+                fontSize: 10,
+                letterSpacing: 1.5,
+                color: palette(context, muted),
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -482,7 +729,7 @@ class _PortalState extends State<Portal> {
                   SizedBox(height: 10),
                   Text(
                     'Un nouvel espace pour vous',
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -513,23 +760,23 @@ class _PortalState extends State<Portal> {
                 radius: 18,
                 backgroundColor: const Color(0xFFE9F4F0),
                 child: Text(
-                  widget.role.initials,
+                  _initials,
                   style: const TextStyle(color: emerald, fontSize: 12),
                 ),
               ),
               title: Text(
-                widget.role.displayName,
+                _displayName,
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              subtitle: const Text(
-                'Profil de démonstration',
-                style: TextStyle(fontSize: 10),
+              subtitle: Text(
+                'Compte connecté · ${widget.apiClient!.user?['profil']?['matricule'] ?? widget.apiClient!.user?['profil']?['eid'] ?? widget.role.label}',
+                style: const TextStyle(fontSize: 10),
               ),
               trailing: IconButton(
-                tooltip: 'Changer d’espace',
+                tooltip: 'Se déconnecter',
                 icon: const Icon(Icons.logout, size: 18),
                 onPressed: widget.onExit,
               ),
@@ -558,7 +805,7 @@ class _PortalState extends State<Portal> {
                 child: Column(
                   children: [
                     Container(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface,
                       padding: EdgeInsets.symmetric(
                         horizontal: wide ? 36 : 16,
                         vertical: 16,
@@ -579,27 +826,62 @@ class _PortalState extends State<Portal> {
                             Expanded(
                               child: Text(
                                 'Espace ${widget.role.label.toLowerCase()}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
-                                  color: muted,
+                                  color: palette(context, muted),
                                 ),
                               ),
                             ),
                             if (box.maxWidth > 600) ...[
-                              const Icon(
+                              Icon(
                                 Icons.calendar_today_outlined,
-                                color: muted,
+                                color: palette(context, muted),
                                 size: 15,
                               ),
                               const SizedBox(width: 8),
-                              const Text(
-                                'Année 2026 – 2027',
-                                style: TextStyle(fontSize: 12),
+                              DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value:
+                                      academicYears.any(
+                                        (year) =>
+                                            '${year['id']}' ==
+                                            selectedAcademicYearId,
+                                      )
+                                      ? selectedAcademicYearId
+                                      : null,
+                                  hint: const Text(
+                                    'Année académique',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                  items: academicYears
+                                      .map(
+                                        (year) => DropdownMenuItem(
+                                          value: '${year['id']}',
+                                          child: Text(
+                                            '${year['libelle']}',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: _selectAcademicYear,
+                                ),
                               ),
                               const SizedBox(width: 24),
                             ],
-                            const StatusBadge('DÉMO', color: Color(0xFFA26917)),
+                            const StatusBadge('CONNECTÉ', color: emerald),
                             const SizedBox(width: 8),
+                            if (widget.apiClient != null &&
+                                widget.role == UserRole.student)
+                              IconButton(
+                                tooltip: 'Actualiser les données du serveur',
+                                onPressed: () =>
+                                    liveStudentPageKey.currentState?.refresh(),
+                                icon: const Icon(Icons.refresh),
+                              ),
+                            const SizedBox(width: 4),
                             IconButton(
                               tooltip: widget.darkMode
                                   ? 'Passer au thème clair'
@@ -619,8 +901,8 @@ class _PortalState extends State<Portal> {
                                 context: context,
                                 builder: (context) => AlertDialog(
                                   title: const Text('Votre espace GNU'),
-                                  content: const Text(
-                                    'Cet aperçu utilise uniquement des données fictives. Vous pouvez changer d’espace pour tester un parcours complet : saisie enseignant, transmission, puis publication agent.\n\nLes modifications et les pièces jointes restent en mémoire jusqu’au rechargement. L’authentification et les autorisations réelles seront assurées par le serveur.',
+                                  content: Text(
+                                    'Vous êtes connecté au backend GNU. Les inscriptions, résultats, requêtes et notifications sont chargés depuis le serveur.',
                                   ),
                                   actions: [
                                     TextButton(
@@ -630,10 +912,10 @@ class _PortalState extends State<Portal> {
                                   ],
                                 ),
                               ),
-                              icon: const Icon(
+                              icon: Icon(
                                 Icons.help_outline,
                                 size: 21,
-                                color: muted,
+                                color: palette(context, muted),
                               ),
                             ),
                           ],
@@ -651,25 +933,64 @@ class _PortalState extends State<Portal> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (page == 'home')
-                                  Dashboard(
-                                    role: widget.role,
-                                    store: widget.store,
-                                    navigate: navigate,
+                                if (widget.apiClient != null &&
+                                    widget.role == UserRole.student &&
+                                    page != 'guide')
+                                  LiveStudentPage(
+                                    key: liveStudentPageKey,
+                                    page: page,
+                                    api: widget.apiClient!,
+                                    onNavigate: navigate,
                                   )
-                                else
+                                else if (widget.apiClient != null &&
+                                    widget.role == UserRole.student)
                                   FeaturePage(
                                     key: ValueKey('${widget.role}-$page'),
                                     page: page,
                                     role: widget.role,
                                     store: widget.store,
+                                  )
+                                else if (widget.apiClient != null &&
+                                    widget.role == UserRole.teacher)
+                                  TeacherAssignmentsPage(
+                                    key: ValueKey(
+                                      'teacher-$page-$selectedAcademicYearId',
+                                    ),
+                                    api: widget.apiClient!,
+                                  )
+                                else if (widget.apiClient != null &&
+                                    widget.role == UserRole.agent)
+                                  AgentPortalPage(
+                                    key: ValueKey(
+                                      'agent-$page-$selectedAcademicYearId',
+                                    ),
+                                    page: page,
+                                    api: widget.apiClient!,
+                                    onNavigate: navigate,
+                                    onExit: widget.onExit,
+                                    onAcademicYearSelected: _selectAcademicYear,
+                                  )
+                                else if (widget.apiClient == null)
+                                  const Notice(
+                                    'Une session valide est nécessaire pour consulter cet espace.',
+                                    warning: true,
+                                  )
+                                else
+                                  LiveStudentPage(
+                                    key: liveStudentPageKey,
+                                    page: page,
+                                    api: widget.apiClient!,
+                                    onNavigate: navigate,
                                   ),
                                 const SizedBox(height: 36),
                                 const Divider(),
                                 const SizedBox(height: 12),
-                                const Text(
-                                  'GNU · Campus numérique     /     Données de démonstration — session temporaire',
-                                  style: TextStyle(fontSize: 11, color: muted),
+                                Text(
+                                  'GNU · Campus numérique     /     Session ${widget.role.label.toLowerCase()} connectée',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: palette(context, muted),
+                                  ),
                                 ),
                               ],
                             ),

@@ -26,36 +26,47 @@ void main() {
     expect(store.gradesSubmitted, isFalse);
     expect(store.publishedScores.first, snapshot);
     expect(store.publish(), isFalse);
-    store.validateGrades(); store.submitGrades(); store.publish();
+    store.validateGrades();
+    store.submitGrades();
+    store.publish();
     expect(store.publicationVersion, 2);
     expect(store.publishedScores.first, isNot(snapshot));
   });
   test('changement de pondération exige une nouvelle validation', () {
-    final store = DemoStore(); addTearDown(store.dispose);
-    store.changeMark(3, false, '14'); store.validateGrades(); store.submitGrades();
+    final store = DemoStore();
+    addTearDown(store.dispose);
+    store.changeMark(3, false, '14');
+    store.validateGrades();
+    store.submitGrades();
     store.changeWeights(40);
     expect(store.examWeight, 60);
     expect(store.gradesValidated, isFalse);
     expect(store.gradesSubmitted, isFalse);
     expect(() => store.changeWeights(101), throwsArgumentError);
   });
-  test('inscription obligatoire et choix verrouillés après soumission', () {
-    final store = DemoStore(); addTearDown(store.dispose);
-    store.selectCourse(store.courses.first, false);
-    expect(store.selectedCourses, contains('INF 201'));
-    store.selectCourse(store.courses.last, true);
-    expect(store.selectedCredits, 30);
-    store.submitEnrollment();
+  test('choix semestriels verrouillés après soumission', () {
+    final store = DemoStore();
+    addTearDown(store.dispose);
+    final selectedUnit = store.courses.last;
+    store.selectCourse(selectedUnit, true);
+    expect(store.selectedCourses, contains('PPE212'));
+    expect(store.selectedCredits, 3);
+    expect(store.submitEnrollment('Semestre 2'), isTrue);
     store.selectCourse(store.courses.last, false);
-    expect(store.selectedCredits, 30);
-    store.approveEnrollment();
+    expect(store.selectedCredits, 3);
+    store.approveEnrollment('Semestre 2');
     expect(store.enrollmentApproved, isTrue);
   });
-  test('compte en doublon refusé et décision motivée obligatoire', () {
-    final store = DemoStore(); addTearDown(store.dispose);
-    expect(() => store.addAccount(DemoAccount('Autre', 'ALEX@example.test', UserRole.student)), throwsArgumentError);
-    expect(() => store.decide(store.requests.first, true, ''), throwsArgumentError);
-    store.decide(store.requests.first, true, 'Votre copie sera vérifiée.');
+  test('compte en doublon refusé et décision possible sans motif', () {
+    final store = DemoStore();
+    addTearDown(store.dispose);
+    expect(
+      () => store.addAccount(
+        DemoAccount('Autre', 'ALEX@example.test', UserRole.student),
+      ),
+      throwsArgumentError,
+    );
+    store.decide(store.requests.first, true, '');
     expect(store.requests.first.status, 'Acceptée');
     expect(store.openRequests, 0);
   });

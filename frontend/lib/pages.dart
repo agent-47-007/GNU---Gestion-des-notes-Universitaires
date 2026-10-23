@@ -28,20 +28,25 @@ class Dashboard extends StatelessWidget {
         ? <(String, String, String, IconData)>[
             (
               'Crédits acquis',
-              '25 / 30',
+              '${store.studentResults.where((item) => item.semester == 'Semestre 1' && item.mark >= 50).fold<int>(0, (sum, item) => sum + item.credits)} / ${store.studentResults.where((item) => item.semester == 'Semestre 1').fold<int>(0, (sum, item) => sum + item.credits)}',
               'Résultats fictifs du semestre 1',
               Icons.school_outlined,
             ),
             (
               'Unités d’enseignement',
-              '6',
-              'Licence 2 · Informatique',
+              '${store.registrationUnits.where((item) => item.semester == 'Semestre 1').length}',
+              'UE proposées · Licence 2 Informatique',
               Icons.menu_book_outlined,
             ),
             (
               'UE à reprendre',
-              '1',
-              'Mathématiques discrètes',
+              '${store.studentResults.where((item) => item.semester == 'Semestre 1' && item.mark < 50).length}',
+              store.studentResults
+                  .where(
+                    (item) => item.semester == 'Semestre 1' && item.mark < 50,
+                  )
+                  .map((item) => item.title)
+                  .join(', '),
               Icons.event_repeat,
             ),
             (
@@ -56,7 +61,7 @@ class Dashboard extends StatelessWidget {
             (
               'Enseignement affecté',
               '1',
-              'INF 201 · Algorithmique',
+              'INF211 · PROGRAMMATION ORIENTÉE OBJET',
               Icons.menu_book_outlined,
             ),
             (
@@ -114,7 +119,10 @@ class Dashboard extends StatelessWidget {
               ? 'Dr. Nkom'
               : 'Camille'} 👋',
           title,
-          action: const StatusBadge('Licence 2 · Informatique', color: muted),
+          action: StatusBadge(
+            'Licence 2 · Informatique',
+            color: palette(context, muted),
+          ),
         ),
         Container(
           width: double.infinity,
@@ -153,10 +161,10 @@ class Dashboard extends StatelessWidget {
                                   ? 'Votre registre a été transmis.'
                                   : 'Chaque note compte.')
                             : 'Une publication fiable commence ici.',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 25,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onSurface,
                           letterSpacing: -.5,
                         ),
                       ),
@@ -176,7 +184,9 @@ class Dashboard extends StatelessWidget {
                       const SizedBox(height: 22),
                       FilledButton.icon(
                         style: FilledButton.styleFrom(
-                          backgroundColor: Colors.white,
+                          backgroundColor: Theme.of(context)
+                              .colorScheme
+                              .surface,
                           foregroundColor: navy,
                         ),
                         onPressed: () => navigate(
@@ -242,10 +252,11 @@ class Dashboard extends StatelessWidget {
                       : 'Un suivi concret de vos actions',
                 ),
                 if (student)
-                  ...store.courses
+                  ...store.studentResults
+                      .where((item) => item.semester == 'Semestre 1')
                       .take(4)
                       .map(
-                        (course) => Padding(
+                        (item) => Padding(
                           padding: const EdgeInsets.only(bottom: 18),
                           child: Row(
                             children: [
@@ -253,7 +264,7 @@ class Dashboard extends StatelessWidget {
                                 width: 38,
                                 height: 38,
                                 decoration: BoxDecoration(
-                                  color: canvas,
+                                  color: palette(context, canvas),
                                   borderRadius: BorderRadius.circular(9),
                                 ),
                                 child: const Icon(
@@ -268,14 +279,14 @@ class Dashboard extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      course.title,
+                                      item.title,
                                       style: const TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                     Text(
-                                      '${course.code} · ${course.credits} crédits',
+                                      '${item.code} · ${item.credits} crédits',
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodySmall,
@@ -285,8 +296,8 @@ class Dashboard extends StatelessWidget {
                               ),
                               const SizedBox(width: 8),
                               StatusBadge(
-                                '${course.score!.toInt()} / 100',
-                                color: course.score! < 50
+                                '${item.mark.toInt()} / 100',
+                                color: item.mark < 50
                                     ? const Color(0xFFA26917)
                                     : emerald,
                               ),
@@ -348,10 +359,10 @@ class Dashboard extends StatelessWidget {
                           item.$1,
                           style: const TextStyle(fontSize: 13),
                         ),
-                        trailing: const Icon(
+                        trailing: Icon(
                           Icons.arrow_outward,
                           size: 16,
-                          color: muted,
+                          color: palette(context, muted),
                         ),
                         onTap: () => navigate(item.$2),
                       ),
@@ -388,9 +399,9 @@ class Dashboard extends StatelessWidget {
                                 Expanded(
                                   child: Text(
                                     event,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 12,
-                                      color: muted,
+                                      color: palette(context, muted),
                                       height: 1.6,
                                     ),
                                   ),
@@ -419,10 +430,7 @@ class Dashboard extends StatelessWidget {
               backgroundColor: complete ? const Color(0xFFE9F4F0) : canvas,
               child: complete
                   ? const Icon(Icons.check, size: 18, color: emerald)
-                  : Text(
-                      number,
-                      style: const TextStyle(fontSize: 12, color: muted),
-                    ),
+                  : Text(number, style: TextStyle(fontSize: 12, color: muted)),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -437,10 +445,7 @@ class Dashboard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    detail,
-                    style: const TextStyle(color: muted, fontSize: 12),
-                  ),
+                  Text(detail, style: TextStyle(color: muted, fontSize: 12)),
                 ],
               ),
             ),

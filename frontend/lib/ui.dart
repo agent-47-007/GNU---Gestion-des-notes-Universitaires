@@ -5,17 +5,32 @@ const emerald = Color(0xFF087F6A);
 const canvas = Color(0xFFF4F7F8);
 const muted = Color(0xFF687C86);
 const stroke = Color(0xFFE1E9EB);
+const darkCanvas = Color(0xFF101C24);
+const darkSurface = Color(0xFF172A33);
+const darkRaised = Color(0xFF203640);
+
+Color palette(BuildContext context, Color light) =>
+    Theme.of(context).brightness == Brightness.dark
+    ? switch (light) {
+        navy => const Color(0xFFE7F0F2),
+        emerald => const Color(0xFF60D6B8),
+        canvas => darkCanvas,
+        muted => const Color(0xFFADC0C6),
+        stroke => const Color(0xFF34505A),
+        _ => light,
+      }
+    : light;
 
 ThemeData buildTheme({bool dark = false}) => ThemeData(
   useMaterial3: true,
   brightness: dark ? Brightness.dark : Brightness.light,
-  scaffoldBackgroundColor: dark ? const Color(0xFF101C24) : canvas,
+  scaffoldBackgroundColor: dark ? darkCanvas : canvas,
   colorScheme: ColorScheme.fromSeed(
     seedColor: emerald,
     brightness: dark ? Brightness.dark : Brightness.light,
     primary: emerald,
     secondary: navy,
-    surface: dark ? const Color(0xFF172A33) : Colors.white,
+    surface: dark ? darkSurface : Colors.white,
     error: const Color(0xFFB33B43),
   ),
   fontFamily: 'Arial',
@@ -40,22 +55,30 @@ ThemeData buildTheme({bool dark = false}) => ThemeData(
     titleMedium: TextStyle(
       fontSize: 15,
       fontWeight: FontWeight.w600,
-      color: navy,
+      color: dark ? const Color(0xFFE7F0F2) : navy,
     ),
-    bodyMedium: TextStyle(fontSize: 14, color: navy, height: 1.5),
-    bodySmall: TextStyle(fontSize: 12, color: muted, height: 1.5),
+    bodyMedium: TextStyle(
+      fontSize: 14,
+      color: dark ? const Color(0xFFE7F0F2) : navy,
+      height: 1.5,
+    ),
+    bodySmall: TextStyle(
+      fontSize: 12,
+      color: dark ? const Color(0xFFADC0C6) : muted,
+      height: 1.5,
+    ),
   ),
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
-    fillColor: dark ? const Color(0xFF203640) : Colors.white,
+    fillColor: dark ? darkRaised : Colors.white,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(color: stroke),
+      borderSide: BorderSide(color: dark ? const Color(0xFF34505A) : stroke),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(color: stroke),
+      borderSide: BorderSide(color: dark ? const Color(0xFF34505A) : stroke),
     ),
   ),
   filledButtonTheme: FilledButtonThemeData(
@@ -67,11 +90,18 @@ ThemeData buildTheme({bool dark = false}) => ThemeData(
   outlinedButtonTheme: OutlinedButtonThemeData(
     style: OutlinedButton.styleFrom(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-      side: const BorderSide(color: stroke),
+      side: BorderSide(color: dark ? const Color(0xFF45636D) : stroke),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ),
   ),
-  dividerTheme: const DividerThemeData(color: stroke, thickness: 1),
+  dividerTheme: DividerThemeData(
+    color: dark ? const Color(0xFF34505A) : stroke,
+    thickness: 1,
+  ),
+  iconTheme: IconThemeData(color: dark ? const Color(0xFFADC0C6) : muted),
+  listTileTheme: ListTileThemeData(
+    iconColor: dark ? const Color(0xFFADC0C6) : muted,
+  ),
 );
 
 class Brand extends StatelessWidget {
@@ -125,8 +155,8 @@ class Panel extends StatelessWidget {
     width: double.infinity,
     padding: EdgeInsets.all(padding),
     decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: stroke),
+      color: Theme.of(context).colorScheme.surface,
+      border: Border.all(color: palette(context, stroke)),
       borderRadius: BorderRadius.circular(16),
     ),
     // ListTile paints selection/ink on its nearest Material. Keeping a local
@@ -168,7 +198,10 @@ class PageHeading extends StatelessWidget {
           children: [
             Text(title, style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 8),
-            Text(subtitle, style: const TextStyle(color: muted, height: 1.5)),
+            Text(
+              subtitle,
+              style: TextStyle(color: palette(context, muted), height: 1.5),
+            ),
           ],
         );
         return constraints.maxWidth < 650
@@ -200,7 +233,13 @@ class Notice extends StatelessWidget {
     padding: const EdgeInsets.all(16),
     margin: const EdgeInsets.only(bottom: 20),
     decoration: BoxDecoration(
-      color: warning ? const Color(0xFFFFF5E4) : const Color(0xFFEAF5F1),
+      color: warning
+          ? (Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xFF3D3220)
+                : const Color(0xFFFFF5E4))
+          : (Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xFF183B36)
+                : const Color(0xFFEAF5F1)),
       borderRadius: BorderRadius.circular(10),
     ),
     child: Row(
@@ -209,7 +248,7 @@ class Notice extends StatelessWidget {
         Icon(
           warning ? Icons.info_outline : Icons.verified_user_outlined,
           size: 20,
-          color: warning ? const Color(0xFF986119) : emerald,
+          color: warning ? const Color(0xFF986119) : palette(context, emerald),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -218,7 +257,11 @@ class Notice extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               height: 1.5,
-              color: warning ? const Color(0xFF825719) : emerald,
+              color: warning
+                  ? (Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0xFFFFD58D)
+                        : const Color(0xFF825719))
+                  : palette(context, emerald),
             ),
           ),
         ),
@@ -256,9 +299,9 @@ class MetricGrid extends StatelessWidget {
                           Expanded(
                             child: Text(
                               item.$1,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: muted,
+                                color: palette(context, muted),
                               ),
                             ),
                           ),
@@ -268,10 +311,10 @@ class MetricGrid extends StatelessWidget {
                       const SizedBox(height: 20),
                       Text(
                         item.$2,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 29,
                           fontWeight: FontWeight.w700,
-                          color: navy,
+                          color: palette(context, navy),
                           letterSpacing: -1,
                         ),
                       ),
@@ -338,7 +381,7 @@ class EmptyState extends StatelessWidget {
     child: Center(
       child: Column(
         children: [
-          const Icon(Icons.inbox_outlined, size: 38, color: muted),
+          Icon(Icons.inbox_outlined, size: 38, color: palette(context, muted)),
           const SizedBox(height: 14),
           Text(title, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),

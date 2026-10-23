@@ -1,0 +1,1 @@
+void navigateToLocalPortal(String url) {}

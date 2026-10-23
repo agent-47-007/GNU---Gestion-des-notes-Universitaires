@@ -1,0 +1,985 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage{geometry}
+\geometry{margin=2cm,headheight=15pt}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=teal!60!black,urlcolor=teal!60!black}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{booktabs,tabularx,longtable,array}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{titlesec}
+\usepackage{parskip}
+
+\definecolor{gnuTeal}{HTML}{087F70}
+\definecolor{gnuNavy}{HTML}{173743}
+\definecolor{gnuPale}{HTML}{EAF5F3}
+\definecolor{codeBg}{HTML}{F4F7F8}
+\definecolor{codeRule}{HTML}{D5E0E3}
+\definecolor{muted}{HTML}{526A73}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{GNU -- Guide de recette API}
+\rhead{Postman et parcours utilisateurs}
+\cfoot{\thepage\ / \pageref{LastPage}}
+\titleformat{\section}{\Large\bfseries\color{gnuNavy}}{\thesection}{0.65em}{}
+\titleformat{\subsection}{\large\bfseries\color{gnuTeal}}{\thesubsection}{0.6em}{}
+\setlist[itemize]{leftmargin=1.5em,itemsep=2pt,topsep=3pt}
+\setlist[enumerate]{leftmargin=1.8em,itemsep=3pt,topsep=3pt}
+\renewcommand{\arraystretch}{1.18}
+\lstdefinestyle{code}{
+  basicstyle=\ttfamily\footnotesize,
+  backgroundcolor=\color{codeBg},
+  frame=single,
+  rulecolor=\color{codeRule},
+  breaklines=true,
+  breakatwhitespace=false,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  xleftmargin=5pt,
+  xrightmargin=5pt,
+  framexleftmargin=3pt,
+  framexrightmargin=3pt,
+  literate={é}{{\'e}}1 {è}{{\`e}}1 {ê}{{\^e}}1 {ë}{{\"e}}1
+           {à}{{\`a}}1 {â}{{\^a}}1 {ù}{{\`u}}1 {û}{{\^u}}1
+           {ô}{{\^o}}1 {î}{{\^i}}1 {ï}{{\"i}}1 {ç}{{\c{c}}}1
+           {É}{{\'E}}1 {È}{{\`E}}1 {Ê}{{\^E}}1 {À}{{\`A}}1
+           {Ç}{{\c{C}}}1 {’}{{\textquoteright}}1
+           {–}{{--}}1 {—}{{---}}1,
+  aboveskip=6pt,
+  belowskip=6pt
+}
+\lstset{style=code}
+\newcommand{\method}[1]{\texttt{\small #1}}
+\newcommand{\urlpath}[1]{\texttt{\small #1}}
+\newcommand{\checkitem}{\(\square\)\;}
+\newcommand{\note}[1]{\begin{quote}\colorbox{gnuPale}{\parbox{0.94\linewidth}{\textbf{À retenir. }#1}}\end{quote}}
+
+\begin{document}
+\pagenumbering{gobble}
+\begin{titlepage}
+\centering
+\vspace*{1.5cm}
+{\Large\bfseries\color{gnuTeal} GNU -- GESTION DES NOTES UNIVERSITAIRES\par}
+\vspace{1.4cm}
+{\Huge\bfseries\color{gnuNavy} Guide de recette\par}
+\vspace{0.25cm}
+{\LARGE API, Postman et parcours des trois acteurs\par}
+\vspace{1cm}
+\rule{0.78\linewidth}{1pt}\par
+\vspace{0.7cm}
+{\large Guide pratique pour préparer, exécuter et consigner les tests locaux\par}
+\vfill
+\begin{tabular}{rl}
+Version du guide: & 1.0 -- 15 octobre 2026 \\
+API locale: & \texttt{http://127.0.0.1:8000/api/v1} \\
+Interface locale: & \texttt{http://127.0.0.1:8780} \\
+Base de test: & PostgreSQL local, base \texttt{gnu\_notes} \\
+\end{tabular}
+\vfill
+{\large Ce guide décrit les routes présentes dans le dépôt au jour de rédaction.\par}
+\vspace{0.4cm}
+{\color{muted} Ne pas exécuter de scénario d’écriture ou de publication sur une base réelle.\par}
+\end{titlepage}
+
+\pagenumbering{roman}
+\setcounter{tocdepth}{1}
+\tableofcontents
+\clearpage
+\pagenumbering{arabic}
+
+\section{Comment utiliser ce guide}
+
+Ce document accompagne une recette fonctionnelle de GNU. Il explique comment démarrer l’environnement local, préparer Postman, s’authentifier avec chaque rôle, tester les parcours Agent, Enseignant et Étudiant, puis consigner les résultats. Il ne prétend pas que les scénarios ont déjà été exécutés avec succès.
+
+Pour chaque essai, utiliser des comptes et des données de test identifiables. Noter la date, la version du dépôt, les préconditions, l’action envoyée, la réponse reçue et une référence de preuve. En cas d’échec, garder le code HTTP et le message d’erreur, mais supprimer les mots de passe, jetons et données personnelles des captures.
+
+\note{Aucun seeder n’est utilisé. Créer les comptes individuellement depuis le portail local décrit dans \texttt{docs/guide-tests-manuels.md}.}
+
+\section{Comprendre GNU avant de commencer}
+
+GNU est composé de trois éléments qui doivent fonctionner en même temps :
+\begin{enumerate}
+\item \textbf{PostgreSQL} garde les données : utilisateurs, départements, classes, UE, inscriptions, notes et bulletins.
+\item \textbf{L’API Laravel} reçoit les demandes et applique les règles d’accès et de calcul. Elle tourne ici à \url{http://127.0.0.1:8000}.
+\item \textbf{L’application Flutter Web} est l’interface que l’utilisateur voit dans le navigateur. Elle tourne ici à \url{http://127.0.0.1:8780}.
+\end{enumerate}
+
+\textbf{Postman} est un outil séparé qui envoie à l’API les mêmes demandes que l’interface, mais sans écran GNU. Il permet de vérifier le résultat brut, le code HTTP et le corps JSON. Postman ne remplace pas les tests visuels : il faut tester les deux.
+
+Dans une URL Postman, la méthode indique l’action : \texttt{GET} lit, \texttt{POST} crée/transmet, \texttt{PUT} enregistre/remplace, \texttt{PATCH} modifie un statut. Un Bearer token est une clé temporaire obtenue après connexion. Une réponse JSON ressemble à un objet avec des champs, par exemple \texttt{data}, \texttt{id} et \texttt{message}.
+
+\subsection{Ce qu’il faut avoir installé}
+
+Les commandes de ce guide visent Linux/Ubuntu et le dépôt local. Ouvrir l’application \textbf{Terminal} depuis le menu du système. Dans le terminal, coller une commande puis appuyer sur Entrée. Lorsque \texttt{sudo} le demande, saisir le mot de passe de session Linux : les caractères ne s’affichent pas pendant la saisie, c’est normal.
+
+GNU nécessite PHP avec l’extension PostgreSQL, Composer, PostgreSQL, Flutter/Dart et un navigateur. Dans le terminal, vérifier :
+\begin{lstlisting}[language=bash]
+php -v
+composer --version
+php -m
+psql --version
+flutter --version
+\end{lstlisting}
+
+Si une commande dit \texttt{command not found}, l’outil correspondant n’est pas installé ou n’est pas dans le \texttt{PATH}. Ne pas continuer au hasard : noter la commande manquante et installer le prérequis de développement sur cette machine. Dans \texttt{php -m}, vérifier la présence de \texttt{pdo\_pgsql}.
+
+\subsection{Une nouvelle installation est différente d’un redémarrage}
+
+Pour redémarrer le GNU déjà configuré sur cet ordinateur, suivre les sections « Vérifier la base » puis « Démarrer ». Le dépôt contient les migrations Laravel récentes, mais \textbf{ne contient pas le fichier SQL complet qui crée initialement toutes les tables du schéma GNU}. Il contient des scripts d’import partiels, qui ne remplacent pas ce schéma. Une base vide ne peut donc pas être construite avec la seule commande \texttt{php artisan migrate}.
+
+Pour installer sur un ordinateur neuf, il faut aussi le DDL de base ou une sauvegarde complète de la base provenant de l’administrateur. Sans cette source, arrêter après l’installation des logiciels : ne pas créer une fausse base vide, ne pas exécuter les imports partiels comme s’ils créaient le modèle entier. Ce guide utilise la base locale \texttt{gnu\_notes} déjà préparée et ses migrations récentes.
+
+\subsection{Protection des données pendant les essais}
+
+Les essais de création, de saisie de note, de décision et de publication écrivent dans la base. Si elle contient les vrais étudiants, ne pas réaliser ces scénarios dedans. Créer une copie locale de recette ou demander une base dédiée. Un bulletin publié est une version historique ; une note retirée est conservée en historique ; une décision d’inscription change l’état du dossier.
+
+Pour copier la base locale sur le même serveur PostgreSQL, si le rôle PostgreSQL permet le dump et si le nom \texttt{gnu\_notes\_recette} n’existe pas déjà :
+\begin{lstlisting}[language=bash]
+sudo -u postgres pg_dump -p 5435 -d gnu_notes -Fc -f /tmp/gnu_notes_recette.dump
+sudo -u postgres createdb -p 5435 gnu_notes_recette
+sudo -u postgres pg_restore -p 5435 -d gnu_notes_recette --no-owner /tmp/gnu_notes_recette.dump
+\end{lstlisting}
+
+Dans \texttt{backend/.env}, remplacer uniquement la valeur de \texttt{DB\_DATABASE} par le nom de la copie. Dans le dossier \texttt{backend}, lancer :
+\begin{lstlisting}[language=bash]
+php artisan config:clear
+\end{lstlisting}
+Si la copie échoue ou si la base cible existe déjà, ne pas supprimer de base pour contourner l’erreur : demander de l’aide avant toute commande de suppression. Restaurer une sauvegarde peut copier des données personnelles ; la copie reste locale et confidentielle.
+
+Si tu utilises cette copie, remplacer aussi \texttt{-d gnu\_notes} par \texttt{-d gnu\_notes\_recette} dans toutes les commandes \texttt{psql} ci-dessous afin de ne pas interroger/modifier la base source.
+
+\subsection{État fonctionnel décrit}
+
+L’application dispose de routes d’authentification et de portails par rôle. L’Agent peut travailler sur son périmètre départemental : classes, catalogue UE/EC, comptes visibles, affectations, inscriptions, requêtes, rattrapages, aperçus de bulletins, publications autorisées et audit. L’Enseignant dispose du plan d’évaluation, du carnet, de la saisie/import/transmission de notes, des bulletins provisoires et du traitement des requêtes affectées. L’Étudiant dispose des inscriptions pédagogiques, résultats provisoires et publiés, requêtes, justificatifs, rattrapages, notifications et profil.
+
+Le portail local permet de créer l’Agent avec son département et l’Étudiant avec sa classe. L’Agent affecte ensuite l’Enseignant à une matière et une classe. Les référentiels universitaires doivent déjà être chargés.
+
+\section{Préparer la base et les comptes}
+
+\subsection{Vérifier la connexion et les migrations}
+
+Dans un terminal :
+\begin{lstlisting}[language=bash]
+sudo service postgresql start
+pg_isready -h 127.0.0.1 -p 5435
+cd "/home/agent-47/Téléchargements/GNU---Gestion-des-notes-Universitaires/backend"
+php artisan migrate:status
+\end{lstlisting}
+
+Vérifier que PostgreSQL accepte les connexions et que les migrations attendues apparaissent \texttt{Ran}, dont \texttt{2026\_10\_15\_000001}, \texttt{000002} et \texttt{000003}. Si une migration est encore \texttt{Pending}, ne pas lancer de tests qui modifient des données avant de comprendre pourquoi.
+
+Dans \texttt{backend/.env}, vérifier les paramètres locaux (ne pas les publier) : \texttt{APP\_ENV=local}, \texttt{DB\_HOST=127.0.0.1}, \texttt{DB\_PORT=5435}, \texttt{DB\_DATABASE=gnu\_notes}. Le compte PostgreSQL doit être celui utilisé localement par l’API.
+
+\subsection{Créer ses comptes de recette}
+
+Dans \texttt{backend/.env}, activer le portail uniquement en local avec \texttt{GNU\_ENABLE\_LOCAL\_TEST\_ACCOUNT\_PORTAL=true}. Configurer \texttt{GNU\_LOCAL\_SETUP\_DB\_*} avec un compte PostgreSQL local différent du compte API et autorisé à créer les profils de recette. Après avoir démarré l’API, ouvrir \url{http://127.0.0.1:8000/local-test-accounts}. Créer d’abord l’Agent et choisir son département, puis l’Enseignant, puis l’Étudiant avec sa classe. Choisir un login et un mot de passe distincts pour chaque acteur; le mot de passe doit comporter au moins 12 caractères. Les comptes ne sont ni préremplis ni réinitialisés automatiquement.
+
+Le compte Étudiant créé est prêt à tester ses inscriptions pédagogiques. Utiliser l’espace Agent pour créer l’affectation de l’Enseignant avant de tester les notes. Pour les droits PostgreSQL locaux, suivre \texttt{docs/guide-tests-manuels.md}.
+
+\note{Les nombres d’exemple dans les corps JSON (par exemple \texttt{niveau\_id=12}, \texttt{classe\_id=42} ou \texttt{enseignant\_id=3}) ne sont pas garantis dans ta base. Remplacer chaque nombre par l’ID exact obtenu depuis une route \texttt{GET}. Ne jamais deviner un ID.}
+
+\subsection{Vérifier que les comptes ont des données pour les scénarios}
+
+Un compte peut se connecter sans avoir une classe, une inscription ou un cours à tester. Les commandes ci-dessous sont des lectures seulement et n’affichent pas de mot de passe :
+\begin{lstlisting}[language=bash]
+sudo -u postgres psql -X -p 5435 -d gnu_notes -c "SELECT u.login, e.matricule, c.code_classe, ic.statut_inscription, ic.id AS inscription_classe_id FROM gnu.utilisateur u JOIN gnu.etudiant e ON e.utilisateur_id = u.id LEFT JOIN gnu.inscription_classe ic ON ic.etudiant_id = e.id LEFT JOIN gnu.classe c ON c.id = ic.classe_id WHERE u.role = 'ETUDIANT' ORDER BY u.login;"
+sudo -u postgres psql -X -p 5435 -d gnu_notes -c "SELECT u.login, e.eid, c.code_classe, m.code_m, a.id AS affectation_id, a.actif FROM gnu.utilisateur u JOIN gnu.enseignant e ON e.utilisateur_id = u.id LEFT JOIN gnu.affectation a ON a.enseignant_id = e.id LEFT JOIN gnu.classe c ON c.id = a.classe_id LEFT JOIN gnu.matiere m ON m.id = a.matiere_id WHERE u.role = 'ENSEIGNANT' ORDER BY u.login;"
+sudo -u postgres psql -X -p 5435 -d gnu_notes -c "SELECT u.login, d.nom_depart FROM gnu.utilisateur u LEFT JOIN gnu.agent_departement ad ON ad.agent_id = u.id LEFT JOIN gnu.departement d ON d.id = ad.departement_id WHERE u.role = 'AGENT' ORDER BY u.login;"
+\end{lstlisting}
+
+Si l’étudiant n’a pas de classe, l’enseignant aucune affectation, ou l’Agent aucun département, leurs écrans de rôle peuvent s’ouvrir mais les scénarios correspondants seront vides. Le portail local crée ces rattachements de recette automatiquement. Il faut préparer un jeu d’essai cohérent dans une base de recette par l’interface Agent ou avec l’administrateur de la base avant les parcours complets ; ne pas inventer manuellement des inscriptions ou des notes dans la base réelle.
+
+\section{Démarrer l’API et l’interface}
+
+\subsection{Préparer le backend la première fois seulement}
+
+Dans un terminal, entrer dans le dossier du backend :
+\begin{lstlisting}[language=bash]
+cd "/home/agent-47/Téléchargements/GNU---Gestion-des-notes-Universitaires/backend"
+composer install
+\end{lstlisting}
+
+Composer installe les bibliothèques PHP du projet. Cela peut nécessiter Internet et prendre quelques minutes. Si \texttt{vendor/} est déjà présent et la commande se termine sans erreur, cette étape n’est pas à répéter à chaque démarrage.
+
+Si le fichier \texttt{.env} n’existe pas, le créer une seule fois à partir de l’exemple :
+\begin{lstlisting}[language=bash]
+cp .env.example .env
+php artisan key:generate
+\end{lstlisting}
+
+Ouvrir ensuite \texttt{backend/.env} dans un éditeur de texte et vérifier les valeurs locales :
+\begin{lstlisting}
+APP_ENV=local
+APP_DEBUG=false
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5435
+DB_DATABASE=gnu_notes
+DB_USERNAME=gnu_app
+DB_PASSWORD=mot_de_passe_postgres_local
+CORS_ALLOWED_ORIGINS=http://127.0.0.1:8780,http://localhost:8780
+\end{lstlisting}
+
+Remplacer la valeur d’exemple de \texttt{DB\_PASSWORD} par celle de la configuration locale. Ne pas écraser un fichier \texttt{.env} déjà fonctionnel avec le modèle et ne jamais partager son contenu : il contient des secrets.
+
+Terminal 1 -- API Laravel :
+\begin{lstlisting}[language=bash]
+cd "/home/agent-47/Téléchargements/GNU---Gestion-des-notes-Universitaires/backend"
+php artisan serve --host=127.0.0.1 --port=8000
+\end{lstlisting}
+
+Terminal 2 -- Flutter Web :
+\begin{lstlisting}[language=bash]
+cd "/home/agent-47/Téléchargements/GNU---Gestion-des-notes-Universitaires/frontend"
+flutter pub get
+flutter run -d web-server --web-hostname 127.0.0.1 --web-port 8780 \
+  --dart-define=GNU_API_BASE_URL=http://127.0.0.1:8000/api/v1
+\end{lstlisting}
+
+Ouvrir \url{http://127.0.0.1:8780}. Le portail demande de choisir l’un des trois espaces puis les identifiants. Postman appelle directement l’API à \url{http://127.0.0.1:8000/api/v1} ; l’interface et Postman sont deux clients du même backend.
+
+\subsection{Arrêter les services}
+
+Quand les essais sont terminés, revenir à chaque terminal serveur et appuyer sur \textbf{Ctrl+C}. Cela arrête le serveur Flutter ou Laravel en cours. Ne pas arrêter PostgreSQL s’il est utilisé par d’autres applications.
+
+\section{Configurer Postman}
+
+\subsection{Créer l’environnement}
+
+Dans Postman, créer un environnement nommé \textbf{GNU Local} et y ajouter les variables suivantes. Marquer le mot de passe et le jeton comme sensibles/privés si la version de Postman le permet.
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lXl}
+\toprule
+Variable & Valeur initiale & Type conseillé \\
+\midrule
+\texttt{baseUrl} & \texttt{http://127.0.0.1:8000/api/v1} & default \\
+\texttt{login} & login du rôle choisi & local \\
+\texttt{password} & mot de passe choisi pour le rôle connecté & secret/local \\
+\texttt{token} & vide & secret/local \\
+\texttt{agentToken}, \texttt{teacherToken}, \texttt{studentToken} & vides & secret/local \\
+\texttt{classId}, \texttt{levelId}, \texttt{yearId} & vides au départ & local \\
+\texttt{assignmentId}, \texttt{evaluationId}, \texttt{noteId} & vides au départ & local \\
+\texttt{unitId}, \texttt{ueCode}, \texttt{requestId} & vides au départ & local \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+Ne jamais exporter une collection avec un jeton ou mot de passe actif. Ne pas mettre les valeurs réelles dans l’onglet \emph{Initial value} synchronisé ; utiliser l’onglet local/current value ou un vault prévu à cet effet.
+
+\subsection{Créer une collection et les en-têtes}
+
+Créer une collection \textbf{GNU API - recette locale}. Pour les dossiers nécessitant connexion, configurer \textbf{Authorization > Bearer Token > Token} à \texttt{\{\{token\}\}}. Pour les corps JSON, ajouter :
+\begin{lstlisting}
+Accept: application/json
+Content-Type: application/json
+\end{lstlisting}
+
+Pour les téléchargements de fichiers, Postman doit générer lui-même le \texttt{Content-Type} multipart ; ne pas le fixer manuellement.
+
+\subsection{Faire sa première demande dans Postman}
+
+1. Ouvrir Postman. Dans le sélecteur d’environnement près du bouton d’envoi, choisir \textbf{GNU Local}.
+2. Choisir \textbf{New > HTTP Request} (ou créer une demande depuis la collection). Nommer la demande \textbf{Connexion Agent} et la sauvegarder dans \textbf{GNU API - recette locale > Authentification}.
+3. Dans la liste de méthode, choisir \textbf{POST}. Dans le champ d’adresse, saisir \texttt{\{\{baseUrl\}\}/auth/login}.
+4. Ouvrir l’onglet \textbf{Headers}; ajouter \texttt{Accept: application/json}. Ouvrir \textbf{Body > raw}, choisir \textbf{JSON}, puis coller l’objet de connexion ci-dessous.
+5. Cliquer \textbf{Send}. Sous la demande, regarder le code HTTP, le temps de réponse et l’onglet \textbf{Body}. Si le statut est 200, vérifier \texttt{utilisateur.role}.
+6. Si le statut est 401, vérifier le login, le mot de passe local, le rôle choisi et l’existence/activation du compte. Si c’est une erreur réseau, vérifier d’abord que le terminal API est toujours ouvert.
+
+Les autres demandes se créent de la même manière : choisir la méthode, saisir l’URL, sélectionner le type d’autorisation et le corps demandé par le scénario, puis cliquer \textbf{Send}. Pour lire une route, utiliser \textbf{GET}; pour un corps JSON, choisir \textbf{Body > raw > JSON}; pour joindre un fichier, choisir \textbf{Body > form-data} et transformer la valeur de \texttt{fichier} en type \textbf{File}.
+
+\note{Le dépôt contient un ancien fichier \texttt{backend/GNU\_Postman\_Collection.json}. Il inclut la route \texttt{/api/v1/comptes}, qui n’existe pas dans l’API actuelle. Pour suivre ce guide, créer une nouvelle collection ou vérifier chaque adresse avec le catalogue actuel avant d’envoyer.}
+
+\subsection{Requête de connexion et stockage du jeton}
+
+Créer \method{POST \{\{baseUrl\}\}/auth/login}, corps \textbf{raw / JSON} :
+\begin{lstlisting}
+{
+  "login": "{{login}}",
+  "password": "{{password}}",
+  "device_name": "postman-recette-local"
+}
+\end{lstlisting}
+
+Dans l’onglet \textbf{Scripts > Post-response}, ajouter :
+\begin{lstlisting}
+pm.test("Connexion reussie", function () {
+  pm.response.to.have.status(200);
+});
+const body = pm.response.json();
+pm.environment.set("token", body.token);
+pm.environment.set("roleConnecte", body.utilisateur.role);
+if (body.utilisateur.role === "AGENT") pm.environment.set("agentToken", body.token);
+if (body.utilisateur.role === "ENSEIGNANT") pm.environment.set("teacherToken", body.token);
+if (body.utilisateur.role === "ETUDIANT") pm.environment.set("studentToken", body.token);
+\end{lstlisting}
+
+Exécuter cette demande une fois par acteur ; chaque connexion remplit le jeton correspondant et remplace la variable active \texttt{token}. Les routes protégées utiliseront alors \texttt{Authorization: Bearer <token>}.
+
+\note{Un jeton est un secret d’accès à durée limitée. L’API retourne un jeton Bearer et une date d’expiration. Ne pas envoyer de jeton par message et ne pas l’inclure dans les captures de Postman.}
+
+\subsection{Contrôles de base à automatiser}
+
+Dans les demandes de lecture habituelles, vérifier le code attendu et le type JSON :
+\begin{lstlisting}
+pm.test("Code HTTP attendu", function () {
+  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);
+});
+if (pm.response.code !== 204) {
+  pm.test("Reponse JSON", function () {
+    pm.expect(pm.response.headers.get("Content-Type")).to.include("application/json");
+  });
+}
+\end{lstlisting}
+
+Ne pas imposer le même code à toutes les routes : une création réussie retourne souvent \texttt{201}, une suppression de session \texttt{204}, et un rejet de validation \texttt{422}.
+
+\section{Comprendre les réponses HTTP}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lX}
+\toprule
+Code & Interprétation à vérifier \\
+\midrule
+200 & Lecture ou mutation réussie avec contenu. \\
+201 & Ressource créée (classe, affectation, session, etc.). \\
+204 & Action réussie sans corps, par exemple déconnexion. \\
+401 & Pas de jeton valide, identifiants erronés ou session expirée. \\
+403 & Jeton valide mais rôle/habilitation insuffisant, notamment publication sans habilitation. \\
+404 & Identifiant inexistant ou hors du périmètre permis. \\
+409 & Conflit d’état/version : transition interdite, note modifiée, inscription déjà traitée, publication existante. \\
+422 & Corps/champ invalide, note hors intervalle ou relation incompatible. \\
+429 & Limitation de fréquence atteinte (connexion ou API). \\
+503 & Fonction temporairement verrouillée par configuration, notamment publication officielle. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+Les contrôles d’erreur font partie de la recette. Ne pas considérer une requête HTTP qui retourne 4xx comme un défaut automatiquement : comparer le statut, le message et l’effet en base au cas testé.
+
+\section{Parcours 1 -- Agent}
+
+\subsection{Authentification, profil et tableau de bord}
+
+\begin{enumerate}
+\item Choisir Agent, exécuter \method{POST /auth/login} avec le login choisi dans le portail local.
+\item Vérifier \texttt{200}, \texttt{token\_type=Bearer} et \texttt{utilisateur.role=AGENT}.
+\item Exécuter \method{GET /auth/me} avec Bearer token ; vérifier l’identité du compte.
+\item Exécuter \method{GET /agent/dashboard} ; relever les compteurs, dont \texttt{departements}, \texttt{classes} et \texttt{peut\_publier}.
+\item Exécuter \method{GET /agent/classes}, \method{GET /agent/niveaux} et \method{GET /agent/catalogue} ; confirmer le périmètre Informatique.
+\end{enumerate}
+
+\begin{longtable}{p{0.33\linewidth}p{0.58\linewidth}}
+\toprule
+Demande & Attendu \\
+\midrule
+\endfirsthead
+\toprule Demande & Attendu \\\midrule
+\endhead
+\method{GET /agent/dashboard} & \texttt{200}; les compteurs correspondent au département rattaché. \\
+\method{GET /agent/classes} & \texttt{200}; classe, niveau, filière, année et version disponibles. \\
+\method{GET /agent/niveaux} & \texttt{200}; niveaux des filières du périmètre uniquement. \\
+\method{GET /agent/catalogue} & \texttt{200}; clés \texttt{ues} et \texttt{elements\_constitutifs}. \\
+\method{GET /agent/comptes} & \texttt{200}; utilisateurs liés aux inscriptions/affectations du département. \\
+\method{GET /agent/affectations} & \texttt{200}; enseignant, EC, UE et classe liés. \\
+\method{GET /agent/inscriptions} & \texttt{200}; inscriptions du département, éventuellement filtrées par \texttt{?statut=SOUMISE}. \\
+\method{GET /agent/requetes} & \texttt{200}; requêtes soumises/en traitement du département. \\
+\method{GET /agent/rattrapages/sessions} & \texttt{200}; sessions du département. \\
+\method{GET /agent/audit?limit=100} & \texttt{200}; maximum de 250 entrées dans le périmètre. \\
+\bottomrule
+\end{longtable}
+
+Pour une requête non authentifiée, refaire temporairement \texttt{GET /agent/dashboard} sans Bearer : l’API doit répondre \texttt{401}. Refaire une route Agent avec le jeton Étudiant : l’API doit refuser l’accès (rôle insuffisant).
+
+\subsection{Créer une classe de test}
+
+Trouver le \texttt{niveau\_id} avec la lecture suivante, puis relever l’année via les référentiels authentifiés :
+\begin{lstlisting}
+GET {{baseUrl}}/agent/niveaux
+GET {{baseUrl}}/referentiels/annees-academiques
+\end{lstlisting}
+Créer une classe dédiée :
+\begin{lstlisting}
+{
+  "code_classe": "TEST-INF-L3-2026",
+  "niveau_id": 12,
+  "annee_id": 4,
+  "version_programme": 1
+}
+\end{lstlisting}
+
+Remplacer les identifiants par les valeurs retournées dans ta base. Attendu : \texttt{201}, réponse avec \texttt{id} et message. Conserver cet ID dans \texttt{classId}; relire la liste des classes. Si la classe existe déjà, choisir un code inédit plutôt que de renvoyer la création.
+
+\subsection{Créer une UE et ses EC de test}
+
+Créer une UE en brouillon par \method{POST /agent/ues} :
+\begin{lstlisting}
+{
+  "code_ue": "TEST-UE-INF",
+  "intitule_ue": "UE de recette API",
+  "niveau_id": 12,
+  "version_programme": 1,
+  "numero_semestre": 1,
+  "categorie_ue": "FONDAMENTALE",
+  "credit_ue": 4
+}
+\end{lstlisting}
+
+Attendu : \texttt{201}, UE \texttt{BROUILLON}. Ajouter de un à deux éléments constitutifs avec \method{POST /agent/ues/\{ue\}/elements} :
+\begin{lstlisting}
+{
+  "code_m": "TEST-EC-INF",
+  "intitule_matiere": "Élément de recette",
+  "rang_ec": 1,
+  "credit_matiere": 4
+}
+\end{lstlisting}
+
+Pour activer l’UE, \method{PATCH /agent/ues/\{ue\}/statut} avec \texttt{\{"statut\_catalogue":"ACTIF"\}}. Elle doit comporter un ou deux EC. Après le test, archiver avec \texttt{ARCHIVE} si aucune autre donnée ne l’utilise. Les codes et IDs doivent être conservés dans les variables Postman.
+
+\subsection{Affecter un enseignant}
+
+Relever \texttt{enseignant\_id} et \texttt{matiere\_id} dans les réponses de comptes/catalogue. Le compte enseignant doit être actif, l’EC dans le programme actif du niveau et version choisis. Envoyer \method{POST /agent/affectations} :
+\begin{lstlisting}
+{
+  "enseignant_id": 3,
+  "matiere_id": 18,
+  "classe_id": 42
+}
+\end{lstlisting}
+
+Attendu : \texttt{201}. En cas de classe/EC hors périmètre : refus. En cas d’enseignant inactif ou de matière incompatible : \texttt{422}. Vérifier ensuite \method{GET /agent/affectations}, puis se connecter avec le rôle Enseignant et lire \method{GET /enseignant/affectations}.
+
+\subsection{Examiner inscription et transmettre une requête}
+
+Les opérations suivantes nécessitent des objets existants à l’état attendu :
+\begin{itemize}
+\item \textbf{Inscription} : lire \method{GET /agent/inscriptions?statut=SOUMISE}, puis envoyer :
+\begin{lstlisting}
+PATCH {{baseUrl}}/agent/inscriptions/{{enrollmentId}}
+{"decision":"VALIDER", "motif":"Dossier de test complet et vérifié"}
+\end{lstlisting}
+Réponse attendue : \texttt{200}; l’état devient \texttt{VALIDEE}.
+\item \textbf{Refus} : même route avec \texttt{decision=REFUSER} et un motif d’au moins huit caractères. L’état devient \texttt{REFUSEE}. N’utiliser qu’une inscription de test, car seule une inscription \texttt{SOUMISE} peut être examinée.
+\item \textbf{Requête} : relever l’enseignant affecté et \texttt{requete\_id} dans \method{GET /agent/requetes}. Le routage se fait par :
+\begin{lstlisting}
+PATCH {{baseUrl}}/agent/requetes/{{requestId}}/affectation
+{"enseignant_id":3, "motif":"Transmission au professeur affecté pour examen"}
+\end{lstlisting}
+Seul l’enseignant actif affecté à cette classe et cet EC est accepté. \textbf{Limite constatée dans le code :} la route de dépôt Étudiant enregistre actuellement \texttt{matiere\_id=null}, alors que le routage Agent exige un EC précis. Le routage de ces requêtes est donc bloqué de bout en bout. Consigner ce scénario comme \textbf{BLOQUÉ / anomalie fonctionnelle connue}.
+\end{itemize}
+
+\subsection{Sessions de rattrapage}
+
+Créer avec \method{POST /agent/rattrapages/sessions} :
+\begin{lstlisting}
+{
+  "classe_id": 42,
+  "libelle": "Rattrapage de recette",
+  "date_session": "2026-12-15"
+}
+\end{lstlisting}
+
+La date doit être aujourd’hui ou ultérieure. Attendu : \texttt{201}, statut initial \texttt{PREVUE}. Faire évoluer avec \method{PATCH /agent/rattrapages/sessions/\{id\}} : \texttt{PREVUE -> OUVERTE -> CLOTUREE}. Tester aussi l’annulation d’une session prévue. Une transition non permise doit retourner \texttt{409}.
+
+\subsection{Aperçu MGP et publication}
+
+\begin{enumerate}
+\item Depuis \method{GET /agent/classes}, utiliser l’ID de la classe de test.
+\item Lire cet aperçu (périodes : \texttt{S1}, \texttt{S2}, \texttt{ANNUELLE}) :
+\begin{lstlisting}
+GET {{baseUrl}}/agent/classes/{{classId}}/apercu-bulletins?periode=S1
+\end{lstlisting}
+\item Vérifier \texttt{pret}, chaque étudiant, le calcul MGP, les notes et les valeurs \texttt{EL} en cas de note manquante.
+\item Vérifier \texttt{peut\_publier}. S’il vaut \texttt{false}, ne pas tenter de publication : l’habilitation doit être donnée séparément par l’administration.
+\end{enumerate}
+
+La route de publication exige l’habilitation distincte, le paramètre \texttt{GNU\_ALLOW\_OFFICIAL\_PUBLICATION=true} et des résultats calculables :
+\begin{lstlisting}
+POST {{baseUrl}}/agent/classes/{{classId}}/publications
+{"periode":"S1"}
+\end{lstlisting}
+Une réussite crée une publication et fige un bulletin. Une deuxième publication de la même période renvoie \texttt{409} à moins que \texttt{confirmer\_nouvelle\_version=true}. Ne tester cette route que sur des données explicitement dédiées à la recette. Pour les tests ordinaires, s’arrêter à l’aperçu provisoire.
+
+\section{Parcours 2 -- Enseignant}
+
+\subsection{Affectations et plan d’évaluation}
+
+Avec le jeton Enseignant, appeler \method{GET /enseignant/affectations}. Sélectionner l’\texttt{affectation\_id} obtenue. Le compte de démonstration n’ayant pas d’affectation par défaut, effectuer d’abord le test Agent précédent.
+
+Lire le plan, puis enregistrer une version :
+\begin{lstlisting}
+GET {{baseUrl}}/enseignant/affectations/{{assignmentId}}/plan-evaluation
+PUT {{baseUrl}}/enseignant/affectations/{{assignmentId}}/plan-evaluation
+\end{lstlisting}
+\begin{lstlisting}
+{
+  "motif": "Plan de recette validé pour la classe de test",
+  "evaluations": [
+    {"type_eval":"CC", "date_evaluation":"2026-11-02", "poids":30},
+    {"type_eval":"SN", "date_evaluation":"2026-12-03", "poids":70}
+  ]
+}
+\end{lstlisting}
+
+Le total des poids doit être exactement 100. Pour un test avec TP, utiliser par exemple CC 20, TP 30, SN 50. Une somme invalide doit être rejetée. La création retourne \texttt{201} et un nouveau plan versionné.
+
+\subsection{Carnet, statut d’évaluation et saisie des notes}
+
+Appeler \method{GET /enseignant/affectations/\{id\}/carnet}; relever les IDs d’évaluation et les matricules des inscriptions validées. Avant de saisir des notes, passer l’évaluation à \texttt{REALISEE} :
+\begin{lstlisting}
+PATCH {{baseUrl}}/enseignant/affectations/{{assignmentId}}/evaluations/{{evaluationId}}
+{
+  "statut_evaluation": "REALISEE",
+  "motif": "Épreuve terminée pour le test local"
+}
+\end{lstlisting}
+
+Enregistrer les notes avec \method{PUT /enseignant/affectations/\{id\}/evaluations/\{id\}/notes} :
+\begin{lstlisting}
+{
+  "motif": "Saisie initiale des notes de recette",
+  "notes": [
+    {"matricule":"21T2355", "situation":"NUMERIQUE", "valeur_note":14.5},
+    {"matricule":"ETU-TEST-02", "situation":"ABSENTE", "valeur_note":null},
+    {"matricule":"ETU-TEST-03", "situation":"MANQUANTE", "valeur_note":null}
+  ]
+}
+\end{lstlisting}
+
+Notes numériques : 0 à 20. Une absence ou valeur manquante ne reçoit pas de note numérique. Le champ \texttt{version\_note} est optionnel à la première création et requis pour les modifications avec contrôle de version ; recharger le carnet pour récupérer la version courante. Le matricule doit être inscrit et validé à l’UE dans cette classe. Le résultat attendu est un brouillon, pas encore une transmission.
+
+Dans ces exemples, remplacer chaque matricule par un étudiant réellement présent dans le carnet de cette affectation. Les matricules \texttt{21T2355}, \texttt{ETU-TEST-02} et \texttt{ETU-TEST-03} sont illustratifs et peuvent être rejetés s’ils ne figurent pas dans la classe.
+
+\subsection{Import CSV/XLSX}
+
+Préparer un CSV d’essai, par exemple :
+\begin{lstlisting}
+matricule,note,situation
+21T2355,14.5,NUMERIQUE
+ETU-TEST-02,,ABSENTE
+ETU-TEST-03,,MANQUANTE
+\end{lstlisting}
+
+Créer une demande avec la méthode \texttt{POST} et ce chemin :
+\begin{lstlisting}
+{{baseUrl}}/enseignant/affectations/{{assignmentId}}/evaluations/{{evaluationId}}/notes/importer
+\end{lstlisting}
+Dans \textbf{Body > form-data}, clé \texttt{fichier} de type File. Accepter les fichiers \texttt{xlsx}, \texttt{csv}, \texttt{txt}, taille max 10 Mo. Le serveur retourne un aperçu avec \texttt{notes}, \texttt{erreurs}, \texttt{importables}, \texttt{total}. Cette route prépare l’aperçu ; elle n’enregistre pas directement les notes. Vérifier les erreurs, puis appeler la route de sauvegarde précédente avec les notes contrôlées.
+
+Tester une ligne avec note 21, matricule inexistant et doublon : ces lignes doivent être signalées comme erreurs d’import. Ne pas confirmer si l’aperçu est incorrect.
+
+\subsection{Transmission, bulletin provisoire et retrait logique}
+
+Transmettre les brouillons numériques et absences validables :
+\begin{lstlisting}
+POST {{baseUrl}}/enseignant/affectations/{{assignmentId}}/evaluations/{{evaluationId}}/notes/transmettre
+\end{lstlisting}
+Corps :
+\begin{lstlisting}
+{"motif":"Transmission des notes de recette à la cellule"}
+\end{lstlisting}
+
+Attendu : nombre de notes transmises et message de visibilité dans les bulletins provisoires. Vérifier par \method{GET /enseignant/affectations/\{id\}/bulletins-provisoires?periode=S1}, puis avec le compte Étudiant et l’aperçu Agent. La période obligatoire est \texttt{S1}, \texttt{S2} ou \texttt{ANNUELLE}.
+
+Pour retirer une note de l’affichage/calcul, appeler \method{PATCH /enseignant/affectations/\{id\}/notes/\{note\}/retrait} :
+\begin{lstlisting}
+{"motif":"Correction de la ligne de test demandée", "version_note":1}
+\end{lstlisting}
+
+Le retrait est logique : la note devient \texttt{MANQUANTE}, son historique est conservé et le calcul peut signaler \texttt{EL}. Il ne s’agit pas d’un effacement physique.
+
+\subsection{Requêtes affectées}
+
+Lire \method{GET /enseignant/requetes}. Pour décider une requête affectée par l’Agent, utiliser :
+\begin{lstlisting}
+PATCH {{baseUrl}}/enseignant/requetes/{{requestId}}
+\end{lstlisting}
+\begin{lstlisting}
+{"decision":"REJETER", "motif":"Justificatif insuffisant pour ce test"}
+\end{lstlisting}
+
+ou \texttt{AUTORISER\_EVALUATION} avec un motif. Vérifier l’état depuis l’Agent et l’Étudiant. Tester une requête non affectée : l’API doit la refuser.
+
+\section{Parcours 3 -- Étudiant}
+
+\subsection{Profil, inscription et référentiels}
+
+Avec le jeton Étudiant, tester \method{GET /auth/me}, \method{GET /profil/etudiant} et \method{GET /referentiels/annees-academiques}. Le compte créé dans le portail local doit être rattaché à une classe afin de tester les opérations métier (fiche, UE, notes).
+
+Lire les choix du semestre : \method{GET /etudiant/inscriptions?semestre=1}. Enregistrer les UE par code :
+\begin{lstlisting}
+PUT {{baseUrl}}/etudiant/inscriptions
+{
+  "semestre": 1,
+  "codes_ue": ["INF301", "INF302"]
+}
+\end{lstlisting}
+
+Soumettre : \method{POST /etudiant/inscriptions/soumettre} avec \texttt{\{"semestre":1\}}. Une soumission sans UE doit retourner \texttt{422}. Suivre ensuite le statut côté Agent. Une inscription déjà validée ne peut plus être modifiée de la même façon.
+
+\subsection{Résultats, notes provisoires et requêtes}
+
+Lire \method{GET /etudiant/resultats/provisoires}. Le résultat doit être évolutif et signalé comme provisoire. Lire \method{GET /etudiant/resultats?periode=S1} pour les bulletins publiés seulement. Les deux routes n’ont pas le même statut : ne pas confondre aperçu provisoire et version officielle figée.
+
+Créer une requête avec \method{POST /etudiant/requetes}, JSON :
+\begin{lstlisting}
+{
+  "code_ue": "INF301",
+  "type": "Autre demande",
+  "message": "Je demande la vérification de cette situation dans le cadre du test."
+}
+\end{lstlisting}
+
+Valeurs de \texttt{type} : \texttt{Vérification de note}, \texttt{Absence justifiée}, \texttt{Autre demande}. Une vérification/contestation de note nécessite un bulletin publié. Une absence justifiée impose un fichier \texttt{justificatif} en PDF/JPG/PNG de 5 Mo maximum : utiliser \textbf{form-data}, clé \texttt{justificatif}, avec les champs texte \texttt{code\_ue}, \texttt{type}, \texttt{message}. Lire \method{GET /etudiant/requetes}; le téléchargement autorisé se fait par \method{GET /etudiant/requetes/\{id\}/justificatif}. Les requêtes créées par cette route ne contiennent pas encore l’EC concerné, ce qui bloque leur transmission à un enseignant dans l’état actuel du backend.
+
+\subsection{Notifications, profil et rattrapages}
+
+Tester \method{GET /etudiant/notifications}, puis \method{PATCH /etudiant/notifications/\{id\}/lue}. Mettre à jour le courriel avec \method{PUT /etudiant/profil} et \texttt{\{"courriel":"test.gnu@example.test"\}}. Lire \method{GET /etudiant/rattrapages} après publication d’un résultat et création d’une session.
+
+\section{Tester l’application dans le navigateur}
+
+Postman confirme la réponse de l’API ; l’interface confirme que l’utilisateur peut réellement effectuer le parcours. Garder les deux serveurs actifs. Ouvrir \url{http://127.0.0.1:8780}, choisir l’acteur, saisir ses identifiants puis cliquer sur le bouton de connexion. Pour passer à un autre rôle, se déconnecter et saisir le login de cet autre compte. Ne pas réutiliser une session d’un rôle précédent.
+
+\subsection{Espace Agent -- cellule informatique}
+
+Après rattachement du compte Agent à Informatique, vérifier chaque entrée de navigation :
+\begin{enumerate}
+\item \textbf{Vue d’ensemble} : les compteurs du tableau de bord sont cohérents avec l’API \texttt{/agent/dashboard}.
+\item \textbf{Structure \& catalogue} : consulter les classes, années, filières/niveaux et catalogue d’UE/EC ; créer une classe/UE seulement dans le périmètre de test.
+\item \textbf{Comptes \& affectations} : consulter les comptes du département, créer une affectation valide et vérifier qu’elle arrive chez le bon enseignant.
+\item \textbf{Inscriptions} : contrôler le statut d’une soumission, valider ou refuser un dossier de test avec un motif.
+\item \textbf{Requêtes étudiantes} : examiner une requête et tenter son routage. Dans le code actuel, les requêtes déposées par l’Étudiant n’ont pas d’EC (`matiere\_id` vide), ce qui empêche le routage ; consigner le scénario comme bloqué.
+\item \textbf{Sessions de rattrapage} : créer et faire évoluer une session de test.
+\item \textbf{Bulletins \& publications} : comparer l’aperçu provisoire avec les notes saisies ; laisser la publication officielle désactivée pendant la recette ordinaire.
+\item \textbf{Journal d’audit} : retrouver les actions précédentes et leurs motifs.
+\end{enumerate}
+
+\subsection{Espace Enseignant}
+
+Le compte de démonstration doit d’abord avoir une affectation active. Dans \textbf{Mes affectations}, ouvrir l’EC de test. Paramétrer le plan d’évaluation, contrôler le total 100\,\%, ouvrir le calendrier, passer une évaluation à réalisée, saisir/importer et enregistrer les notes. Vérifier l’état après rechargement, transmettre les notes et observer le bulletin provisoire. Tester une note manquante, une absence, une valeur limite (0, 20) et une valeur hors limite (21). Ouvrir ensuite les requêtes affectées ; le parcours de routage dépend de la limite signalée ci-dessus.
+
+\subsection{Espace Étudiant}
+
+Le compte doit être lié à une inscription de classe et à des UE accessibles. Vérifier dans l’ordre :
+\begin{enumerate}
+\item \textbf{Vue d’ensemble} : identité, niveau, classe et année visibles.
+\item \textbf{Notes \& bulletins} : résultat provisoire qui évolue après transmission ; résultat officiel visible séparément après publication.
+\item \textbf{Inscription pédagogique} : consulter le semestre, choisir les UE permises, soumettre puis constater le statut Agent.
+\item \textbf{Mes requêtes} : créer une demande normale ; utiliser un justificatif uniquement pour tester le formulaire d’absence justifiée.
+\item \textbf{Mes rattrapages} : constater l’éligibilité et les sessions ouvertes lorsque des résultats publiés le permettent.
+\item \textbf{Profil \& notifications} : lire les notifications, marquer une notification lue, modifier un courriel de test.
+\end{enumerate}
+
+Si un bouton n’est pas visible ou une page affiche une erreur, relever le rôle, l’URL de la page, l’heure et le message. Dans Postman, appeler la route équivalente : si l’API répond correctement mais pas l’écran, l’anomalie est probablement côté interface ; si les deux échouent, conserver aussi le code HTTP et le corps de réponse.
+
+\section{Tests d’autorisation et de cohérence}
+
+Ces cas doivent être reproduits avec les jetons des acteurs correspondants :
+\begin{enumerate}
+\item Sans Bearer token, \texttt{GET /agent/dashboard} retourne \texttt{401}.
+\item Jeton Étudiant sur \texttt{GET /agent/dashboard} retourne un refus de rôle, typiquement \texttt{403}.
+\item Agent sans rattachement : la lecture est vide et aucune classe étrangère ne peut être modifiée.
+\item Agent rattaché Informatique : tenter un ID d’un autre département ; réponse non autorisée ou non trouvée (404), aucune modification appliquée.
+\item Enseignant A tente l’\texttt{assignmentId} de l’enseignant B ; accès refusé/non trouvé.
+\item Saisie de note hors intervalle, mauvais matricule, poids qui ne totalise pas 100 ou transition de statut impossible ; réponse de validation/conflit (422/409).
+\item Publication sans habilitation ; réponse attendue 403. Ne pas ajouter l’habilitation en base pour simplement contourner ce test.
+\item Jeton expiré ou déconnexion ; la route protégée doit refuser le jeton.
+\end{enumerate}
+
+La réponse de refus doit être contrôlée avec l’absence d’effet de bord : relire la ressource concernée après le test.
+
+\section{Catalogue synthétique des routes}
+
+Toutes les routes ci-dessous sont préfixées par \texttt{\{\{baseUrl\}\}}. Les mutations doivent être d’abord exercées sur des données de test.
+
+Dans les chemins ci-dessous, remplacer un segment entre accolades par son ID numérique réel. Tous les chemins sont préfixés par \texttt{\{\{baseUrl\}\}} et requièrent un Bearer token sauf la connexion.
+\begin{lstlisting}
+COMMUN
+POST /auth/login
+GET /auth/me
+POST /auth/logout
+POST /auth/logout-all
+PUT /auth/password
+GET /referentiels/annees-academiques
+GET /referentiels/filieres
+GET /referentiels/specialites
+GET /referentiels/niveaux
+GET /referentiels/semestres
+GET /referentiels/classes
+GET /referentiels/ues
+GET /referentiels/ecs
+
+AGENT
+GET /agent/dashboard
+GET /agent/classes
+POST /agent/classes
+GET /agent/niveaux
+GET /agent/catalogue
+POST /agent/ues
+POST /agent/ues/{ue}/elements
+PATCH /agent/ues/{ue}/statut
+GET /agent/comptes
+PATCH /agent/comptes/{utilisateur}/statut
+GET /agent/affectations
+POST /agent/affectations
+PATCH /agent/affectations/{affectation}
+GET /agent/inscriptions
+PATCH /agent/inscriptions/{inscriptionSemestre}
+GET /agent/requetes
+PATCH /agent/requetes/{requete}/affectation
+GET /agent/classes/{classe}/apercu-bulletins?periode=S1
+POST /agent/classes/{classe}/publications
+GET /agent/audit
+GET /agent/rattrapages/sessions
+POST /agent/rattrapages/sessions
+PATCH /agent/rattrapages/sessions/{session}
+
+ENSEIGNANT
+GET /enseignant/affectations
+GET /enseignant/affectations/{id}/plan-evaluation
+PUT /enseignant/affectations/{id}/plan-evaluation
+GET /enseignant/affectations/{id}/carnet
+GET /enseignant/affectations/{id}/bulletins-provisoires?periode=S1
+PATCH /enseignant/affectations/{id}/evaluations/{evaluation}
+PUT /enseignant/affectations/{id}/evaluations/{evaluation}/notes
+POST /enseignant/affectations/{id}/evaluations/{evaluation}/notes/importer
+POST /enseignant/affectations/{id}/evaluations/{evaluation}/notes/transmettre
+PATCH /enseignant/affectations/{id}/notes/{note}/retrait
+GET /enseignant/requetes
+PATCH /enseignant/requetes/{requete}
+
+ETUDIANT
+GET /etudiant/inscriptions?semestre=1
+PUT /etudiant/inscriptions
+POST /etudiant/inscriptions/soumettre
+GET /etudiant/resultats
+GET /etudiant/resultats/provisoires
+GET /etudiant/rattrapages
+GET /etudiant/requetes
+POST /etudiant/requetes
+GET /etudiant/requetes/{requete}/justificatif
+GET /etudiant/notifications
+PATCH /etudiant/notifications/{notification}/lue
+PUT /etudiant/profil
+\end{lstlisting}
+
+Pour le détail des champs requis de chaque mutation, utiliser d’abord l’exemple du parcours correspondant et le message de validation renvoyé en cas de champ manquant. Le backend peut faire évoluer ces champs ; vérifier les règles actuelles avant d’écrire un script d’automatisation pérenne.
+
+\section{Règles métier à vérifier pendant la recette}
+
+\begin{itemize}
+\item Les notes de contrôle sont saisies sur 20 ; le calcul convertit vers le barème officiel sur 100.
+\item Les pondérations du plan doivent totaliser 100\,\%. Cas d’essai : CC 30 + SN 70 ; CC 20 + TP 30 + SN 50.
+\item La grille confirmée : A 80+ = 4.00 ; A- 75--79 = 3.70 ; B+ 70--74 = 3.30 ; B 65--69 = 3.00 ; B- 60--64 = 2.70 ; C+ 55--59 = 2.30 ; C 50--54 = 2.00 ; C- 45--49 = 1.70 ; D+ 40--44 = 1.30 ; D 35--39 = 1.00 ; E 30--34 = 0 ; F 0--29 = 0.
+\item Arrondir la note finale d’UE puis la MGP au centième usuel. Garder la précision complète au cours du calcul.
+\item Note manquante : situation éliminatoire (EL), prise en compte dans le calcul selon le barème institutionnel confirmé ; la présence d’un échec n’empêche pas à elle seule la production du bulletin.
+\item Une MGP sous le seuil institutionnel 2.00 porte la décision d’échec dans le PV ; vérifier qu’un bulletin est néanmoins produit selon la configuration validée.
+\item Les bulletins provisoires évoluent avec les notes transmises. Une publication officielle fige une version historique.
+\end{itemize}
+
+Comparer des résultats calculés à la fois dans l’API et dans les interfaces Agent, Enseignant, Étudiant. Toute divergence de note, crédit, statut, MGP ou version doit être consignée comme anomalie.
+
+\section{Plan de recette et critères d’acceptation}
+
+\begin{longtable}{p{0.28\linewidth}p{0.62\linewidth}}
+\toprule
+Lot & Critère de sortie \\
+\midrule
+Infrastructure & PostgreSQL répond, migrations à jour, API et Flutter accessibles en local. \\
+Comptes & Trois logins testés ; rôle retourné conforme ; jeton conservé localement ; déconnexion testée. \\
+Périmètre & Agent voit le département attribué et ne peut modifier un autre périmètre. \\
+Référentiel & Classe, année, niveau, UE/EC lus sans doublon ni filière interdite. \\
+Enseignement & Affectation compatible, plan totalisant 100\,\%, saisie/import contrôlés, transmission et historique observés. \\
+Étudiant & Inscription soumise, décision suivie, résultats provisoires/publicés distingués, requête créée et suivie. \\
+Calcul & Grades, points, crédits, note EL, MGP arrondie et décision recoupés. \\
+Publication & Prévisualisation vérifiée; publication testée seulement sur classe isolée avec autorisation explicite; nouvelle version contrôlée si nécessaire. \\
+Audit & Actions administratives et pédagogiques de test retrouvées avec motif et date. \\
+\bottomrule
+\end{longtable}
+
+Le test est \textbf{PASS} seulement si le résultat réel correspond à l’attendu et que les données ont l’état attendu après relecture. Utiliser \textbf{FAIL} si le comportement est incorrect, \textbf{BLOQUÉ} si une précondition ou permission manque, \textbf{NON TESTÉ} sinon.
+
+\subsection{Tests automatisés facultatifs}
+
+Ces commandes complètent la recette manuelle. Elles ne vérifient pas à elles seules les écrans avec un utilisateur, les permissions réelles de la base active ni tous les échanges Postman.
+
+Tests Flutter :
+\begin{lstlisting}[language=bash]
+cd "/home/agent-47/Téléchargements/GNU---Gestion-des-notes-Universitaires/frontend"
+flutter test
+\end{lstlisting}
+
+Tests Laravel :
+\begin{lstlisting}[language=bash]
+cd "/home/agent-47/Téléchargements/GNU---Gestion-des-notes-Universitaires/backend"
+php artisan test
+\end{lstlisting}
+
+Le fichier \texttt{backend/phpunit.xml} sélectionne une base nommée \texttt{gnu\_notes\_test}. Avant d’exécuter les tests Laravel, confirmer que cette base est bien une base jetable de test et non une copie de travail contenant des données utiles. Ne jamais remplacer ce nom par \texttt{gnu\_notes} pour faire passer les tests. Si les dépendances ou le schéma de test sont absents, la commande peut échouer ; noter l’erreur, ne pas modifier la base locale de recette pour la contourner.
+
+\subsection{Scénarios numérotés à exécuter}
+
+Exécuter les lignes dans l’ordre. Les tests \textbf{BLOQUÉ} dépendent des jeux de données absents ou de la limite d’API signalée ; les noter ainsi plutôt que d’inventer des IDs ou de modifier des données réelles.
+
+\begin{longtable}{p{0.12\linewidth}p{0.58\linewidth}p{0.22\linewidth}}
+\toprule
+ID & Action & Résultat attendu \\
+\midrule
+\endfirsthead
+\toprule ID & Action & Résultat attendu \\\midrule
+\endhead
+PRE-01 & Démarrer PostgreSQL et contrôler le port 5435. & \texttt{accepting connections}. \\
+PRE-02 & Consulter \texttt{php artisan migrate:status}. & Migrations attendues à \texttt{Ran}. \\
+PRE-03 & Démarrer l’API port 8000 et Flutter port 8780. & Deux serveurs affichent leur URL. \\
+PRE-04 & Requête sans token sur \texttt{GET /api/v1/agent/dashboard}. & \texttt{401}; API joignable. \\
+AUTH-01 & Connexion Agent. & \texttt{200}, rôle \texttt{AGENT}, token reçu. \\
+AUTH-02 & Connexion Enseignant. & \texttt{200}, rôle \texttt{ENSEIGNANT}. \\
+AUTH-03 & Connexion Étudiant. & \texttt{200}, rôle \texttt{ETUDIANT}. \\
+AUTH-04 & Connexion avec mot de passe erroné. & \texttt{401}, aucune session reçue. \\
+AUTH-05 & Appeler \texttt{/auth/me} avec chaque token. & Profil correspondant au rôle connecté. \\
+AUTH-06 & Utiliser le token étudiant sur une route Agent. & \texttt{403}, pas de donnée ni mutation. \\
+AUTH-07 & Déconnexion, puis réutilisation du token. & \texttt{204}, token révoqué/refusé après déconnexion. \\
+AG-01 & Dashboard Agent avant rattachement de département. & Alerte/périmètre vide ; comportement compris. \\
+AG-02 & Rattacher Informatique et recharger dashboard. & Département et compteurs correspondants visibles. \\
+AG-03 & Lister classes et niveaux. & Seules les données du périmètre sont visibles. \\
+AG-04 & Lister catalogue UE/EC. & Code, crédits, semestre et état cohérents. \\
+AG-05 & Ouvrir la classe de test dans l’interface. & Niveau, année, version programme cohérents. \\
+AG-06 & Créer une classe avec IDs du périmètre. & \texttt{201}; ID réutilisable dans Postman. \\
+AG-07 & Créer une classe avec niveau hors département. & Refus; classe non créée. \\
+AG-08 & Créer une UE de test en brouillon. & \texttt{201}, statut \texttt{BROUILLON}. \\
+AG-09 & Activer UE avec zéro EC ou plus de deux EC. & Refus \texttt{422}. \\
+AG-10 & Ajouter EC puis activer UE de test. & Succès avec un/deux EC; statut \texttt{ACTIF}. \\
+AG-11 & Créer affectation enseignant/classe/EC compatibles. & \texttt{201}; visible côté enseignant. \\
+AG-12 & Créer affectation incompatible ou enseignant inactif. & Refus \texttt{422}; aucun lien parasite. \\
+AG-13 & Suspendre son propre compte Agent. & Refus \texttt{422}. \\
+AG-14 & Valider une inscription \texttt{SOUMISE} de test. & \texttt{200}; statut \texttt{VALIDEE}. \\
+AG-15 & Reprendre une inscription déjà décidée. & Conflit \texttt{409}; état inchangé. \\
+AG-16 & Router une requête créée par l’étudiant. & \textbf{BLOQUÉ connu}: la requête arrive sans EC associé. \\
+AG-17 & Créer session de rattrapage à date future. & \texttt{201}; état \texttt{PREVUE}. \\
+AG-18 & Faire évoluer session \texttt{PREVUE -> OUVERTE -> CLOTUREE}. & Transitions autorisées; transition interdite refusée. \\
+AG-19 & Lire aperçu de bulletin S1/S2/annuel. & MGP/UE/EL visibles; aucun gel officiel. \\
+AG-20 & Publier sans habilitation Agent distincte. & \texttt{403}; aucune publication créée. \\
+AG-21 & Vérifier journal d’audit après mutations. & Acteur, date, objet et motif retrouvés. \\
+ENS-01 & Lire les affectations actives du professeur. & Affectation de test présente. \\
+ENS-02 & Enregistrer un plan totalisant 100\,\%. & \texttt{201}; nouvelle version active. \\
+ENS-03 & Enregistrer plan totalisant 90\,\%. & Refus \texttt{422}; version courante intacte. \\
+ENS-04 & Lire le carnet et marquer une évaluation réalisée. & Étudiants/notes chargés; statut réalisé. \\
+ENS-05 & Saisir note 0 puis note 20. & Valeurs acceptées et sauvegardées. \\
+ENS-06 & Saisir note 21, mauvais matricule ou doublon. & Refus/erreur d’import; aucune ligne incorrecte. \\
+ENS-07 & Importer CSV et examiner l’aperçu. & Lignes importables et erreurs séparées. \\
+ENS-08 & Sauvegarder puis relire les brouillons. & Nombre et versions de notes cohérents. \\
+ENS-09 & Transmettre les notes. & Notes validées; audit; bulletin provisoire actualisé. \\
+ENS-10 & Retirer une note avec version courante et motif. & Situation manquante; historique conservé. \\
+ENS-11 & Retirer avec ancienne version. & \texttt{409}; aucune mise à jour. \\
+ENS-12 & Ouvrir les bulletins provisoires de l’affectation. & Statut \texttt{PROVISOIRE}, données à jour. \\
+ENS-13 & Traiter requête transmise par Agent. & \textbf{BLOQUÉ} si la requête n’a pas l’EC requis. \\
+ETU-01 & Lire profil et fiche d’inscription. & Identité/classe/année du compte courant. \\
+ETU-02 & Lire les UE proposées pour un semestre. & Unités actives du niveau et programme. \\
+ETU-03 & Enregistrer choix d’UE connus. & Brouillon mis à jour. \\
+ETU-04 & Enregistrer un code UE non proposé. & Refus \texttt{422}; sélection inchangée. \\
+ETU-05 & Soumettre une sélection non vide. & État \texttt{SOUMISE}; Agent la voit. \\
+ETU-06 & Soumettre sans UE. & Refus \texttt{422}. \\
+ETU-07 & Lire résultats provisoires après transmission enseignant. & Statut provisoire; note actualisée. \\
+ETU-08 & Lire résultat publié, si classe publiée. & Version officielle distincte, datée. \\
+ETU-09 & Déposer requête « Autre demande ». & \texttt{201}; requête retrouvée dans sa liste. \\
+ETU-10 & Déposer absence justifiée sans fichier. & Refus \texttt{422}. \\
+ETU-11 & Déposer absence avec PDF/JPG/PNG de test. & \texttt{201}; fichier accessible au propriétaire. \\
+ETU-12 & Lire/marquer notification lue. & État \texttt{lue=true}. \\
+ETU-13 & Lire ses rattrapages après bulletin publié. & Seules candidatures éligibles/connues visibles. \\
+MGP-01 & Tester notes de part et d’autre de chaque seuil. & Grade et points conformes à la grille officielle. \\
+MGP-02 & Tester note manquante et absence. & Statut EL/échec selon la règle institutionnelle. \\
+MGP-03 & Tester MGP exactement 2.00 puis sous 2.00. & Décision annuelle conforme au seuil. \\
+MGP-04 & Comparer l’arrondi API et bulletin. & UE et MGP au centième, valeur concordante. \\
+MGP-05 & Contrôler bulletin d’un étudiant en échec. & Bulletin produit avec décision échec. \\
+\bottomrule
+\end{longtable}
+
+\section{Fiche d’exécution à dupliquer}
+
+\begin{lstlisting}
+ID du test :
+Date / commit ou version de l’application :
+Rôle / login (ne jamais noter le mot de passe) :
+Outil : Postman / interface / SQL lecture seule
+Nom de la requête Postman :
+Préconditions et identifiants de données :
+Étapes envoyées :
+Résultat attendu :
+Code HTTP et résumé de la réponse :
+Vérification après action / état final :
+Statut : PASS / FAIL / BLOQUE / NON TESTE
+Capture (jeton et données personnelles masqués) :
+Anomalie / suivi / responsable :
+\end{lstlisting}
+
+\subsection{Tableau de progression}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{Xrrrr}
+\toprule
+Domaine & Prévu & PASS & FAIL & Bloqué \\
+\midrule
+Connexion/rôles & 6 & & & \\
+Agent -- structure/catalogue/classes & 10 & & & \\
+Agent -- affectations/inscriptions/requêtes & 10 & & & \\
+Agent -- rattrapages/bulletins/audit & 10 & & & \\
+Enseignant -- plan/carnet/notes/import & 12 & & & \\
+Étudiant -- inscription/résultats/requêtes & 12 & & & \\
+Calcul MGP et règles d’arrondi & 8 & & & \\
+Sécurité/périmètre & 8 & & & \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\section{Dépannage rapide}
+
+\begin{itemize}
+\item \textbf{Connexion refusée} : vérifier base, login, mot de passe, état actif, rôle choisi, profil complet et expiration du jeton. Vérifier aussi le rattachement de l’acteur créé au département ou à la classe.
+\item \textbf{Dashboard Agent vide} : contrôler la ligne dans \texttt{gnu.agent\_departement} et vérifier qu’il existe des classes/filières/années dans ce département.
+\item \textbf{Aucune affectation enseignant} : la créer côté Agent en associant enseignant actif, EC du programme, classe et version cohérents.
+\item \textbf{Aucun étudiant dans le carnet} : confirmer inscription de classe validée, inscription UE validée et appartenance à la classe.
+\item \textbf{403} : authentification réussie mais rôle ou habilitation manquante. Pour publication, le droit distinct est requis.
+\item \textbf{404} : ressource inexistante ou hors périmètre. Vérifier l’ID retourné par la lecture, ne pas deviner un identifiant.
+\item \textbf{409} : vérifier état courant, verrouillage d’une évaluation notée, version de note ou publication déjà existante.
+\item \textbf{422} : lire les erreurs de validation; confirmer clés JSON, dates, valeurs d’énumération, matricule et total des poids.
+\item \textbf{Postman conserve une ancienne session} : exécuter \texttt{POST /auth/logout}, vider la variable token et refaire la connexion.
+\end{itemize}
+
+\section{Construire la documentation utilisateur d’environ 50 pages}
+
+Après la recette, transformer les parcours confirmés en manuel avec captures et résultats réels. Proposition de répartition :
+
+\begin{center}
+\begin{tabularx}{0.9\linewidth}{lXr}
+\toprule
+Partie & Contenu & Pages indicatives \\
+\midrule
+1 & Présentation, architecture et vocabulaire LMD & 4 \\
+2 & Installation, accès et sécurité des comptes & 5 \\
+3 & Parcours Agent, classes, catalogue et affectations & 12 \\
+4 & Parcours Enseignant, évaluations, saisie et transmission & 10 \\
+5 & Parcours Étudiant, inscriptions, bulletins et requêtes & 8 \\
+6 & Calcul MGP, rattrapages, publication et audit & 6 \\
+7 & Postman, scénarios de recette, dépannage et annexes & 5 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+Pour chaque page d’écran, décrire son but, les rôles habilités, les prérequis, les champs, le geste utilisateur, les statuts, les erreurs possibles et la preuve observée. Indiquer la version du logiciel et la date de validation. Une capture d’un écran ne doit jamais révéler un jeton, un mot de passe, un justificatif ou une donnée personnelle non anonymisée.
+
+\section{Sources techniques vérifiées}
+
+Ce guide a été construit à partir des routes et contrôleurs d’authentification, Agent, Enseignant et Étudiant, du portail de comptes locaux, ainsi que des migrations d’authentification et de bulletin progressif. Les chemins sont relatifs à la racine du dépôt GNU.
+
+Les noms de routes, champs et statuts doivent être revérifiés dans le code lors d’une évolution de l’API. La recette de production n’est pas réputée effectuée parce que ce guide a été produit.
+
+\end{document}

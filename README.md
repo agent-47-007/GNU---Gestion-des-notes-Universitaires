@@ -1,6 +1,11 @@
 # GNU — Gestion des notes
 
-Première itération démontrable du projet de stage, avec PostgreSQL local.
+> **État actuel (15 octobre 2026)** : ce README décrit en partie une ancienne
+> démonstration. L'accueil actuel exige une session étudiante connectée, mais
+> seuls certains parcours étudiants sont reliés à l'API. Les fonctions
+> enseignant, la saisie et la publication réelles des notes ne sont pas
+> opérationnelles. Aucune validation sur le serveur de production n'a été
+> réalisée. Voir [l'analyse de préparation production](docs/audit/09_validation_production.md).
 
 ## Architecture principale
 
@@ -113,7 +118,7 @@ Dans de nombreux départements universitaires, la gestion des notes repose encor
 
 ## 🎯 Objectifs du projet
 
-- Automatiser la saisie et le calcul des moyennes selon les coefficients des matières (CC / TP / SN)
+- Automatiser la saisie et le calcul des moyennes selon la grille officielle (CC / TP / TPE / SN)
 - Centraliser les données académiques (étudiants, UE, EC, notes) dans une base unique
 - Offrir un accès Web et Mobile aux mêmes informations via une architecture commune
 - Sécuriser les accès selon les rôles (étudiant, enseignant, agent)
@@ -137,14 +142,17 @@ Université › Faculté › Département › Filière › Niveau (L1–M2) › 
 
 Pondération des évaluations par matière (EC) :
 
-| Type d'UE | CC | TP | SN |
-|---|---|---|---|
-| Avec Travaux Pratiques | 20 % | 30 % | 50 % |
-| Sans Travaux Pratiques | 30 % | — | 70 % |
+| Type d'UE | CC | TP | TPE | SN |
+|---|---|---|---|---|
+| Théorique ou pratique | 30 % | — | — | 70 % |
+| Théorique ou pratique avec travail personnel | 20 % | — | 20 % | 60 % |
+| Mixte | 20 % | 30 % | — | 50 % |
+
+La grille de la Faculté des Sciences de l’Université de Yaoundé I attribue les points de qualité de 4,00 (note d’UE d’au moins 80/100) à 1,00 (35–39,99/100), et calcule la MGP par pondération des points par les crédits. Une UE notée à 50/100 ou moins est admissible à l’unique session de rattrapage.
 
 ## 🔄 Cycle de vie de la publication des notes
 
-1. **Évaluation & saisie** — l'enseignant évalue (CC/TP/SN) et saisit les notes
+1. **Évaluation & saisie** — l'enseignant évalue (CC/TP/TPE/SN) et saisit les notes
 2. **Transmission** — les notes sont transmises à la cellule informatique
 3. **Numérisation & vérification** — numérisation par l'agent, puis vérification par l'enseignant
 4. **Calcul & bulletins** — calcul automatique de la MGP et génération des bulletins

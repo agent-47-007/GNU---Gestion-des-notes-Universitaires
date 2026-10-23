@@ -20,20 +20,20 @@ INF231,Méthodes algorithmiques et structures de données,L2,1,FONDAMENTALE,6,Li
 MAT211,Algèbre 2A : théorie spectrale et algèbre,L2,1,FONDAMENTALE,6,Licence 2021
 INF241,Architecture des ordinateurs,L2,1,OPTIONNELLE,3,Licence 2021
 INF251,Génie logiciel et systèmes d'information,L2,1,OPTIONNELLE,3,Licence 2021
-INF261,Système Windows et protocoles de routage,L2,1,OPTIONNELLE,3,Licence 2021
+INF261,Système Windows et protocoles de routage,L2,1,FONDAMENTALE,3,Licence 2021
 FBL211,Formation bilingue II,L2,1,OPTIONNELLE,3,Licence 2021
 INF212,Mathématiques discrètes,L2,2,FONDAMENTALE,6,Licence 2021
 INF222,Programmation web,L2,2,FONDAMENTALE,6,Licence 2021
 INF232,Statistiques et analyse de données,L2,2,FONDAMENTALE,6,Licence 2021
 MAT232,Calcul intégral sur Rn,L2,2,FONDAMENTALE,6,Licence 2021
 INF242,Science des données,L2,2,OPTIONNELLE,3,Licence 2021
-INF252,Sécurité informatique,L2,2,OPTIONNELLE,3,Licence 2021
+INF252,Sécurité informatique,L2,2,FONDAMENTALE,3,Licence 2021
 INF311,Calcul scientifique,L3,1,FONDAMENTALE,6,Licence 2021
 INF321,Conception et analyse des algorithmes,L3,1,FONDAMENTALE,6,Licence 2021
 INF331,Modélisation du système d'information,L3,1,FONDAMENTALE,6,Licence 2021
 INF341,Réseaux locaux,L3,1,FONDAMENTALE,6,Licence 2021
 INF351,Business intelligence et ERP,L3,1,OPTIONNELLE,3,Licence 2021
-INF361,Administration système et réseaux,L3,1,OPTIONNELLE,3,Licence 2021
+INF361,Administration système et réseaux,L3,1,FONDAMENTALE,3,Licence 2021
 INF371,Informatique décisionnelle et fouille de données,L3,1,OPTIONNELLE,3,Licence 2021
 INF381,Cryptographie classique et investigation numérique,L3,1,OPTIONNELLE,3,Licence 2021
 INF312,Analyses statistiques,L3,2,FONDAMENTALE,6,Licence 2021
@@ -41,7 +41,7 @@ INF322,Bases de données,L3,2,FONDAMENTALE,6,Licence 2021
 INF332,Introduction à la théorie des codes,L3,2,FONDAMENTALE,6,Licence 2021
 INF342,Théorie des langages et compilation,L3,2,FONDAMENTALE,6,Licence 2021
 INF352,Test de logiciel et assurance qualité,L3,2,OPTIONNELLE,3,Licence 2021
-INF362,Programmation système et services réseaux,L3,2,OPTIONNELLE,3,Licence 2021
+INF362,Programmation système et services réseaux,L3,2,FONDAMENTALE,3,Licence 2021
 INF372,Apprentissage artificiel et traitement d'images,L3,2,OPTIONNELLE,3,Licence 2021
 INF382,Introduction à la théorie des nombres,L3,2,OPTIONNELLE,3,Licence 2021
 INF411,Complexité et algorithmique avancée,M1,1,FONDAMENTALE,6,Master 2021
@@ -69,6 +69,6 @@ INF561,Systèmes et réseaux 3,M2,1,OPTIONNELLE,3,Master 2021
 INF571,Science des données 3,M2,1,OPTIONNELLE,3,Master 2021
 INF581,Sécurité 3,M2,1,OPTIONNELLE,3,Master 2021
 INF500,Mémoire de recherche,M2,2,FONDAMENTALE,60,Master 2021
-PPE212,Projet professionnel et pré-immersion,L2,2,FONDAMENTALE,3,Licence 2021
-FBL311,Communication expression écrite et parlée pour informatique,L3,1,FONDAMENTALE,3,Licence 2021
-PPE312,Entrepreneuriat et développement personnel,L3,2,FONDAMENTALE,3,Licence 2021
+PPE212,Projet professionnel et pré-immersion,L2,2,OPTIONNELLE,3,Licence 2021
+FBL311,Communication expression écrite et parlée pour informatique,L3,1,OPTIONNELLE,3,Licence 2021
+PPE312,Entrepreneuriat et développement personnel,L3,2,OPTIONNELLE,3,Licence 2021

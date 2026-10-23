@@ -1,0 +1,470 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[french]{babel}
+\usepackage[a4paper,margin=2.15cm,headheight=15pt,footskip=25pt]{geometry}
+\usepackage{microtype}
+\usepackage{amsmath}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{xltabular}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{tocloft}
+\usepackage{hyperref}
+\usepackage{url}
+
+\definecolor{gnuBlue}{HTML}{17365D}
+\definecolor{gnuGold}{HTML}{9A762C}
+\definecolor{gnuLight}{HTML}{EEF3F8}
+\definecolor{gnuGray}{HTML}{48515B}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=gnuBlue,
+  urlcolor=gnuBlue,
+  citecolor=gnuBlue,
+  pdftitle={GNU - Cahier des charges fonctionnel et technique},
+  pdfauthor={Projet GNU},
+  pdfsubject={Gestion des notes universitaires}
+}
+\titleformat{\section}{\Large\bfseries\color{gnuBlue}}{\thesection}{0.7em}{}
+\titleformat{\subsection}{\large\bfseries\color{gnuBlue}}{\thesubsection}{0.7em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{gnuGray}}{}{0pt}{}
+\setlist[itemize]{leftmargin=1.5em,itemsep=2pt,topsep=4pt}
+\setlist[enumerate]{leftmargin=1.8em,itemsep=2pt,topsep=4pt}
+\renewcommand{\arraystretch}{1.17}
+\setlength{\cftbeforesecskip}{3pt}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcommand{\req}[3]{\subsubsection*{#1 - #2}\noindent #3\par\medskip}
+\newcommand{\tovalider}[1]{\textit{À valider par le maître d'ouvrage : #1}}
+\newcommand{\oui}{\textbf{Oui}}
+\newcommand{\non}{\textbf{Non}}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{gnuGray}{GNU - Cahier des charges}}
+\fancyhead[R]{\small\textcolor{gnuGray}{Version 1.0 pour revue}}
+\fancyfoot[L]{\small\textcolor{gnuGray}{Document de travail}}
+\fancyfoot[R]{\small\thepage\ /\ \pageref{LastPage}}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+
+\begin{document}
+\hypersetup{pageanchor=false}
+
+\begin{titlepage}
+\thispagestyle{empty}
+\vspace*{2.2cm}
+{\Large\bfseries\color{gnuGold} PROJET GNU\par}
+\vspace{1.1cm}
+{\huge\bfseries\color{gnuBlue} Cahier des charges\par}
+\vspace{0.25cm}
+{\LARGE Gestion des notes universitaires\par}
+\vspace{0.8cm}
+{\large Spécification fonctionnelle et technique\par}
+\vspace{1.5cm}
+\rule{\textwidth}{1pt}
+\vspace{0.9cm}
+\begin{tabularx}{\textwidth}{L{4.2cm}Y}
+\textbf{Version} & 1.0 - document complété pour revue \\
+\textbf{Date} & 21 octobre 2026 \\
+\textbf{Source initiale} & Recueil des besoins transmis par le porteur du projet \\
+\textbf{Périmètre} & Gestion des inscriptions, évaluations, notes, requêtes, rattrapages, bulletins et publications \\
+\textbf{Statut} & Proposition de référence à relire et compléter avant validation finale \\
+\end{tabularx}
+\vfill
+\textcolor{gnuGray}{Cette version transforme le recueil initial en exigences vérifiables. Les règles de notation indiquées comme fixes sont celles confirmées par le porteur du projet. Les arbitrages encore ouverts sont explicitement signalés.}
+\end{titlepage}
+
+\pagenumbering{roman}
+\tableofcontents
+\clearpage
+\hypersetup{pageanchor=true}
+\pagenumbering{arabic}
+
+\section{Objet et portée du document}
+
+GNU est une application de gestion académique destinée à une université organisée selon le système Licence-Master-Doctorat (LMD). Elle doit gérer la structure institutionnelle, le catalogue des formations, les inscriptions pédagogiques, les évaluations et les notes, le circuit de numérisation, les requêtes des étudiants, les rattrapages, les calculs de MGP, les bulletins et la publication des résultats.
+
+Le présent document décrit le comportement cible du produit. Il complète le recueil initial, précise les règles fixes communiquées pour GNU et énumère les critères nécessaires à la recette. Il ne constitue pas un procès-verbal de conformité de la version logicielle installée.
+
+\subsection{Objectifs}
+\begin{itemize}
+  \item Remplacer les traitements dispersés par un dossier académique centralisé et traçable.
+  \item Fiabiliser les inscriptions, les notes, les calculs de MGP et les décisions d'admission.
+  \item Séparer la saisie par l'enseignant, la numérisation par la cellule informatique, la vérification par l'enseignant et la publication officielle.
+  \item Donner à chaque étudiant un accès sécurisé à ses inscriptions, requêtes, résultats et bulletins publiés.
+  \item Conserver l'historique des décisions et des versions de résultats.
+\end{itemize}
+
+\subsection{Périmètre fonctionnel}
+\textbf{Inclus :} structure académique; années et classes; niveaux, filières et spécialités; UE et EC; comptes et habilitations; inscriptions de classe et inscriptions pédagogiques; affectations; plans d'évaluation; saisie et import de notes; transmission, numérisation et vérification; requêtes; rattrapages; calculs académiques; bulletins; publications; notifications; audit.
+
+\textbf{Hors périmètre explicitement établi :} paiement des droits universitaires, gestion de la présence en cours, emplois du temps complets, délibérations autres que les règles d'admission décrites ici, gestion de bibliothèque, paie et gestion des ressources humaines. Leur ajout nécessite une décision de périmètre.
+
+\section{Acteurs et responsabilités}
+
+\begin{longtable}{L{3.0cm}L{4.0cm}L{8.3cm}}
+\toprule
+\textbf{Acteur} & \textbf{Périmètre} & \textbf{Responsabilités principales} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Acteur} & \textbf{Périmètre} & \textbf{Responsabilités principales} \\
+\midrule
+\endhead
+Étudiant & Son propre dossier & Consulter les UE proposées, préparer et soumettre son inscription pédagogique, consulter les états de validation, demander la correction d'une note manquante ou publier une contestation, candidater à une session de rattrapage, consulter les résultats publiés et télécharger son bulletin. \\
+Enseignant & Affectations actives qui lui sont attribuées & Consulter ses UE, EC et listes d'étudiants, définir une proposition de plan dans le cadre autorisé, saisir ou importer les notes, valider et transmettre un lot, vérifier la numérisation, traiter les requêtes qui lui sont affectées et saisir les notes de rattrapage. \\
+Agent de la cellule informatique & Départements affectés & Administrer le catalogue et les classes de son périmètre, examiner les inscriptions, router les requêtes, programmer les sessions, numériser les notes reçues, retourner les lots à l'enseignant, préparer les aperçus de bulletins et suivre les anomalies. \\
+Administrateur système & Ensemble de l'université & Gérer la structure de portée globale, configurer les administrateurs système, approuver les règles officielles de publication et attribuer séparément le droit de publication aux agents habilités. \\
+Responsable de publication & Classe, période et publication autorisées & Publier les résultats après approbation des règles, contrôle de complétude et vérification de son habilitation. Ce droit est distinct du rôle général d'agent. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Principes d'autorisation}
+\begin{itemize}
+  \item Un étudiant ne consulte et ne modifie que son propre dossier.
+  \item Un enseignant agit uniquement sur ses affectations actives et les étudiants inscrits dans la classe concernée.
+  \item Un agent agit uniquement dans les départements qui lui sont attribués. L'administrateur système dispose de la portée globale.
+  \item La saisie, la numérisation, la vérification et la publication sont des actions distinctes. Les contrôles s'appliquent aussi aux appels API directs.
+  \item Aucune action de publication n'est possible sans approbation conforme des règles et habilitation active de l'agent.
+\end{itemize}
+
+\section{Référentiel académique et données}
+
+\subsection{Structure institutionnelle}
+La hiérarchie de référence est : Université, Faculté, Département, Filière, Spécialité lorsqu'elle s'applique, Niveau, Classe et Année académique. Une classe est l'instance annuelle d'un niveau et d'une version de programme. Le système doit conserver le rattachement historique des inscriptions et des bulletins à la classe et à l'année d'origine.
+
+\subsection{Catalogue pédagogique}
+Le catalogue contient les UE et leurs éléments constitutifs, appelés EC ou matières dans le recueil initial. Chaque UE précise au minimum son code, son intitulé, son niveau, son semestre, sa version de programme, sa catégorie, son nombre de crédits, son profil d'évaluation et son statut. Chaque EC précise son code, son intitulé, son rang, son nombre de crédits et l'UE parente.
+
+Les codes techniques d'EC créés par l'application ne doivent pas être présentés comme des codes réglementaires lorsque les documents académiques n'en fournissent pas. Une UE active doit disposer d'un ou deux EC dans le catalogue GNU. La somme des crédits EC doit correspondre aux crédits de l'UE, sauf anomalie de programme documentée et approuvée.
+
+\subsection{Entités conceptuelles}
+\begin{longtable}{L{3.3cm}L{12.0cm}}
+\toprule
+\textbf{Entité} & \textbf{Informations et relations minimales} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Entité} & \textbf{Informations et relations minimales} \\
+\midrule
+\endhead
+Université, faculté, département & Codes, noms, statut et liens hiérarchiques parent-enfant. Les codes sont uniques dans leur périmètre. \\
+Filière, spécialité, niveau & Code et libellé; filière de rattachement; spécialité facultative; cycle et ordre du niveau. \\
+Année académique, classe & Dates et libellé de l'année; niveau, filière/version de programme, code de classe, effectif indicatif et état d'ouverture. \\
+UE, EC & Codes, libellés, semestre, crédits, statut du catalogue, catégorie, rang d'EC et profil d'évaluation. \\
+Utilisateur et profils & Identifiant de connexion, données d'identité, rôle, état du compte et profil étudiant, enseignant ou agent. Les secrets ne sont jamais conservés en clair. \\
+Affectation & Classe, année, EC, enseignant responsable, dates de validité et état actif/inactif. \\
+Inscription de classe & Étudiant, classe, année, statut de redoublement, état de validation et historique des décisions. \\
+Inscription semestrielle et inscription UE & Semestre, UE choisies, type normale/reprise/conservée, état, date de soumission et références au bulletin source en cas de reprise. \\
+Évaluation et plan & EC, type CC/TP/TPE/SN, période, date, statut, plan versionné, portée et pondération officielle. \\
+Note & Inscription UE, évaluation, valeur sur 20 ou situation distincte, statut brouillon/validée, version, motif et auteur. \\
+Transmission et numérisation & Lot transmis, évaluation, notes sources, valeurs numérisées, versions, agents responsables, motifs et état du retour enseignant. \\
+Requête, justificatif et décision & Étudiant, inscription, évaluation/UE concernée, type, description, fichier privé facultatif, état, destinataire, décision, motif et dates. Une demande de note manquante doit exister même si aucun enregistrement de note n'existe encore. \\
+Session et candidature de rattrapage & Classe, UE/EC, date, état, étudiant, bulletin source, requête d'origine, autorisation et consommation de la tentative. \\
+Bulletin et publication & Période, version, contenu figé, notes/UE, crédits, MGP, décision, auteur, date, empreinte des règles et publication précédente éventuelle. \\
+Notification et journal d'audit & Destinataire, type, contenu, date de lecture; acteur, action, objet, motif, horodatage et données de traçabilité. \\
+\bottomrule
+\end{longtable}
+
+\section{Règles métier de référence}
+
+\subsection{Inscriptions pédagogiques}
+\begin{enumerate}
+  \item Une inscription pédagogique est rattachée à une inscription de classe validée, à une année académique, à une version de programme et à un semestre.
+  \item Hors M2, l'étudiant régulier choisit exactement six UE par semestre parmi celles proposées.
+  \item En M2, seul le S2 est ouvert; le catalogue GNU contient l'UE de mémoire.
+  \item Le redoublant reprend les UE non acquises de son bulletin de référence. Les UE déjà acquises sont conservées et ne sont pas recomposées. Toute reprise porte le type d'inscription \texttt{REPRISE}; toute UE conservée porte le type \texttt{CONSERVEE}.
+  \item Une soumission modifiable reste en brouillon jusqu'à sa transmission. Une inscription soumise ne peut être modifiée qu'après retour/refus ou réouverture autorisée et journalisée.
+  \item L'agent de scolarité examine la demande, accepte ou refuse avec un motif et horodate sa décision.
+\end{enumerate}
+
+\subsection{Profils d'évaluation}
+Chaque UE possède un profil officiel unique. Les profils suivants sont autorisés et totalisent 100 \% :
+\begin{center}
+\begin{tabularx}{0.9\textwidth}{Yrrrr}
+\toprule
+\textbf{Profil} & \textbf{CC} & \textbf{TP} & \textbf{TPE} & \textbf{SN} \\
+\midrule
+Théorique/pratique & 30 \% & -- & -- & 70 \% \\
+Avec travail personnel & 20 \% & -- & 20 \% & 60 \% \\
+UE mixte avec travaux pratiques & 20 \% & 30 \% & -- & 50 \% \\
+\bottomrule
+\end{tabularx}
+\end{center}
+Un plan peut répartir la part d'un type sur plusieurs évaluations de ce type, mais la somme par type doit respecter le profil officiel. Le plan est versionné; toute modification après saisie entraîne une nouvelle validation des notes affectées.
+
+\subsection{Saisie et calcul des notes}
+\begin{itemize}
+  \item Les notes numériques sont saisies sur 20, avec une précision maximale de deux décimales. Une valeur doit être comprise entre 0 et 20.
+  \item L'absence, la note manquante, l'élimination et une note numérique sont des situations différentes. L'absence ou une note manquante ne doit jamais être transformée silencieusement en zéro.
+  \item Pour un EC, le résultat sur 20 est la somme des notes validées multipliées par leurs pondérations officielles et divisée par 100. Le résultat normalisé sur 100 est obtenu en multipliant par 5. Le résultat d'EC est arrondi au centième.
+  \item La note d'UE sur 100 est la moyenne des notes EC pondérée par les crédits EC : \(\mathrm{UE}=\frac{\sum_i \text{note}_{EC_i}\times\text{crédit}_{EC_i}}{\sum_i \text{crédit}_{EC_i}}\). Elle est arrondie au centième.
+  \item Une note d'UE manquante ou non validée conserve un état en attente. Le calcul officiel et la publication sont bloqués tant que les données requises ou la décision administrative correspondante ne sont pas disponibles.
+\end{itemize}
+
+\subsection{Barème officiel et MGP}
+\begin{center}
+\begin{tabularx}{0.94\textwidth}{YrrY}
+\toprule
+\textbf{Note UE sur 100} & \textbf{Cote} & \textbf{Points} & \textbf{Mention} \\
+\midrule
+80 et plus & A & 4,00 & Très bien \\
+75 à moins de 80 & A- & 3,70 & Très bien \\
+70 à moins de 75 & B+ & 3,30 & Bien \\
+65 à moins de 70 & B & 3,00 & Bien \\
+60 à moins de 65 & B- & 2,70 & Bien \\
+55 à moins de 60 & C+ & 2,30 & Assez bien \\
+50 à moins de 55 & C & 2,00 & Assez bien \\
+45 à moins de 50 & C- & 1,70 & Passable, crédits non transférables \\
+40 à moins de 45 & D+ & 1,30 & Insuffisant \\
+35 à moins de 40 & D & 1,00 & Insuffisant \\
+30 à moins de 35 & E & 0,00 & Échec \\
+0 à moins de 30 & F & 0,00 & Échec \\
+\bottomrule
+\end{tabularx}
+\end{center}
+La MGP est calculée à partir des points de qualité des UE et de leurs crédits :
+\[
+\mathrm{MGP}_{p}=\frac{\sum_{u\in p} \text{points}_{u}\times\text{crédits}_{u}}
+{\sum_{u\in p}\text{crédits}_{u}},
+\]
+où \(p\) désigne le semestre ou la période annuelle. La MGP de chaque semestre et la MGP annuelle sont arrondies au centième. La MGP annuelle est calculée sur l'ensemble des UE de l'année pondérées par leurs crédits; elle n'est pas la moyenne simple des deux MGP semestrielles.
+
+\subsection{Décision annuelle}
+La décision annuelle est \textbf{ADMIS} si et seulement si les conditions cumulatives suivantes sont satisfaites : MGP annuelle d'au moins 2,00; chaque UE requise notée au moins 35/100; aucune élimination EC. Sinon, la décision est \textbf{ÉCHEC}. Les résultats incomplets restent \textbf{EN COURS} et ne produisent pas de décision officielle. Les seuils sont fixes dans le présent projet et ne varient pas selon l'année académique.
+
+\subsection{Rattrapage}
+\begin{itemize}
+  \item Une UE publiée avec une note comprise entre 5/20 inclus et 10/20 exclu peut ouvrir droit à une candidature, si l'étudiant n'a pas déjà consommé sa session unique.
+  \item Une note exactement égale à 10/20 n'est pas admissible au rattrapage. Une note inférieure à 5/20 n'y est pas admissible selon la règle fixe GNU.
+  \item Le rattrapage porte sur la session normale de l'EC concerné lorsque la note SN de cet EC est strictement inférieure à 50/100. Les évaluations CC, TP ou TPE ne sont pas recréées comme session de rattrapage.
+  \item L'étudiant choisit une session ouverte correspondant à sa classe et à l'UE. La cellule achemine sa candidature aux enseignants responsables; l'enseignant autorise ou refuse chaque EC avec un motif. La candidature n'est effective qu'après autorisation.
+  \item Une seule session peut être consommée pour une UE et une année. L'absence à la session est enregistrée comme telle et consomme la tentative selon la règle officielle.
+  \item La note de rattrapage remplace la note SN normale de l'EC pour le calcul final de l'EC, de l'UE, des points, des MGP et de la décision. Le bulletin source et la note précédente restent historisés.
+\end{itemize}
+
+\subsection{Requêtes académiques}
+\begin{itemize}
+  \item Une requête de \textbf{NOTE\_MANQUANTE} vise une évaluation réalisée pour laquelle la note de l'étudiant est absente ou marquée manquante. Il ne peut exister qu'une requête ouverte pour cette même inscription et évaluation.
+  \item Une \textbf{CONTESTATION} vise un résultat publié et courant. Le délai de dépôt est de 48 heures après publication. La date utilisée est celle de la publication officielle.
+  \item Les autres types acceptés par GNU sont absence, réévaluation et autre demande. Leur usage, pièces justificatives obligatoires et règle de recevabilité doivent être rattachés à une procédure documentée par la cellule.
+  \item La requête est soumise, acheminée à un enseignant responsable, instruite, puis acceptée ou rejetée avec un motif. Une décision de correction entraîne un nouveau cycle de note : saisie/correction, transmission, numérisation, vérification et, si le résultat était déjà officiel, nouvelle version de publication.
+  \item Les justificatifs sont facultatifs sauf exigence explicite du type de requête. Ils sont stockés dans un espace privé et ne sont téléchargeables que par les acteurs autorisés.
+\end{itemize}
+
+\section{Exigences fonctionnelles}
+
+\subsection{Structure et catalogue}
+\req{F-01}{Administrer la structure académique}{L'administrateur système crée et modifie universités et facultés. Les agents gèrent les départements, filières, spécialités, niveaux et classes dans leur périmètre. Le système refuse les codes dupliqués et les rattachements incohérents.}
+\req{F-02}{Gérer les années et classes}{L'agent ouvre une classe pour une année, un niveau et une version de programme; il consulte et corrige ses inscriptions. Une classe déjà liée à des résultats officiels ne peut être supprimée; elle peut être clôturée.}
+\req{F-03}{Gérer les UE et EC}{L'agent crée, modifie, active ou met en brouillon les UE et leurs EC, crédits, semestre, catégorie, version de programme et profil de notation. Une UE active doit satisfaire les cardinalités et contrôles de crédits du catalogue.}
+\req{F-04}{Affecter les enseignants}{L'agent associe un enseignant à un EC et une classe/année, précise le périmètre et active ou clôt l'affectation. Un enseignant non affecté ou dont le compte est inactif ne peut saisir, transmettre ou vérifier les notes de ce périmètre.}
+\req{F-05}{Configurer le profil d'évaluation}{L'agent confirme un des trois profils officiels. L'enseignant peut soumettre une proposition, mais ne peut pas activer lui-même un profil non approuvé.}
+
+\subsection{Comptes et accès}
+\req{F-06}{Authentifier les utilisateurs}{Le système authentifie étudiant, enseignant, agent et administrateur système, vérifie l'état actif du compte et délivre une session à durée limitée. La déconnexion invalide la session selon le périmètre demandé.}
+\req{F-07}{Gérer les comptes et rôles}{Les comptes sont créés, activés, suspendus et rattachés à un profil. Les rôles ne sont jamais déduits d'une donnée saisie par l'utilisateur. Le mécanisme d'import ou de création des comptes doit préserver l'unicité des matricules et identifiants.}
+\req{F-08}{Contrôler l'accès aux données}{Chaque lecture et écriture applique les règles de portée étudiant, enseignant, agent départemental ou administrateur global, y compris via API. Toute tentative hors périmètre est refusée et journalisée.}
+
+\subsection{Inscription pédagogique}
+\req{F-09}{Consulter les UE proposées}{L'étudiant connecté consulte ses classes validées, l'année, le semestre ouvert, les UE disponibles, leurs crédits, catégories, EC, pondérations et état d'inscription. Les UE d'un autre niveau, d'une autre version ou d'un autre semestre ne sont pas proposées.}
+\req{F-10}{Enregistrer un brouillon}{L'étudiant sélectionne les UE autorisées et enregistre un brouillon modifiable. Les contrôles du nombre d'UE, des doublons, du semestre, des UE actives et du profil redoublant sont exécutés côté serveur.}
+\req{F-11}{Soumettre l'inscription}{L'étudiant soumet sa sélection complète. Le système enregistre l'horodatage, bloque les modifications et transmet la demande à l'agent compétent. Une soumission incomplète ou déjà validée est refusée avec un message explicite.}
+\req{F-12}{Examiner l'inscription}{L'agent consulte les demandes en attente, les UE sélectionnées et les sources de reprise. Il approuve ou refuse avec motif. Le système notifie l'étudiant et historise la décision.}
+\req{F-13}{Gérer le redoublement}{Le système compare le bulletin de référence aux UE du programme courant, propose uniquement les UE non acquises en reprise et marque les UE acquises comme conservées. Le lien vers le bulletin et l'UE d'origine est conservé.}
+
+\subsection{Évaluations et notes}
+\req{F-14}{Planifier les évaluations}{L'enseignant affecté consulte ou propose le plan d'évaluation de chaque EC. Le système n'active qu'un plan conforme au profil de l'UE et dont le total est de 100 \%. Le plan mémorise les dates prévues et la version appliquée.}
+\req{F-15}{Saisir les notes}{L'enseignant saisit les notes sur 20 pour les étudiants inscrits et les évaluations réalisées. Le système valide les bornes, distingue note numérique, absence, élimination et note manquante, et fournit les états de brouillon et de validation.}
+\req{F-16}{Importer les notes}{L'enseignant peut charger un fichier pris en charge par GNU. Avant toute écriture, l'application affiche un aperçu, les lignes reconnues, les erreurs, les doublons et les étudiants inconnus. L'import ne valide ni ne transmet automatiquement les notes. Le format exact et la taille maximale du fichier sont à publier dans le guide utilisateur.}
+\req{F-17}{Valider et transmettre un lot}{L'enseignant vérifie le lot, confirme le motif de transmission et transmet les notes à la cellule. Une note transmise n'est plus modifiable directement par l'enseignant tant que le lot n'est pas retourné ou que la numérisation n'est pas validée.}
+\req{F-18}{Numériser les notes}{L'agent consulte le lot transmis et saisit la transcription pour chaque étudiant et EC. Il peut enregistrer une note sur 20 ou une absence, avec un motif. Le système conserve la note source, la valeur transcrite, l'identité de l'agent et la version.}
+\req{F-19}{Vérifier la numérisation}{L'enseignant compare les notes numérisées aux données qu'il a transmises. Il accepte le lot ou le retourne avec le détail des écarts. Tout changement de transcription augmente sa version et exige une nouvelle vérification.}
+\req{F-20}{Calculer les résultats provisoires}{Après vérification, le système calcule les EC, les UE, les crédits, les points et les MGP provisoires. Toute donnée manquante apparaît comme attente et empêche de présenter un résultat incomplet comme officiel.}
+
+\subsection{Requêtes}
+\req{F-21}{Déposer une requête}{L'étudiant choisit un type, une inscription, une évaluation ou un bulletin concerné, explique sa demande et joint une pièce si nécessaire. Les règles de recevabilité, le délai et l'existence d'une demande identique sont vérifiés.}
+\req{F-22}{Instruire une requête}{L'agent route la demande vers l'enseignant responsable ou la cellule compétente. L'enseignant traite les demandes qui relèvent de ses affectations et répond avec une décision et un motif.}
+\req{F-23}{Notifier le suivi}{L'étudiant consulte le statut, la décision et le motif. Une notification est créée à chaque changement d'état important; la lecture d'une notification ne modifie pas l'historique académique.}
+
+\subsection{Rattrapages}
+\req{F-24}{Programmer une session}{L'agent ou l'enseignant autorisé crée une session pour une classe, une date, une ou plusieurs UE et un état. La date doit être valide et la session doit être ouverte avant toute candidature.}
+\req{F-25}{Consulter l'admissibilité}{L'étudiant consulte ses UE éligibles, le seuil appliqué, la session, le statut de sa demande et les EC SN qui peuvent être repris. La réponse indique explicitement pourquoi une UE n'est pas admissible.}
+\req{F-26}{Candidater et autoriser}{L'étudiant demande son inscription à une session ouverte. La cellule achemine la demande à l'enseignant. L'enseignant autorise ou refuse chaque EC avec motif; l'application empêche une double candidature et une seconde session consommée.}
+\req{F-27}{Saisir et vérifier les notes de rattrapage}{L'enseignant saisit la note de rattrapage après l'épreuve, valide et transmet la note. La cellule la numérise; l'enseignant vérifie la transcription. La tentative devient consommée dès la décision prévue par le règlement, y compris si l'étudiant est absent.}
+\req{F-28}{Recalculer après rattrapage}{Après vérification, l'application remplace la note SN de référence par la note de rattrapage pour le calcul courant, puis recalcule l'EC, l'UE, les crédits, les points, les MGP et la décision. Les anciennes valeurs restent dans l'historique.}
+
+\subsection{Bulletins et publication}
+\req{F-29}{Préparer un bulletin}{L'agent demande un aperçu par classe et période. Le bulletin présente l'identité académique, les UE et EC, notes/situations, crédits, cotes, points, MGP S1, MGP S2, MGP annuelle lorsqu'applicable, décision et alertes de complétude.}
+\req{F-30}{Approuver les règles de publication}{L'administrateur système consulte la version du moteur, le barème et les seuils. Il approuve les règles avec confirmation, motif éventuel et empreinte numérique. Une modification des règles invalide l'approbation précédente.}
+\req{F-31}{Attribuer l'habilitation de publication}{L'administrateur système attribue ou retire le droit de publier à un agent actif. L'administrateur ne peut pas s'attribuer lui-même ce droit. L'action est auditée.}
+\req{F-32}{Publier une période}{L'agent habilité publie une classe et une période après contrôle de complétude, approbation des règles, habilitation et périmètre. La publication crée une version immuable qui fige le contenu des bulletins, les règles utilisées, la date et l'auteur.}
+\req{F-33}{Corriger un résultat publié}{Une correction après publication passe par une nouvelle version avec motif et référence à la publication précédente. L'ancienne version reste consultable par les personnes habilitées et ne peut être écrasée. L'étudiant voit uniquement la version courante, sauf consultation explicite de l'historique autorisée.}
+\req{F-34}{Consulter et exporter un bulletin}{L'étudiant consulte et télécharge ses seuls bulletins publiés. Il ne voit pas les aperçus provisoires de la cellule ou les résultats d'autres étudiants. Le format de sortie et les règles d'impression doivent préserver l'identité et la version.}
+
+\subsection{Journalisation et supervision}
+\req{F-35}{Tracer les opérations sensibles}{Le système journalise les connexions pertinentes, changements de rôles, inscriptions, notes, transmissions, numérisations, requêtes, décisions, règles approuvées et publications avec acteur, date, objet et motif. Les journaux sont consultables par les rôles autorisés et ne sont pas modifiables depuis les écrans métier.}
+\req{F-36}{Superviser les anomalies}{L'agent consulte les lots en attente, les inscriptions et requêtes à examiner, les notes incomplètes, les divergences de numérisation, les erreurs de calcul et l'état des publications de son périmètre.}
+
+\section{Cycle de vie des dossiers}
+
+\subsection{Inscription}
+\begin{enumerate}
+  \item L'établissement ouvre l'année et les classes, active la version de programme et publie le calendrier d'inscription.
+  \item L'étudiant consulte ses UE et crée son brouillon.
+  \item Il soumet la sélection; le système contrôle les règles et bloque la modification.
+  \item L'agent examine et valide ou refuse avec motif.
+  \item Une inscription validée permet l'accès aux évaluations et à la saisie des notes.
+\end{enumerate}
+
+\subsection{Notes ordinaires}
+\begin{enumerate}
+  \item L'agent définit le profil d'évaluation et l'affectation enseignant-classe-EC.
+  \item L'enseignant saisit ou importe un lot, vérifie les contrôles et le transmet.
+  \item L'agent numérise le lot et transmet les résultats numérisés à l'enseignant.
+  \item L'enseignant accepte la numérisation ou retourne les lignes erronées.
+  \item GNU recalcule les résultats provisoires; la cellule contrôle l'aperçu.
+  \item Un agent dûment habilité publie; les bulletins deviennent visibles aux étudiants.
+\end{enumerate}
+
+\subsection{Correction d'une note manquante}
+L'étudiant signale une évaluation réalisée sans note. Le système vérifie l'inscription, l'évaluation, l'absence de note et l'absence d'une requête déjà ouverte. L'agent achemine la demande à l'enseignant. L'enseignant saisit/corrige, transmet, la cellule numérise, l'enseignant vérifie et le résultat est recalculé. Si le bulletin était déjà publié, une nouvelle publication versionnée est requise.
+
+\section{Interfaces et architecture}
+
+\begin{itemize}
+  \item Client GNU : application Flutter pour les espaces web et mobiles prévus par le projet.
+  \item API métier : Laravel, versionnée, authentifiée et seule responsable des écritures académiques.
+  \item Base de données : PostgreSQL; les clients Flutter ne se connectent jamais directement à la base.
+  \item Les profils d'évaluation, les validations, les calculs, les autorisations et les versions de publication sont contrôlés côté serveur et renforcés par les contraintes de la base.
+  \item Les documents justificatifs et fichiers importés sont stockés dans un espace privé; aucune URL publique permanente n'est générée.
+  \item Les erreurs API doivent distinguer validation, authentification, autorisation, ressource absente, conflit d'état et règle métier refusée.
+\end{itemize}
+
+\section{Exigences non fonctionnelles}
+
+\begin{longtable}{L{3.2cm}L{12.1cm}}
+\toprule
+\textbf{Domaine} & \textbf{Exigence cible} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Domaine} & \textbf{Exigence cible} \\
+\midrule
+\endhead
+Sécurité & HTTPS en production; mots de passe hachés; sessions et jetons expirables/révocables; limitation des tentatives; validation serveur; protection contre les accès directs hors périmètre; secrets jamais écrits dans les journaux. \\
+Confidentialité & Les notes, matricules, pièces justificatives et bulletins sont des données privées. Les données visibles suivent le rôle et la portée de l'utilisateur. Les exports et impressions affichent le minimum nécessaire. \\
+Intégrité & Les transitions sont transactionnelles; les doublons sont empêchés; les mises à jour sensibles sont versionnées; les bulletins publiés sont immuables; les calculs indiquent leurs sources et version de règle. \\
+Traçabilité & Les actions d'écriture portent l'auteur, la date, l'objet, le motif et la version. Une correction ne supprime pas l'historique antérieur. \\
+Disponibilité & Service accessible pendant les périodes d'inscription, de saisie et de publication. La disponibilité cible, les horaires de maintenance et le délai de rétablissement sont à fixer. \\
+Performance & Les écrans de classe et les imports doivent rester utilisables pour l'effectif maximal prévu. Les seuils chiffrés de temps de réponse et de concurrence sont à fixer après estimation des effectifs. \\
+Sauvegarde & Sauvegardes automatiques chiffrées de la base et des pièces justificatives, tests périodiques de restauration, durée de rétention et objectifs RPO/RTO à approuver. \\
+Compatibilité & Interface responsive et lisible sur ordinateur, tablette et téléphone. Les navigateurs, versions minimales et plateformes mobiles officiellement supportés sont à fixer. \\
+Accessibilité & Parcours navigables au clavier, contraste lisible, libellés accessibles et erreurs compréhensibles. Le niveau de conformité cible reste à confirmer. \\
+Langue et dates & Interface française par défaut; montants, dates et fuseau horaire cohérents avec l'établissement. Le fuseau de référence recommandé est Africa/Douala. \\
+Maintenabilité & Règles de calcul centralisées, versionnées et couvertes par des tests de limites; migrations réversibles lorsque la conservation des données le permet; documentation de déploiement et de restauration. \\
+\bottomrule
+\end{longtable}
+
+\section{Critères de recette}
+
+\begin{longtable}{L{1.5cm}L{6.0cm}L{7.8cm}}
+\toprule
+\textbf{ID} & \textbf{Scénario} & \textbf{Résultat attendu} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{ID} & \textbf{Scénario} & \textbf{Résultat attendu} \\
+\midrule
+\endhead
+R-01 & Inscrire un étudiant régulier avec six UE au semestre & La soumission est acceptée si les six UE sont actives et proposées; cinq ou sept UE sont refusées. \\
+R-02 & Tenter une inscription M2 au semestre 1 & Le système refuse; seules les UE du semestre 2 du catalogue M2 sont proposées. \\
+R-03 & Inscrire un redoublant & Les UE non acquises deviennent des reprises; les UE acquises restent conservées et ne sont pas recomposées. \\
+R-04 & Saisir 20,01/20 ou une note négative & La validation est refusée avec une erreur ciblée. \\
+R-05 & Valider chacun des trois profils d'évaluation & Les profils 30/70, 20/20/60 et 20/30/50 sont acceptés; une pondération différente est refusée. \\
+R-06 & Laisser une note manquante ou déclarer une absence & Le statut reste distinct d'une note zéro; le calcul officiel/publication est bloqué ou une décision autorisée est requise. \\
+R-07 & Vérifier le barème aux seuils 30, 35, 40, 45, 50, 55, 60, 65, 70, 75 et 80/100 & Les cotes et points correspondent exactement à la grille officielle. \\
+R-08 & Calculer l'admission avec MGP 2,00 et toutes les UE à 35/100 ou plus, sans élimination & La décision annuelle est ADMIS. À MGP 1,99, avec une UE sous 35 ou une élimination, elle est ÉCHEC. \\
+R-09 & Candidater au rattrapage avec 4,99; 5; 9,99; puis 10/20 & 4,99 et 10 sont refusés; 5 et 9,99 sont admissibles si une session reste disponible. \\
+R-10 & Candidater une deuxième fois à une UE déjà consommée & La demande est refusée et aucune nouvelle candidature n'est créée. \\
+R-11 & Tenter une requête pour une note non manquante ou évaluation non réalisée & La requête est refusée; une évaluation réalisée sans note peut faire l'objet d'une seule requête ouverte. \\
+R-12 & Déposer une contestation après la fenêtre de 48 heures & Le système refuse la requête et indique que le délai est dépassé. \\
+R-13 & Consulter les notes avant publication officielle & L'étudiant ne voit aucune note/bulletin non publié. Après publication, seul son bulletin courant est visible. \\
+R-14 & Numériser un lot transmis puis le retourner à l'enseignant & Chaque ligne conserve les versions, l'auteur, le motif et l'état; la publication reste impossible avant vérification. \\
+R-15 & Publier sans approbation de règles ou sans habilitation agent & La demande est refusée; aucune publication ni bulletin officiel n'est créé. \\
+R-16 & Corriger une note après publication & Une nouvelle version est créée avec motif; l'ancienne version demeure inchangée et consultable selon les droits. \\
+R-17 & Appeler directement une route avec un rôle ou un département hors périmètre & L'accès est refusé et l'action est journalisée; aucune donnée étrangère n'est renvoyée. \\
+R-18 & Restaurer une sauvegarde dans un environnement de recette & La base, les bulletins figés et les justificatifs sont cohérents après restauration. \\
+\bottomrule
+\end{longtable}
+
+\section{Points à arbitrer avant validation finale}
+
+Les règles ci-dessous ne sont pas inventées dans cette version. Le maître d'ouvrage doit les confirmer pour que chaque équipe puisse appliquer la même règle :
+\begin{enumerate}
+  \item \textbf{Identités et comptes :} qui crée/import les comptes, quels identifiants sont utilisés, comment se font l'activation, la réinitialisation et la récupération d'accès?
+  \item \textbf{Calendrier :} quelles sont les dates d'ouverture et de fermeture des inscriptions, de saisie, de transmission et de publication? Le délai de 48 heures est défini ici pour la contestation d'un résultat publié.
+  \item \textbf{Requêtes :} quelles pièces sont obligatoires pour absence, réévaluation et autres demandes? Quels acteurs décident de ces types?
+  \item \textbf{Publication :} l'agent habilité peut-il publier seul après approbation de l'administrateur, ou une seconde validation humaine est-elle requise?
+  \item \textbf{Données historiques :} quelle durée de conservation appliquer aux comptes, notes, justificatifs, journaux d'audit et publications?
+  \item \textbf{Niveaux de service :} quels effectifs de pointe, temps de réponse, disponibilité, RPO et RTO doivent être garantis?
+  \item \textbf{Canaux :} quelles plateformes mobiles et versions de navigateurs sont officiellement prises en charge? Les notifications doivent-elles être uniquement dans l'application ou également par courriel/SMS?
+  \item \textbf{Import de notes :} quels formats, modèles, tailles maximales, règles de reprise après erreur et formats d'export sont exigés?
+  \item \textbf{Affectations multiples :} si plusieurs enseignants interviennent sur un même EC, qui est responsable de la transmission, de la réponse aux requêtes et de la vérification finale?
+\end{enumerate}
+
+\section{Écarts connus à traiter dans l'application}
+
+Cette section sépare le besoin cible de l'état du code. Elle ne change pas les règles fixes définies plus haut.
+\begin{itemize}
+  \item La configuration actuelle accepte exactement 10/20 au rattrapage alors que la règle cible est une borne supérieure exclue. L'implémentation et son libellé de configuration doivent être alignés sur \(5 \leq \mathrm{note} < 10\).
+  \item La suite backend contient un test qui attend le refus à 10/20; il révèle actuellement cette divergence.
+  \item Les tests Flutter référencent des méthodes et libellés qui ne correspondent plus à l'API et aux écrans actuels. Ils doivent être réalignés avant de servir de preuve de recette.
+  \item La publication doit rester bloquée en environnement où aucun administrateur système n'est configuré ou où les règles n'ont pas été approuvées et leur empreinte enregistrée.
+\end{itemize}
+
+\section{Traçabilité avec le recueil initial}
+
+\begin{longtable}{L{4.0cm}L{11.3cm}}
+\toprule
+\textbf{Besoin initial} & \textbf{Sections complétées dans ce document} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Besoin initial} & \textbf{Sections complétées dans ce document} \\
+\midrule
+\endhead
+Structure : université, faculté, département, filière, niveau et classe & Sections 3, 4.1, 4.2, 5.1, exigences F-01 à F-05. \\
+UE, matières/EC, crédits et pondérations & Sections 4.2, 5.2, 5.3, 6.1 et exigences F-03 à F-05, F-14 à F-20. \\
+Enseignants affectés et saisie des notes & Sections 2, 3, 6.2, exigences F-04 et F-14 à F-20. \\
+Inscription des étudiants et redoublement & Sections 3, 5.1, exigences F-09 à F-13 et recette R-01 à R-03. \\
+Numérisation et retour pour vérification & Exigences F-17 à F-20 et cycle de vie des notes. \\
+Requêtes et notes manquantes & Règles de requêtes, exigences F-21 à F-23, recette R-11 et R-12. \\
+Bulletin avec MGP S1, S2 et totale & Règles MGP, exigences F-29 à F-34 et recette R-07, R-08, R-13, R-15 et R-16. \\
+\bottomrule
+\end{longtable}
+
+\section{Références et autorité des règles}
+
+\begin{enumerate}
+  \item \textit{Recueil des besoins} fourni par le porteur de projet, fichier \texttt{RECEUIL DES BESOINS.docx}.
+  \item \textit{Règles de référence du catalogue Informatique}, dépôt GNU, notamment l'inscription de six UE par semestre et le catalogue M2-S2.
+  \item Configuration et règles académiques GNU du dépôt : profils CC/SN, CC/TPE/SN, CC/TP/SN; barème sur 100; seuils annuels; session unique de rattrapage.
+  \item Guide de l'étudiant de la Faculté des Sciences de l'Université de Yaoundé I, grille de notation et profils de pondération reproduits dans les documents du projet.
+\end{enumerate}
+
+Le porteur du projet confirme que les règlements de notes utilisés par GNU sont fixes et actuellement valides dans ce projet. Toute évolution future doit faire l'objet d'une nouvelle version du présent cahier, d'une décision explicite et d'une mise à jour cohérente du code, des tests, des données de référence et de la procédure de publication.
+
+\end{document}

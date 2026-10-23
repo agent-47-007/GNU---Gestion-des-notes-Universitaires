@@ -16,7 +16,7 @@ class RequestDialog extends StatefulWidget {
 class _RequestDialogState extends State<RequestDialog> {
   final form = GlobalKey<FormState>();
   final message = TextEditingController();
-  String course = 'INF 201', type = 'Vérification de note';
+  String course = academicUnits.first.code, type = 'Vérification de note';
   String? proofName, error;
   Uint8List? bytes;
   bool picking = false;
@@ -82,7 +82,7 @@ class _RequestDialogState extends State<RequestDialog> {
                 decoration: const InputDecoration(
                   labelText: 'Unité d’enseignement',
                 ),
-                items: widget.store.courses
+                items: widget.store.registrationUnits
                     .map(
                       (c) => DropdownMenuItem(
                         value: c.code,
@@ -105,6 +105,7 @@ class _RequestDialogState extends State<RequestDialog> {
                 items:
                     [
                           'Vérification de note',
+                          'Note manquante',
                           'Absence justifiée',
                           'Autre demande',
                         ]
@@ -218,12 +219,14 @@ class EditorField {
     this.options,
     this.initial,
     this.validate,
+    this.required = true,
     this.lines = 1,
   });
   final String id, label;
   final List<String>? options;
   final String? initial;
   final String? Function(String)? validate;
+  final bool required;
   final int lines;
 }
 
@@ -301,9 +304,13 @@ class _EditorDialogState extends State<EditorDialog> {
                             alignLabelWithHint: field.lines > 1,
                           ),
                           onChanged: (value) => values[field.id] = value.trim(),
-                          validator: (value) => (value?.trim().isEmpty ?? true)
-                              ? 'Ce champ est obligatoire.'
-                              : field.validate?.call(value!.trim()),
+                          validator: (value) {
+                            final text = value?.trim() ?? '';
+                            if (field.required && text.isEmpty) {
+                              return 'Ce champ est obligatoire.';
+                            }
+                            return field.validate?.call(text);
+                          },
                         ),
                 ),
               ),
@@ -355,10 +362,9 @@ class DecisionDialog extends StatelessWidget {
       ),
       EditorField(
         'reason',
-        'Réponse motivée à l’étudiant',
+        'Réponse complémentaire (facultative)',
         lines: 4,
-        validate: (v) =>
-            v.length < 10 ? 'Rédigez au moins 10 caractères.' : null,
+        required: false,
       ),
     ],
     onSave: (values) {
@@ -471,7 +477,9 @@ class AssignmentDialog extends StatelessWidget {
         EditorField(
           'course',
           'Unité d’enseignement',
-          options: store.courses.map((c) => '${c.code} · ${c.title}').toList(),
+          options: store.registrationUnits
+              .map((c) => '${c.code} · ${c.title}')
+              .toList(),
         ),
       ],
       onSave: (values) {
@@ -514,7 +522,7 @@ class _ScheduleDialogState extends State<ScheduleDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'INF 201 · Rattrapage de démonstration\nCette préparation ne vaut pas autorisation officielle.',
+              'UE sélectionnée · Rattrapage de démonstration\nCette préparation ne vaut pas autorisation officielle.',
               style: TextStyle(color: muted),
             ),
             const SizedBox(height: 20),
@@ -568,7 +576,7 @@ class _ScheduleDialogState extends State<ScheduleDialog> {
             return;
           }
           widget.store.addSession(
-            'INF 201 · ${date!.day}/${date!.month}/${date!.year} · ${room.text.trim()}',
+            'Rattrapage · ${date!.day}/${date!.month}/${date!.year} · ${room.text.trim()}',
           );
           Navigator.pop(context);
         },

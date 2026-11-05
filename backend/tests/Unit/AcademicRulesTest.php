@@ -45,10 +45,13 @@ class AcademicRulesTest extends TestCase
     {
         $rules = new AcademicRules;
 
-        $this->assertTrue($rules->isRetakeEligible(5));
+        $this->assertTrue($rules->isRetakeEligible(0));
+        $this->assertTrue($rules->isRetakeEligible(7.5));
         $this->assertTrue($rules->isRetakeEligible(9.99));
-        $this->assertFalse($rules->isRetakeEligible(4.99));
         $this->assertFalse($rules->isRetakeEligible(10));
         $this->assertFalse($rules->isRetakeEligible(8, 1));
+        $this->assertTrue($rules->isRetakeRequired(0));
+        $this->assertTrue($rules->isRetakeRequired(7.5));
+        $this->assertFalse($rules->isRetakeRequired(7.51));
     }
 }

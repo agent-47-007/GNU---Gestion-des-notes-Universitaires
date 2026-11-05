@@ -420,9 +420,18 @@ class StudentPortalController extends Controller
         $data = $query->get([
             'b.id', 'b.periode', 'b.version_bulletin', 'b.mgp_s1', 'b.mgp_s2', 'b.mgp_total',
             'b.total_credits', 'b.decision_admission', 'b.contenu_fige', 'p.date_publication',
-        ])->map(function (object $bulletin): array {
+        ])->map(function (object $bulletin) use ($context): array {
             $snapshot = is_string($bulletin->contenu_fige) ? json_decode($bulletin->contenu_fige, true) : (array) $bulletin->contenu_fige;
             $snapshot = $this->annotateEvaluationTypes($snapshot);
+            if (is_array($snapshot['ues'] ?? null)) {
+                $unitIds = collect($snapshot['ues'])->pluck('ue_id')->filter()->unique()->all();
+                $titles = $unitIds === [] ? collect() : DB::table('gnu.ue')->whereIn('id', $unitIds)->pluck('intitule_ue', 'id');
+                $snapshot['ues'] = array_map(static function (array $unit) use ($titles): array {
+                    $unit['intitule_ue'] = $titles[$unit['ue_id'] ?? 0] ?? '';
+
+                    return $unit;
+                }, $snapshot['ues']);
+            }
 
             return [
                 'id' => (int) $bulletin->id,
@@ -435,6 +444,16 @@ class StudentPortalController extends Controller
                 'decision' => $bulletin->decision_admission,
                 'publie_le' => $bulletin->date_publication,
                 'contenu' => $snapshot,
+                'structure' => [
+                    'universite' => $context->nom_univ,
+                    'faculte' => $context->nom_fac,
+                    'departement' => $context->nom_depart,
+                    'filiere' => $context->nom_filiere,
+                    'niveau' => $context->libelle_niv,
+                    'specialite' => $context->libelle_specialite,
+                    'annee' => $context->annee,
+                    'logo' => $this->studentStructureLogo($context),
+                ],
             ];
         })->values();
 
@@ -782,7 +801,8 @@ class StudentPortalController extends Controller
                     'code_ue' => $unit->code_ue,
                     'intitule' => $unit->intitule_ue,
                     'note_sur_20' => $mark,
-                    'seuil_admissibilite_maximum_sur_20' => (float) config('academic.retake_maximum_inclusive', 10),
+                    'rattrapage_obligatoire' => app(AcademicRules::class)->isRetakeRequired($mark),
+                    'seuil_admissibilite_exclusif_sur_20' => (float) config('academic.retake_maximum_exclusive', 10),
                     'seuil_admissibilite_maximum_sur_100' => 50,
                     'eligible' => $eligible,
                     'statut' => $pendingRequest?->statut_requete
@@ -1010,6 +1030,11 @@ class StudentPortalController extends Controller
             ->join('gnu.inscription_classe as ic', 'ic.etudiant_id', '=', 'e.id')
             ->join('gnu.classe as c', 'c.id', '=', 'ic.classe_id')
             ->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
+            ->join('gnu.filiere as fi', 'fi.id', '=', 'n.filiere_id')
+            ->join('gnu.departement as d', 'd.id', '=', 'fi.departement_id')
+            ->join('gnu.faculte as fac', 'fac.id', '=', 'd.faculte_id')
+            ->join('gnu.universite as un', 'un.id', '=', 'fac.universite_id')
+            ->leftJoin('gnu.specialite as sp', 'sp.id', '=', 'n.specialite_id')
             ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
             ->where('e.utilisateur_id', $request->user()->id)
             ->where('ic.statut_inscription', '!=', 'ANNULEE')
@@ -1019,10 +1044,28 @@ class StudentPortalController extends Controller
             'e.id as etudiant_id', 'ic.id as inscription_classe_id', 'ic.statut_inscription', 'ic.statut_redoublant',
             'c.id as classe_id', 'c.code_classe', 'c.annee_id', 'c.version_programme', 'n.id as niveau_id', 'n.code_niv',
             'an.libelle as annee', 'an.date_debut as annee_debut',
+            'un.id as universite_id', 'fac.id as faculte_id', 'd.id as departement_id',
+            'un.nom_univ', 'fac.nom_fac', 'd.nom_depart', 'fi.nom_f as nom_filiere',
+            'n.libelle_niv', 'sp.libelle_specialite',
         ]);
         abort_unless($context !== null, 404, 'Aucune inscription de classe active n’est rattachée à votre compte.');
 
         return $context;
+    }
+
+    private function studentStructureLogo(object $context): ?array
+    {
+        $logo = DB::table('gnu.logo_structure')
+            ->where('departement_id', $context->departement_id)
+            ->orWhere('faculte_id', $context->faculte_id)
+            ->orWhere('universite_id', $context->universite_id)
+            ->orderByRaw('CASE WHEN departement_id IS NOT NULL THEN 1 WHEN faculte_id IS NOT NULL THEN 2 ELSE 3 END')
+            ->first(['chemin_fichier', 'type_mime']);
+        if ($logo !== null && Storage::disk('local')->exists($logo->chemin_fichier)) {
+            return ['mime' => $logo->type_mime, 'base64' => base64_encode(Storage::disk('local')->get($logo->chemin_fichier))];
+        }
+
+        return null;
     }
 
     /**

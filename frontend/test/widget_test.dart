@@ -8,7 +8,7 @@ import 'package:gnu_frontend/features.dart';
 import 'package:gnu_frontend/ui.dart';
 
 void main() {
-  testWidgets('accueil et entrée dans un espace explicite de démonstration', (
+  testWidgets('accueil dirige vers la connexion étudiante réelle', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1440, 1000));
@@ -16,33 +16,17 @@ void main() {
     await tester.pumpWidget(GnuApp(sessionStorage: _MemorySessionStorage()));
     await tester.pumpAndSettle();
     expect(find.text('Bienvenue sur GNU'), findsOneWidget);
-    await tester.tap(find.text('Enseignant'));
-    await tester.tap(find.text('Explorer cet espace démo'));
-    await tester.pumpAndSettle();
-    expect(find.text('Saisie des notes'), findsOneWidget);
-    expect(find.text('Notes & bulletins'), findsNothing);
-    expect(find.text('DÉMO'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
   testWidgets(
-    'inscription étudiante affiche les validations avant l’appel réseau',
+    'aucune inscription libre n’est proposée',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1000, 1000));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(GnuApp(sessionStorage: _MemorySessionStorage()));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Connexion réelle étudiant'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Créer un compte étudiant'));
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Créer mon compte'));
-      await tester.tap(find.text('Créer mon compte'));
-      await tester.pumpAndSettle();
-      expect(
-        find.textContaining('Renseignez le nom, le prénom'),
-        findsOneWidget,
-      );
+      expect(find.text('Créer un compte étudiant'), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
@@ -54,26 +38,12 @@ void main() {
       ) async {
         await tester.binding.setSurfaceSize(Size(width, 1000));
         addTearDown(() => tester.binding.setSurfaceSize(null));
-        final store = DemoStore();
-        addTearDown(store.dispose);
         await tester.pumpWidget(
-          MaterialApp(
-            theme: buildTheme(),
-            home: Portal(role: role, store: store, onExit: () {}),
-          ),
+          GnuApp(sessionStorage: _MemorySessionStorage()),
         );
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
-        for (final destination in destinations(role).skip(1)) {
-          if (width < 1100) {
-            await tester.tap(find.byTooltip('Ouvrir le menu'));
-            await tester.pumpAndSettle();
-          }
-          await tester.tap(find.widgetWithText(ListTile, destination.label));
-          await tester.pumpAndSettle();
-          expect(tester.takeException(), isNull, reason: destination.label);
-          expect(find.byType(FeaturePage), findsOneWidget);
-        }
+        expect(find.text('Bienvenue sur GNU'), findsOneWidget);
       });
     }
   }

@@ -45,75 +45,33 @@ void main() {
     expect(expired, 1);
   });
 
-  test('inscription API conserve le contrat et persiste le jeton', () async {
-    final storage = _TestSessionStorage();
-    final requests = <http.Request>[];
-    final client = StudentApiClient(
-      baseUrl: 'http://gnu.test/api/v1',
-      storage: storage,
-      client: MockClient((request) async {
-        requests.add(request);
-        if (request.url.path.endsWith('/auth/register')) {
-          return http.Response(
-            jsonEncode({
-              'token': 'secret-test-token',
-              'expires_at': DateTime.now()
-                  .add(const Duration(hours: 1))
-                  .toIso8601String(),
-              'utilisateur': _profile,
-            }),
-            201,
-          );
-        }
-        if (request.url.path.endsWith('/profil/etudiant'))
-          return _json({
-            'data': {..._profile, 'actif': true},
-          });
-        return http.Response('', 204);
-      }),
-    );
-    addTearDown(client.dispose);
-
-    await client.register(
-      nom: 'Ngue Mbong',
-      prenom: 'André',
-      matricule: '21t2355',
-      password: 'secret123',
-      passwordConfirmation: 'secret123',
-    );
-    expect(requests.first.method, 'POST');
-    expect(requests.first.url.path, '/api/v1/auth/register');
-    expect(jsonDecode(requests.first.body), {
-      'nom': 'Ngue Mbong',
-      'prenom': 'André',
-      'matricule': '21t2355',
-      'password': 'secret123',
-      'password_confirmation': 'secret123',
-    });
-    expect(storage.values['gnu.student.token'], 'secret-test-token');
-    expect(await client.restoreSession(), isTrue);
-    expect(requests.last.headers['Authorization'], 'Bearer secret-test-token');
-    await client.logout();
-    expect(storage.values, isEmpty);
-  });
-
   testWidgets('profil étudiant enregistre le courriel via l’API', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final requests = <http.Request>[];
+    var profileReads = 0;
     final api = _api((request) {
       requests.add(request);
-      if (request.url.path == '/api/v1/profil/etudiant') {
-        return _json({'data': _profile});
+      if (request.url.path == '/api/v1/etudiant/fiche-academique') {
+        return _json({'data': {'available': false}});
       }
       if (request.url.path == '/api/v1/etudiant/inscriptions') {
         return _json({'data': _enrollment});
       }
-      if (request.url.path == '/api/v1/etudiant/profil') {
+      if (request.url.path == '/api/v1/profil/etudiant') {
+        if (request.method == 'GET') {
+          profileReads++;
+        }
         return _json({
-          'data': {..._profile, 'courriel': 'nouveau@example.test'},
+          'data': {
+            ..._profile,
+            if (request.method == 'PUT' || profileReads > 1)
+              'courriel': 'nouveau@example.test'
+            else
+              'courriel': 'ancien@example.test',
+          },
         });
       }
       return _json({'data': <Object>[]});
@@ -131,18 +89,24 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Informations personnelles'), findsOneWidget);
     await tester.enterText(
-      find.byType(TextField).first,
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField &&
+            widget.keyboardType == TextInputType.emailAddress,
+      ),
       'nouveau@example.test',
     );
-    await tester.tap(find.text('Enregistrer'));
+    await tester.tap(find.text('Enregistrer le profil'));
     await tester.pumpAndSettle();
 
     final update = requests.singleWhere(
-      (request) => request.url.path == '/api/v1/etudiant/profil',
+      (request) =>
+          request.method == 'PUT' &&
+          request.url.path == '/api/v1/profil/etudiant',
     );
     expect(update.method, 'PUT');
-    expect(jsonDecode(update.body), {'courriel': 'nouveau@example.test'});
-    expect(find.text('Courriel enregistré.'), findsOneWidget);
+    expect((jsonDecode(update.body) as Map)['courriel'], 'nouveau@example.test');
+    expect(find.text('Profil enregistré.'), findsOneWidget);
   });
 
   testWidgets('inscription semestrielle peut être soumise et remplacée', (
@@ -170,6 +134,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('INF211 · PROGRAMMATION ORIENTÉE OBJET'), findsOneWidget);
     await tester.tap(find.byType(CheckboxListTile).first);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Soumettre les choix'));
     await tester.pumpAndSettle();
 
@@ -178,7 +143,9 @@ void main() {
         (request) =>
             request.method == 'PUT' &&
             request.url.path == '/api/v1/etudiant/inscriptions' &&
-            (jsonDecode(request.body) as Map)['codes_ue'].contains('INF211'),
+            ((jsonDecode(request.body) as Map)['codes_ue'] as List).contains(
+              'INF211',
+            ),
       ),
       isTrue,
     );
@@ -228,7 +195,7 @@ void main() {
       find.textContaining('INF212 · MATHEMATIQUES DISCRETES'),
       findsOneWidget,
     );
-    expect(find.textContaining('49/100'), findsOneWidget);
+    expect(find.textContaining('Note : —/20'), findsOneWidget);
   });
 }
 
@@ -278,6 +245,8 @@ const _enrollment = <String, Object>{
   'statut': 'BROUILLON',
   'semestre': 1,
   'peut_modifier': true,
+  'nombre_ue_attendu': 1,
+  'nombre_ue_disponible': 1,
   'unites': [
     {
       'id': 1,

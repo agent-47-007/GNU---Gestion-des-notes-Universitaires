@@ -443,7 +443,7 @@ Attendu : \texttt{201}, UE \texttt{BROUILLON}. Ajouter de un à deux éléments 
 }
 \end{lstlisting}
 
-Pour activer l’UE, \method{PATCH /agent/ues/\{ue\}/statut} avec \texttt{\{"statut\_catalogue":"ACTIF"\}}. Elle doit comporter un ou deux EC. Après le test, archiver avec \texttt{ARCHIVE} si aucune autre donnée ne l’utilise. Les codes et IDs doivent être conservés dans les variables Postman.
+Pour activer l’UE, \method{PATCH /agent/ues/\{ue\}/statut} avec \texttt{\{"statut\_catalogue":"ACTIF"\}}. Elle doit comporter un ou deux EC, sauf l’UE officielle INF500 du M2-S2, qui est une UE de mémoire sans EC. Après le test, archiver avec \texttt{ARCHIVE} si aucune autre donnée ne l’utilise. Les codes et IDs doivent être conservés dans les variables Postman.
 
 \subsection{Affecter un enseignant}
 

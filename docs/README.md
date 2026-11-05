@@ -1,11 +1,10 @@
-# Conception de la nouvelle version
+# Documentation GNU
 
-À définir avec le porteur du projet :
+Le dépôt contient le cahier des charges, les règles métier, les audits historiques, les guides de test et les documents de suivi.
 
-- Les utilisateurs et leurs rôles.
-- Les fonctionnalités de la première version.
-- Les règles de saisie, de validation et de calcul des notes.
-- Les écrans et les parcours utilisateurs.
-- Les technologies et le mode de déploiement.
-
-Les documents de l’ancienne version restent consultables dans la sauvegarde.
+- `CAHIER_DES_CHARGES_GNU.tex` — périmètre et règles du projet.
+- `audit/05_audit_regles_metier.md` — règles applicatives approuvées et état des parcours.
+- `audit/09_validation_production.md` — fonctionnalités acceptées, vérifications locales et prérequis de livraison institutionnelle.
+- `FRONTEND_PROGRESS.md` — état du client Flutter.
+- `guide-tests-manuels.md` — démarrage et scénarios locaux.
+- `imports/` — scripts et données de référence du catalogue; vérifier l’environnement avant exécution.

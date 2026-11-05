@@ -1,17 +1,19 @@
-# gnu_frontend
+# Client GNU (Flutter)
 
-A new Flutter project.
+Client Web/mobile de GNU, connecté à l’API Laravel. Voir le [README du dépôt](../README.md) pour le démarrage local, l’accès téléphone, les tests et le build.
 
-## Getting Started
+## Commandes essentielles
 
-This project is a starting point for a Flutter application.
+```bash
+flutter pub get
+flutter test --no-pub
+flutter run -d web-server --web-hostname 127.0.0.1 --web-port 8780 --dart-define=GNU_API_BASE_URL=http://127.0.0.1:8000/api/v1
+```
 
-A few resources to get you started if this is your first Flutter project:
+Pour une vraie build de production, `GNU_API_BASE_URL` doit être l’URL HTTPS de l’API fournie par l’environnement de déploiement :
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+```bash
+GNU_API_BASE_URL=https://api-etablissement.example/api/v1 bash tool/build_production.sh
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Une session Web locale ouverte sur une adresse IP privée en HTTP utilise un stockage navigateur de test, car WebCrypto n’est pas disponible dans ce contexte. Ce mode est réservé aux comptes de test.

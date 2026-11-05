@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Services\AcademicRules;
 use App\Services\GradeSpreadsheetReader;
+use App\Services\GradeWorkbookWriter;
 use DomainException;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -15,6 +17,305 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 class TeacherPortalController extends Controller
 {
+    public function rooms(Request $request): JsonResponse
+    {
+        $teacherId = $this->teacherId($request);
+        $years = DB::table('gnu.annee_academique')->orderByDesc('date_debut')
+            ->get(['id', 'libelle', 'date_debut', 'date_fin']);
+        abort_if($years->isEmpty(), 404, 'Aucune année académique n’est configurée.');
+        $currentYearId = (int) $years->first()->id;
+        $yearId = $request->filled('annee_id') ? $request->integer('annee_id') : $currentYearId;
+        abort_unless($years->contains(fn (object $year): bool => (int) $year->id === $yearId), 404, 'Année académique introuvable.');
+
+        $rooms = DB::table('gnu.classe as c')
+            ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
+            ->join('gnu.filiere as f', 'f.id', '=', 'n.filiere_id')
+            ->join('gnu.departement as d', 'd.id', '=', 'f.departement_id')
+            ->leftJoin('gnu.specialite as s', 's.id', '=', 'n.specialite_id')
+            ->leftJoin('gnu.adhesion_salle_enseignant as adh', function ($join) use ($teacherId): void {
+                $join->on('adh.classe_id', '=', 'c.id')->where('adh.enseignant_id', '=', $teacherId);
+            })
+            ->leftJoin('gnu.inscription_classe as ic', function ($join): void {
+                $join->on('ic.classe_id', '=', 'c.id')->where('ic.statut_inscription', '=', 'VALIDEE');
+            })
+            ->where('c.annee_id', $yearId)
+            ->groupBy('c.id', 'c.code_classe', 'an.id', 'an.libelle', 'an.date_debut', 'n.code_niv', 'n.libelle_niv', 'f.code_f', 'f.nom_f', 'd.nom_depart', 's.libelle_specialite', 'adh.id')
+            ->orderBy('c.code_classe')
+            ->get([
+                'c.id as classe_id', 'c.code_classe', 'an.id as annee_id', 'an.libelle as annee_academique',
+                'n.code_niv', 'n.libelle_niv', 'f.code_f', 'f.nom_f', 'd.nom_depart',
+                's.libelle_specialite', 'adh.id as adhesion_id',
+                DB::raw('count(DISTINCT ic.id)::int as effectif'),
+            ])->map(function (object $room) use ($yearId, $currentYearId): array {
+                $room->effectif = (int) $room->effectif;
+                $room->choisie = $room->adhesion_id !== null;
+                $room->annee_courante = $yearId === $currentYearId;
+                $room->effectif_selectionnee = $room->choisie ? $room->effectif : 0;
+
+                return (array) $room;
+            });
+
+        return response()->json(['annee_id' => $yearId, 'annee_courante_id' => $currentYearId, 'annees' => $years, 'data' => $rooms]);
+    }
+
+    public function joinRoom(Request $request, int $classe): JsonResponse
+    {
+        $teacherId = $this->teacherId($request);
+        $currentYearId = DB::table('gnu.annee_academique')->orderByDesc('date_debut')->value('id');
+        abort_unless($currentYearId !== null, 404, 'Aucune année académique n’est configurée.');
+        abort_unless(DB::table('gnu.classe')->where('id', $classe)->where('annee_id', $currentYearId)->exists(), 404, 'Cette salle n’est pas ouverte pour l’année académique en cours.');
+        abort_if(DB::table('gnu.adhesion_salle_enseignant')->where('enseignant_id', $teacherId)->where('classe_id', $classe)->exists(), 409, 'Vous avez déjà rejoint cette salle.');
+
+        $id = DB::transaction(function () use ($request, $teacherId, $classe): int {
+            $this->setAuditContext($request, 'Adhésion volontaire d’un enseignant à une salle');
+
+            return (int) DB::table('gnu.adhesion_salle_enseignant')->insertGetId([
+                'enseignant_id' => $teacherId,
+                'classe_id' => $classe,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ], 'id');
+        });
+
+        return response()->json(['id' => $id, 'message' => 'Vous avez rejoint la salle.'], 201);
+    }
+
+    public function roomStudents(Request $request, int $classe): JsonResponse
+    {
+        $teacherId = $this->teacherId($request);
+        abort_unless(DB::table('gnu.adhesion_salle_enseignant')->where('enseignant_id', $teacherId)->where('classe_id', $classe)->exists(), 403, 'Rejoignez cette salle pour consulter ses élèves.');
+        $room = DB::table('gnu.classe as c')
+            ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('c.id', $classe)->first(['c.id', 'c.code_classe', 'an.libelle as annee_academique']);
+        abort_unless($room !== null, 404);
+        $students = DB::table('gnu.inscription_classe as ic')
+            ->join('gnu.etudiant as e', 'e.id', '=', 'ic.etudiant_id')
+            ->join('gnu.utilisateur as u', 'u.id', '=', 'e.utilisateur_id')
+            ->where('ic.classe_id', $classe)->where('ic.statut_inscription', 'VALIDEE')
+            ->orderBy('u.nom')->orderBy('u.prenom')
+            ->get(['ic.id as inscription_classe_id', 'e.id as etudiant_id', 'e.matricule', 'u.nom', 'u.prenom', 'ic.statut_redoublant']);
+
+        return response()->json(['salle' => $room, 'data' => $students]);
+    }
+
+    public function exportRoomRoster(Request $request, int $classe, GradeWorkbookWriter $writer)
+    {
+        $teacherId = $this->teacherId($request);
+        abort_unless(DB::table('gnu.adhesion_salle_enseignant')
+            ->where('enseignant_id', $teacherId)->where('classe_id', $classe)->exists(), 403, 'Rejoignez cette salle pour télécharger son effectif.');
+
+        $room = DB::table('gnu.classe as c')
+            ->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
+            ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('c.id', $classe)
+            ->first(['c.code_classe', 'n.code_niv', 'n.libelle_niv', 'an.libelle as annee_academique']);
+        abort_if($room === null, 404, 'Salle introuvable.');
+
+        $students = DB::table('gnu.inscription_classe as ic')
+            ->join('gnu.etudiant as e', 'e.id', '=', 'ic.etudiant_id')
+            ->join('gnu.utilisateur as u', 'u.id', '=', 'e.utilisateur_id')
+            ->where('ic.classe_id', $classe)->where('ic.statut_inscription', 'VALIDEE')
+            ->orderBy('u.nom')->orderBy('u.prenom')->orderBy('e.matricule')
+            ->get(['e.matricule', 'u.nom', 'u.prenom'])
+            ->map(fn (object $student): array => [
+                $student->matricule,
+                $student->nom,
+                $student->prenom,
+                $room->code_niv.' · '.$room->libelle_niv,
+                $room->code_classe,
+            ])->all();
+
+        $rows = [[
+            'Matricule', 'Nom', 'Prénom', 'Niveau', 'Classe',
+        ], ...$students];
+        $filename = $this->safeFilename('effectif-'.$room->code_classe.'-'.$room->annee_academique).'.xlsx';
+
+        return response()->streamDownload(
+            static function () use ($writer, $rows): void {
+                echo $writer->write([['name' => 'Effectif', 'rows' => $rows]]);
+            },
+            $filename,
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        );
+    }
+
+    public function courseOptions(Request $request, int $classe): JsonResponse
+    {
+        $teacherId = $this->teacherId($request);
+        abort_unless(DB::table('gnu.adhesion_salle_enseignant')
+            ->where('enseignant_id', $teacherId)->where('classe_id', $classe)->exists(), 403, 'Rejoignez cette salle pour consulter son programme.');
+        $class = DB::table('gnu.classe')->where('id', $classe)->first(['id', 'niveau_id', 'version_programme']);
+        abort_unless($class !== null, 404, 'Classe introuvable.');
+        $semester = $request->integer('semestre');
+        abort_if($request->filled('semestre') && ! in_array($semester, [1, 2], true), 422, 'Semestre invalide.');
+
+        $units = DB::table('gnu.ue as u')
+            ->where('u.niveau_id', $class->niveau_id)
+            ->where('u.version_programme', $class->version_programme)
+            ->where('u.statut_catalogue', 'ACTIF')
+            ->when($request->filled('semestre'), fn ($query) => $query->where('u.numero_semestre', $semester))
+            ->orderBy('u.numero_semestre')->orderBy('u.code_ue')
+            ->get(['u.id', 'u.code_ue', 'u.intitule_ue', 'u.numero_semestre']);
+        $unitIds = $units->pluck('id')->all();
+        $elements = $unitIds === [] ? collect() : DB::table('gnu.matiere as m')
+            ->whereIn('m.ue_id', $unitIds)->orderBy('m.ue_id')->orderBy('m.rang_ec')
+            ->get(['m.id', 'm.ue_id', 'm.code_m', 'm.intitule_matiere', 'm.rang_ec']);
+        $assignments = DB::table('gnu.affectation as a')
+            ->where('a.classe_id', $classe)->where('a.enseignant_id', $teacherId)
+            ->get(['a.id', 'a.matiere_id', 'a.actif'])->keyBy('matiere_id');
+        $pending = [];
+        $latestProposals = collect();
+        $pendingByOther = [];
+        $proposalsAvailable = true;
+        try {
+            $pending = DB::table('gnu.proposition_affectation_enseignant as p')
+                ->join('gnu.affectation as a', 'a.id', '=', 'p.affectation_id')
+                ->where('a.classe_id', $classe)->where('a.enseignant_id', $teacherId)->where('p.statut', 'EN_ATTENTE')
+                ->pluck('a.matiere_id')->map(static fn (mixed $id): int => (int) $id)->all();
+            $latestProposals = DB::table('gnu.proposition_affectation_enseignant as p')
+                ->join('gnu.affectation as a', 'a.id', '=', 'p.affectation_id')
+                ->where('a.classe_id', $classe)->where('a.enseignant_id', $teacherId)
+                ->orderByDesc('p.id')->get(['a.matiere_id', 'p.statut', 'p.motif_decision'])
+                ->unique('matiere_id')->keyBy('matiere_id');
+            $pendingByOther = DB::table('gnu.proposition_affectation_enseignant as p')
+                ->join('gnu.affectation as a', 'a.id', '=', 'p.affectation_id')
+                ->where('a.classe_id', $classe)->where('a.enseignant_id', '<>', $teacherId)->where('p.statut', 'EN_ATTENTE')
+                ->pluck('a.matiere_id')->map(static fn (mixed $id): int => (int) $id)->all();
+        } catch (QueryException $exception) {
+            if ((string) $exception->getCode() !== '42P01') {
+                throw $exception;
+            }
+            $proposalsAvailable = false;
+        }
+        $occupied = DB::table('gnu.affectation')->where('classe_id', $classe)->where('actif', true)
+            ->pluck('matiere_id')->map(static fn (mixed $id): int => (int) $id)->all();
+
+        return response()->json(['data' => $units->map(fn (object $unit): array => [
+            'id' => (int) $unit->id,
+            'code_ue' => $unit->code_ue,
+            'intitule_ue' => $unit->intitule_ue,
+            'numero_semestre' => (int) $unit->numero_semestre,
+            'propositions_disponibles' => $proposalsAvailable,
+            'elements' => $elements->where('ue_id', $unit->id)->map(fn (object $element): array => [
+                'id' => (int) $element->id,
+                'code_m' => $element->code_m,
+                'intitule_matiere' => $element->intitule_matiere,
+                'rang_ec' => (int) $element->rang_ec,
+                'affectation_id' => isset($assignments[$element->id]) ? (int) $assignments[$element->id]->id : null,
+                'motif_decision' => $latestProposals[$element->id]->motif_decision ?? null,
+                'statut_affectation' => ! empty($assignments[$element->id]->actif) ? 'APPROUVEE'
+                    : (in_array((int) $element->id, $pending, true) ? 'EN_ATTENTE'
+                        : (($latestProposals[$element->id]->statut ?? null) === 'REJETEE' ? 'REJETEE'
+                            : (in_array((int) $element->id, $occupied, true) || in_array((int) $element->id, $pendingByOther, true) ? 'INDISPONIBLE' : null))),
+                'peut_demander_separement' => $proposalsAvailable,
+            ])->values(),
+        ])]);
+    }
+
+    public function assignmentProposals(Request $request): JsonResponse
+    {
+        $teacherId = $this->teacherId($request);
+        $rows = DB::table('gnu.proposition_affectation_enseignant as p')
+            ->join('gnu.affectation as a', 'a.id', '=', 'p.affectation_id')
+            ->join('gnu.classe as c', 'c.id', '=', 'a.classe_id')
+            ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->join('gnu.matiere as m', 'm.id', '=', 'a.matiere_id')
+            ->join('gnu.ue as u', 'u.id', '=', 'm.ue_id')
+            ->leftJoin('gnu.utilisateur as decisionnaire', 'decisionnaire.id', '=', 'p.decidee_par')
+            ->where('a.enseignant_id', $teacherId)
+            ->orderByDesc('p.soumise_le')
+            ->get([
+                'p.id', 'p.affectation_id', 'p.statut', 'p.motif_enseignant', 'p.motif_decision',
+                'p.soumise_le', 'p.decidee_le', 'decisionnaire.nom as nom_decideur', 'decisionnaire.prenom as prenom_decideur',
+                'c.id as classe_id', 'c.code_classe', 'an.libelle as annee_academique',
+                'u.code_ue', 'u.intitule_ue', 'u.numero_semestre', 'm.id as matiere_id', 'm.code_m', 'm.intitule_matiere',
+            ]);
+
+        return response()->json(['data' => $rows]);
+    }
+
+    public function proposeAssignment(Request $request, int $classe): JsonResponse
+    {
+        $data = $request->validate([
+            'matiere_id' => ['required_without:ue_id', 'nullable', 'integer', 'min:1'],
+            'ue_id' => ['required_without:matiere_id', 'nullable', 'integer', 'min:1'],
+        ]);
+        abort_if(isset($data['matiere_id'], $data['ue_id']), 422, 'Choisissez une UE entière ou un seul EC, pas les deux.');
+        $teacherId = $this->teacherId($request);
+        abort_unless(DB::table('gnu.adhesion_salle_enseignant')
+            ->where('enseignant_id', $teacherId)->where('classe_id', $classe)->exists(), 403, 'Rejoignez cette salle avant de proposer une matière.');
+        $yearId = DB::table('gnu.annee_academique')->orderByDesc('date_debut')->value('id');
+        $class = DB::table('gnu.classe')->where('id', $classe)->where('annee_id', $yearId)->first(['id', 'niveau_id', 'version_programme']);
+        abort_unless($class !== null, 422, 'Les propositions ne sont ouvertes que pour une classe de l’année académique courante.');
+        $elements = DB::table('gnu.matiere as m')->join('gnu.ue as u', 'u.id', '=', 'm.ue_id')
+            ->where('u.niveau_id', $class->niveau_id)
+            ->where('u.version_programme', $class->version_programme)
+            ->where('u.statut_catalogue', 'ACTIF')
+            ->when(isset($data['ue_id']), fn ($query) => $query->where('u.id', $data['ue_id']))
+            ->when(isset($data['matiere_id']), fn ($query) => $query->where('m.id', $data['matiere_id']))
+            ->orderBy('m.rang_ec')->get(['m.id']);
+        abort_unless($elements->isNotEmpty(), 422, 'Cette UE ou cet EC ne correspond pas au niveau et au programme de la classe.');
+
+        $result = DB::transaction(function () use ($request, $teacherId, $classe, $elements): array {
+            DB::table('gnu.classe')->where('id', $classe)->lockForUpdate()->first();
+            $this->setAuditContext($request, 'Confirmation de choix d’enseignement pour validation par la cellule');
+            $proposalIds = [];
+            $skipped = 0;
+            foreach ($elements as $element) {
+                $active = DB::table('gnu.affectation')->where('classe_id', $classe)
+                    ->where('matiere_id', $element->id)->where('actif', true)->exists();
+                $pending = DB::table('gnu.proposition_affectation_enseignant as p')
+                    ->join('gnu.affectation as a', 'a.id', '=', 'p.affectation_id')
+                    ->where('a.classe_id', $classe)->where('a.matiere_id', $element->id)
+                    ->where('p.statut', 'EN_ATTENTE')->exists();
+                if ($active || $pending) {
+                    $skipped++;
+
+                    continue;
+                }
+
+                $assignmentId = DB::table('gnu.affectation')->where('enseignant_id', $teacherId)
+                    ->where('classe_id', $classe)->where('matiere_id', $element->id)->where('actif', false)
+                    ->orderByDesc('id')->value('id');
+                if ($assignmentId === null) {
+                    $assignmentId = DB::table('gnu.affectation')->insertGetId([
+                        'enseignant_id' => $teacherId,
+                        'matiere_id' => $element->id,
+                        'classe_id' => $classe,
+                        'actif' => false,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ], 'id');
+                }
+
+                $proposalIds[] = (int) DB::table('gnu.proposition_affectation_enseignant')->insertGetId([
+                    'affectation_id' => $assignmentId,
+                    'statut' => 'EN_ATTENTE',
+                    'soumise_par' => $request->user()->id,
+                    'motif_enseignant' => '',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ], 'id');
+            }
+            abort_if($proposalIds === [], 409, 'Aucun EC disponible : ils sont déjà attribués ou font déjà l’objet d’une demande.');
+
+            return ['ids' => $proposalIds, 'skipped' => $skipped];
+        });
+
+        $count = count($result['ids']);
+
+        return response()->json([
+            'ids' => $result['ids'],
+            'nombre_ec' => $count,
+            'ec_ignores' => $result['skipped'],
+            'statut' => 'EN_ATTENTE',
+            'message' => $count === 1
+                ? 'Le choix d’enseignement pour cet EC a été transmis à la cellule.'
+                : "{$count} choix d’enseignement ont été transmis à la cellule.",
+        ], 201);
+    }
+
     public function assignments(Request $request): JsonResponse
     {
         $teacherId = DB::table('gnu.enseignant')
@@ -55,15 +356,18 @@ class TeacherPortalController extends Controller
         $data = $request->validate(['code_profil' => ['required', 'in:CC_SN,CC_TP_SN,CC_TPE_SN']]);
         $teacherId = $this->teacherId($request);
         $assignment = $this->ownedAssignment($affectation, $teacherId);
+        DB::table('gnu.affectation')->where('id', $assignment->id)->lockForUpdate()->first();
         DB::transaction(function () use ($request, $data, $assignment, $teacherId): void {
+            DB::table('gnu.affectation')->where('id', $assignment->id)->lockForUpdate()->first();
             $this->setAuditContext($request, 'Proposition de profil de notation détecté dans le fichier de notes');
             DB::table('gnu.proposition_profil_evaluation')->updateOrInsert(
                 ['ue_id' => $assignment->ue_id, 'enseignant_id' => $teacherId, 'code_profil' => $data['code_profil'], 'statut' => 'EN_ATTENTE'],
                 ['affectation_id' => $assignment->id, 'updated_at' => now(), 'created_at' => now()],
             );
+            // Proposed profiles do not become class evaluations until the agent approves one.
         });
 
-        return response()->json(['message' => 'La proposition de barème a été transmise à la cellule.'], 202);
+        return response()->json(['message' => 'Le barème a été proposé à la cellule. Le carnet provisoire est prêt; la transmission officielle reste bloquée jusqu’à validation.'], 202);
     }
 
     public function saveEvaluationPlan(Request $request, int $affectation): JsonResponse
@@ -197,17 +501,55 @@ class TeacherPortalController extends Controller
 
     public function storeRetakeSession(Request $request, int $affectation): JsonResponse
     {
+        $request->merge(['salle' => strtoupper(trim((string) $request->input('salle')))]);
         $data = $request->validate([
             'libelle' => ['required', 'string', 'max:255'],
             'date_session' => ['required', 'date', 'after_or_equal:today'],
+            'heure_debut' => ['required', 'date_format:H:i'],
+            'heure_fin' => ['required', 'date_format:H:i', 'after:heure_debut'],
+            'salle' => ['required', 'string', 'max:32', 'regex:/^[A-Z0-9][A-Z0-9-]{0,31}$/'],
         ]);
         $assignment = $this->ownedAssignment($affectation, $this->teacherId($request));
-        $id = DB::transaction(function () use ($request, $data, $assignment): int {
+        $teacherId = $this->teacherId($request);
+        $id = DB::transaction(function () use ($request, $data, $assignment, $teacherId): int {
+            app(AgentPortalController::class)->lockExamSlots(
+                $data['date_session'], $data['salle'], (int) $assignment->classe_id, $teacherId,
+            );
+            $roomConflict = DB::table('gnu.session_rattrapage')->whereDate('date_session', $data['date_session'])
+                ->where('salle', $data['salle'])->whereNotNull('heure_debut')
+                ->whereRaw('heure_debut < ? AND heure_fin > ?', [$data['heure_fin'], $data['heure_debut']])->exists()
+                || DB::table('gnu.evaluation')->whereDate('date_evaluation', $data['date_session'])
+                    ->where('salle', $data['salle'])->whereNotNull('heure_debut')
+                    ->whereRaw('heure_debut < ? AND heure_fin > ?', [$data['heure_fin'], $data['heure_debut']])->exists();
+            abort_if($roomConflict, 409, 'Cette salle est déjà occupée sur ce créneau.');
+            $classConflict = DB::table('gnu.session_rattrapage')->where('classe_id', $assignment->classe_id)
+                ->whereDate('date_session', $data['date_session'])->whereNotNull('heure_debut')
+                ->whereRaw('heure_debut < ? AND heure_fin > ?', [$data['heure_fin'], $data['heure_debut']])->exists()
+                || DB::table('gnu.evaluation as ev')->join('gnu.affectation as a', 'a.id', '=', 'ev.affectation_id')
+                    ->where('a.classe_id', $assignment->classe_id)->whereDate('ev.date_evaluation', $data['date_session'])
+                    ->whereNotNull('ev.heure_debut')->whereRaw('ev.heure_debut < ? AND ev.heure_fin > ?', [$data['heure_fin'], $data['heure_debut']])->exists();
+            abort_if($classConflict, 409, 'Cette classe a déjà une évaluation sur ce créneau.');
+            $teacherConflict = DB::table('gnu.evaluation as ev')->join('gnu.affectation as a', 'a.id', '=', 'ev.affectation_id')
+                ->where('a.enseignant_id', $teacherId)->whereDate('ev.date_evaluation', $data['date_session'])
+                ->whereNotNull('ev.heure_debut')->whereRaw('ev.heure_debut < ? AND ev.heure_fin > ?', [$data['heure_fin'], $data['heure_debut']])->exists()
+                || DB::table('gnu.session_rattrapage as sr')
+                    ->join('gnu.session_rattrapage_ue as sru', 'sru.session_id', '=', 'sr.id')
+                    ->join('gnu.matiere as rm', 'rm.ue_id', '=', 'sru.ue_id')
+                    ->join('gnu.affectation as ra', function ($join): void {
+                        $join->on('ra.classe_id', '=', 'sr.classe_id')->on('ra.matiere_id', '=', 'rm.id')->where('ra.actif', '=', true);
+                    })
+                    ->where('ra.enseignant_id', $teacherId)->whereDate('sr.date_session', $data['date_session'])
+                    ->whereNotNull('sr.heure_debut')->whereRaw('sr.heure_debut < ? AND sr.heure_fin > ?', [$data['heure_fin'], $data['heure_debut']])->exists();
+            abort_if($teacherConflict, 409, 'Vous avez déjà une évaluation programmée sur ce créneau.');
+
             $this->setAuditContext($request, 'Programmation d’une session de rattrapage par l’enseignant');
             $sessionId = (int) DB::table('gnu.session_rattrapage')->insertGetId([
                 'classe_id' => $assignment->classe_id,
                 'libelle' => trim($data['libelle']),
                 'date_session' => $data['date_session'],
+                'heure_debut' => $data['heure_debut'],
+                'heure_fin' => $data['heure_fin'],
+                'salle' => $data['salle'],
                 'statut_session' => 'PREVUE',
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -219,11 +561,41 @@ class TeacherPortalController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+            $recipients = DB::table('gnu.inscription_classe as ic')
+                ->join('gnu.etudiant as e', 'e.id', '=', 'ic.etudiant_id')
+                ->join('gnu.inscription_ue as iu', function ($join) use ($assignment): void {
+                    $join->on('iu.inscription_classe_id', '=', 'ic.id')
+                        ->where('iu.ue_id', '=', $assignment->ue_id)
+                        ->where('iu.statut_inscription', '=', 'VALIDEE');
+                })
+                ->where('ic.classe_id', $assignment->classe_id)->where('ic.statut_inscription', 'VALIDEE')
+                ->pluck('e.utilisateur_id')->push((int) $request->user()->id)->unique();
+            $content = json_encode([
+                'titre' => 'Rattrapage programmé',
+                'message' => "{$assignment->code_m} · {$assignment->code_classe} : le {$data['date_session']} de {$data['heure_debut']} à {$data['heure_fin']}, salle {$data['salle']}.",
+                'session_id' => $sessionId,
+                'date' => $data['date_session'],
+                'heure_debut' => $data['heure_debut'],
+                'heure_fin' => $data['heure_fin'],
+                'salle' => $data['salle'],
+            ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+            foreach ($recipients as $recipientId) {
+                DB::table('gnu.notification')->insertOrIgnore([
+                    'destinataire_id' => $recipientId,
+                    'type_notification' => 'SESSION_RATTRAPAGE',
+                    'cle_evenement' => 'RATTRAPAGE|'.$sessionId,
+                    'contenu' => $content,
+                    'date_envoi' => now(),
+                    'statut_envoi' => 'ENVOYEE',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
 
             return $sessionId;
         });
 
-        return response()->json(['id' => $id, 'message' => 'Session de rattrapage programmée.'], 201);
+        return response()->json(['id' => $id, 'message' => 'Session de rattrapage programmée. Les étudiants inscrits ont été notifiés.'], 201);
     }
 
     public function retakeCandidates(Request $request, int $affectation): JsonResponse
@@ -361,9 +733,10 @@ class TeacherPortalController extends Controller
             'notes' => ['required', 'array', 'min:1', 'max:500'],
             'notes.*.matricule' => ['required', 'string', 'max:32', 'distinct'],
             'notes.*.situation' => ['required', 'in:NUMERIQUE,ABSENTE'],
-            'notes.*.valeur_note' => ['nullable', 'numeric', 'between:0,20'],
+            'notes.*.valeur_note' => ['nullable', 'numeric'],
             'notes.*.version_note' => ['nullable', 'integer', 'min:1'],
         ]));
+        $data = $this->clampGradeInputs($data);
         $assignment = $this->ownedAssignment($affectation, $this->teacherId($request));
         $event = DB::table('gnu.evaluation')->where('id', $evaluation)->where('affectation_id', $assignment->id)
             ->where('mode_evaluation', 'RATTRAPAGE')->first();
@@ -429,7 +802,20 @@ class TeacherPortalController extends Controller
     {
         $teacherId = $this->teacherId($request);
         $assignment = $this->ownedAssignment($affectation, $teacherId);
-        $this->ensureOfficialPlan($request, $assignment);
+        $proposedProfile = null;
+        if (DB::table('gnu.profil_evaluation_ue')->where('ue_id', $assignment->ue_id)->value('code_profil') === null) {
+            $proposedProfile = DB::table('gnu.profil_evaluation_ue')->where('ue_id', $assignment->ue_id)->value('code_profil')
+                ?? DB::table('gnu.proposition_profil_evaluation')
+                    ->where('ue_id', $assignment->ue_id)
+                    ->where('enseignant_id', $assignment->enseignant_id)
+                    ->where('affectation_id', $assignment->id)
+                    ->whereIn('statut', ['EN_ATTENTE', 'APPROUVEE'])
+                    ->orderByDesc('created_at')
+                    ->value('code_profil');
+        }
+        if ($assignment->profil_evaluation !== null) {
+            $this->ensureOfficialPlan($request, $assignment);
+        }
         $plan = $this->planData($affectation, $teacherId);
         $evaluations = collect($plan['composantes']);
         $students = DB::table('gnu.inscription_classe as ic')
@@ -483,7 +869,10 @@ class TeacherPortalController extends Controller
 
         return response()->json(['data' => [
             'affectation_id' => $affectation,
+            'affectation_active' => (bool) $assignment->actif,
+            'affectation_statut' => $assignment->actif ? 'APPROUVEE' : 'EN_ATTENTE',
             'profil_evaluation' => $assignment->profil_evaluation,
+            'profil_propose' => $proposedProfile,
             'classe' => $assignment->code_classe,
             'code_ue' => $assignment->code_ue,
             'code_matiere' => $assignment->code_m,
@@ -554,12 +943,18 @@ class TeacherPortalController extends Controller
             'notes' => ['required', 'array', 'min:1', 'max:500'],
             'notes.*.matricule' => ['required', 'string', 'max:32', 'distinct'],
             'notes.*.situation' => ['required', 'in:NUMERIQUE,ABSENTE,MANQUANTE'],
-            'notes.*.valeur_note' => ['nullable', 'numeric', 'between:0,20'],
+            'notes.*.valeur_note' => ['nullable', 'numeric'],
             'notes.*.version_note' => ['nullable', 'integer', 'min:1'],
         ]));
+        $data = $this->clampGradeInputs($data);
         $teacherId = $this->teacherId($request);
         $assignment = $this->ownedAssignment($affectation, $teacherId);
-        $event = $this->activeEvaluation($affectation, $evaluation);
+        $assignmentProfile = DB::table('gnu.profil_evaluation_ue')->where('ue_id', $assignment->ue_id)->value('code_profil');
+        $event = $assignmentProfile !== null
+            ? $this->activeEvaluation($affectation, $evaluation)
+            : DB::table('gnu.evaluation')->where('id', $evaluation)
+                ->where('affectation_id', $affectation)->first();
+        abort_unless($event !== null, 404, 'Évaluation introuvable.');
         abort_unless($event->mode_evaluation === 'NORMALE', 404, 'Évaluation introuvable.');
 
         $studentIds = DB::table('gnu.inscription_classe as ic')
@@ -577,18 +972,22 @@ class TeacherPortalController extends Controller
                 throw ValidationException::withMessages(["notes.$index.valeur_note" => ['Une valeur numérique n’est pas permise pour une absence ou une note manquante.']]);
             }
             abort_unless($studentIds->has($row['matricule']), 422, 'Le matricule '.$row['matricule'].' n’est pas inscrit à cette UE dans cette classe.');
-            $this->assertGradesEditable($evaluation, (int) $studentIds[$row['matricule']]->inscription_ue_id);
+            if ($assignment->actif) {
+                $this->assertGradesEditable($evaluation, (int) $studentIds[$row['matricule']]->inscription_ue_id);
+            }
         }
 
-        $saved = DB::transaction(function () use ($request, $data, $evaluation, $studentIds, $affectation): int {
+        $saved = DB::transaction(function () use ($request, $data, $evaluation, $studentIds, $affectation, $assignment): int {
             DB::table('gnu.affectation')->where('id', $affectation)->lockForUpdate()->first();
             $this->setAuditContext($request, $data['motif']);
+            $this->markEvaluationRealized($evaluation);
             $count = 0;
             foreach ($data['notes'] as $row) {
                 $registrationId = (int) $studentIds[$row['matricule']]->inscription_ue_id;
-                $this->assertGradesEditable($evaluation, $registrationId);
+                if ($assignment->actif) {
+                    $this->assertGradesEditable($evaluation, $registrationId);
+                }
                 $existing = DB::table('gnu.note')->where('evaluation_id', $evaluation)->where('inscription_ue_id', $registrationId)->lockForUpdate()->first();
-                $this->assertGradesEditable($evaluation, (int) $student->inscription_ue_id);
                 $expectedVersion = (int) ($row['version_note'] ?? 0);
                 abort_if((int) ($existing->version_note ?? 0) !== $expectedVersion, 409, 'Une note a changé depuis le chargement. Rechargez le carnet avant de continuer.');
                 $correctionDecisionId = $this->authorizedMissingNoteCorrectionDecisionId($evaluation, $registrationId);
@@ -636,11 +1035,32 @@ class TeacherPortalController extends Controller
             'notes' => ['required', 'array', 'min:1', 'max:20'],
             'notes.*.evaluation_id' => ['required', 'integer', 'min:1', 'distinct'],
             'notes.*.situation' => ['required', 'in:NUMERIQUE,ABSENTE,MANQUANTE'],
-            'notes.*.valeur_note' => ['nullable', 'numeric', 'between:0,20'],
+            'notes.*.valeur_note' => ['nullable', 'numeric'],
             'notes.*.version_note' => ['nullable', 'integer', 'min:1'],
         ]));
+        $data = $this->clampGradeInputs($data);
         $teacherId = $this->teacherId($request);
         $assignment = $this->ownedAssignment($affectation, $teacherId);
+        $officialProfile = DB::table('gnu.profil_evaluation_ue')->where('ue_id', $assignment->ue_id)->value('code_profil');
+        if ($officialProfile === null) {
+            $proposal = DB::table('gnu.proposition_profil_evaluation')
+                ->where('ue_id', $assignment->ue_id)->where('enseignant_id', $assignment->enseignant_id)
+                ->where('affectation_id', $assignment->id)->where('statut', 'EN_ATTENTE')
+                ->orderByDesc('created_at')->value('code_profil');
+            if ($proposal !== null) {
+                $this->ensureOfficialPlan($request, $assignment);
+            }
+        }
+        $provisionalEvaluations = $officialProfile === null
+            ? DB::table('gnu.proposition_profil_evaluation as pp')
+                ->join('gnu.evaluation as ev', 'ev.affectation_id', '=', 'pp.affectation_id')
+                ->join('gnu.ligne_plan as lp', 'lp.evaluation_id', '=', 'ev.id')
+                ->join('gnu.plan_evaluation as pe', 'pe.id', '=', 'lp.plan_id')
+                ->where('pp.affectation_id', $assignment->id)->where('pp.statut', 'EN_ATTENTE')
+                ->where('pe.statut_plan', 'ACTIF')->where('lp.retenue', true)
+                ->pluck('ev.id')->map(static fn (mixed $id): int => (int) $id)->all()
+            : [];
+        abort_if($officialProfile === null && $provisionalEvaluations === [], 409, 'Proposez le barème depuis un classeur Excel pour préparer les notes provisoires.');
         $student = DB::table('gnu.inscription_classe as ic')
             ->join('gnu.etudiant as e', 'e.id', '=', 'ic.etudiant_id')
             ->join('gnu.inscription_ue as iu', function ($join) use ($assignment): void {
@@ -660,18 +1080,26 @@ class TeacherPortalController extends Controller
             if ($row['situation'] !== 'NUMERIQUE' && $row['valeur_note'] !== null) {
                 throw ValidationException::withMessages(["notes.$index.valeur_note" => ['Une valeur numérique n’est pas permise pour une absence ou une note manquante.']]);
             }
-            $event = $this->activeEvaluation($affectation, (int) $row['evaluation_id']);
+            $isProvisional = in_array((int) $row['evaluation_id'], $provisionalEvaluations, true);
+            $event = $isProvisional
+                ? DB::table('gnu.evaluation')->where('id', $row['evaluation_id'])->where('affectation_id', $affectation)->first()
+                : $this->activeEvaluation($affectation, (int) $row['evaluation_id']);
             abort_unless($event->mode_evaluation === 'NORMALE', 404, 'Évaluation introuvable.');
-            $this->assertGradesEditable((int) $row['evaluation_id'], (int) $student->inscription_ue_id);
+            if (! $isProvisional) {
+                $this->assertGradesEditable((int) $row['evaluation_id'], (int) $student->inscription_ue_id);
+            }
         }
 
-        $saved = DB::transaction(function () use ($request, $data, $assignment, $student): int {
+        $saved = DB::transaction(function () use ($request, $data, $assignment, $student, $provisionalEvaluations): int {
             DB::table('gnu.affectation')->where('id', $assignment->id)->lockForUpdate()->first();
             $this->setAuditContext($request, $data['motif']);
             $count = 0;
             foreach ($data['notes'] as $row) {
                 $evaluationId = (int) $row['evaluation_id'];
-                $this->assertGradesEditable($evaluationId, (int) $student->inscription_ue_id);
+                if (! in_array($evaluationId, $provisionalEvaluations, true)) {
+                    $this->assertGradesEditable($evaluationId, (int) $student->inscription_ue_id);
+                }
+                $this->markEvaluationRealized($evaluationId);
                 $existing = DB::table('gnu.note')
                     ->where('evaluation_id', $evaluationId)
                     ->where('inscription_ue_id', $student->inscription_ue_id)
@@ -701,7 +1129,7 @@ class TeacherPortalController extends Controller
                     ]);
                 } else {
                     DB::select("SELECT set_config('gnu.origine', ?, true), set_config('gnu.decision_id', ?, true)", [
-                        'CORRECTION', (string) ($correctionDecisionId ?? ''),
+                        in_array($evaluationId, $provisionalEvaluations, true) ? 'SAISIE' : 'CORRECTION', (string) ($correctionDecisionId ?? ''),
                     ]);
                     DB::table('gnu.note')->where('id', $existing->id)->update($values + ['version_note' => $expectedVersion]);
                 }
@@ -721,6 +1149,8 @@ class TeacherPortalController extends Controller
         ]));
         $teacherId = $this->teacherId($request);
         $assignment = $this->ownedAssignment($affectation, $teacherId);
+        abort_if(DB::table('gnu.profil_evaluation_ue')->where('ue_id', $assignment->ue_id)->value('code_profil') === null, 409, 'La cellule doit valider le barème avant la transmission des notes.');
+        abort_unless((bool) $assignment->actif, 409, 'L’affectation est en attente d’approbation. Vous pouvez enregistrer vos brouillons, mais la transmission à la cellule sera disponible après approbation.');
         $event = DB::table('gnu.evaluation')->where('id', $evaluation)->where('affectation_id', $affectation)->first();
         abort_unless($event !== null, 404, 'Évaluation introuvable.');
         if ($event->mode_evaluation === 'NORMALE') {
@@ -731,7 +1161,7 @@ class TeacherPortalController extends Controller
                 ->whereIn('statut_candidature', ['AUTORISEE', 'PROGRAMMEE'])->exists(), 404, 'Aucune candidature autorisée pour cette évaluation de rattrapage.');
         }
 
-        $transmissionId = DB::transaction(function () use ($request, $data, $evaluation, $affectation, $assignment, $event): int {
+        $result = DB::transaction(function () use ($request, $data, $evaluation, $affectation, $assignment, $event): array {
             DB::table('gnu.affectation')->where('id', $affectation)->lockForUpdate()->first();
             $current = DB::table('gnu.transmission_note')->where('evaluation_id', $evaluation)->orderByDesc('version')->lockForUpdate()->first();
             $authorizedCorrection = $this->hasPreparedMissingNoteCorrection($evaluation);
@@ -750,17 +1180,54 @@ class TeacherPortalController extends Controller
                     $join->on('iu.inscription_classe_id', '=', 'ic.id')->where('iu.ue_id', '=', $assignment->ue_id);
                 })->where('ic.classe_id', $assignment->classe_id)->where('ic.statut_inscription', 'VALIDEE')->where('iu.statut_inscription', 'VALIDEE')->pluck('iu.id');
             abort_if($roster->isEmpty(), 409, 'Aucun étudiant inscrit et validé dans cette UE.');
+            $this->setAuditContext($request, $data['motif']);
+            $elCount = 0;
+            $existingNotes = DB::table('gnu.note')->where('evaluation_id', $evaluation)
+                ->whereIn('inscription_ue_id', $roster)->lockForUpdate()->get()
+                ->keyBy('inscription_ue_id');
+            foreach ($roster as $registrationId) {
+                $existing = $existingNotes->get($registrationId);
+                if ($existing !== null && $existing->situation !== 'MANQUANTE') {
+                    continue;
+                }
+                $this->assertGradesEditable($evaluation, (int) $registrationId);
+                $decisionId = $this->authorizedMissingNoteCorrectionDecisionId($evaluation, (int) $registrationId);
+                DB::select("SELECT set_config('gnu.origine', ?, true), set_config('gnu.decision_id', ?, true)", [
+                    $decisionId !== null ? 'CORRECTION' : 'SAISIE',
+                    (string) ($decisionId ?? ''),
+                ]);
+                if ($existing === null) {
+                    DB::table('gnu.note')->insert([
+                        'evaluation_id' => $evaluation,
+                        'inscription_ue_id' => $registrationId,
+                        'valeur_note' => null,
+                        'situation' => 'ABSENTE',
+                        'statut_note' => 'BROUILLON',
+                        'version_note' => 1,
+                        'validateur_id' => null,
+                        'date_validation' => null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                } else {
+                    DB::table('gnu.note')->where('id', $existing->id)->update([
+                        'valeur_note' => null,
+                        'situation' => 'ABSENTE',
+                        'statut_note' => 'BROUILLON',
+                        'version_note' => $existing->version_note,
+                        'validateur_id' => null,
+                        'date_validation' => null,
+                        'updated_at' => now(),
+                    ]);
+                }
+                $elCount++;
+            }
             $completed = DB::table('gnu.note')->where('evaluation_id', $evaluation)->whereIn('inscription_ue_id', $roster)
                 ->whereIn('statut_note', ['BROUILLON', 'VALIDEE'])->whereIn('situation', ['NUMERIQUE', 'ABSENTE'])->count();
-            abort_unless($completed === $roster->count(), 409, 'Complétez une note ou une absence pour chaque étudiant inscrit ou candidat avant la transmission.');
-            $this->setAuditContext($request, $data['motif']);
-            DB::table('gnu.evaluation')->where('id', $evaluation)->where('affectation_id', $affectation)->update([
-                'statut_evaluation' => 'REALISEE',
-                'updated_at' => now(),
-            ]);
+            abort_unless($completed === $roster->count(), 409, 'Complétez une note numérique pour chaque étudiant inscrit ou candidat avant la transmission.');
             DB::select("SELECT set_config('gnu.origine', ?, true), set_config('gnu.decision_id', '', true)", ['TRANSMISSION']);
 
-            return (int) DB::table('gnu.transmission_note')->insertGetId([
+            $id = (int) DB::table('gnu.transmission_note')->insertGetId([
                 'evaluation_id' => $evaluation,
                 'affectation_id' => $affectation,
                 'version' => (int) ($current->version ?? 0) + 1,
@@ -772,9 +1239,15 @@ class TeacherPortalController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ], 'id');
+
+            return ['id' => $id, 'mentions_el' => $elCount];
         });
 
-        return response()->json(['id' => $transmissionId, 'transmises' => true, 'message' => 'Notes transmises à la cellule informatique pour contrôle.']);
+        return response()->json([
+            'id' => $result['id'],
+            'transmises' => true,
+            'message' => 'Notes transmises à la cellule informatique pour contrôle.'.($result['mentions_el'] > 0 ? ' '.$result['mentions_el'].' note(s) vide(s) transmise(s) avec la mention EL.' : ''),
+        ]);
     }
 
     public function removeGrade(Request $request, int $affectation, int $note): JsonResponse
@@ -811,13 +1284,114 @@ class TeacherPortalController extends Controller
         return response()->json(['message' => 'Note retirée du calcul. Sa trace reste conservée dans l’historique.']);
     }
 
+    public function exportGradebook(Request $request, int $affectation): mixed
+    {
+        $teacherId = $this->teacherId($request);
+        $assignment = $this->ownedAssignment($affectation, $teacherId);
+        $book = $this->gradebook($request, $affectation)->getData(true)['data'];
+        $class = DB::table('gnu.classe as c')->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
+            ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('c.id', $assignment->classe_id)->first(['c.code_classe', 'n.code_niv', 'n.libelle_niv', 'an.libelle as annee_academique']);
+        abort_unless($class !== null, 404, 'Classe introuvable.');
+        $roster = DB::table('gnu.inscription_classe as ic')
+            ->join('gnu.etudiant as e', 'e.id', '=', 'ic.etudiant_id')
+            ->join('gnu.utilisateur as u', 'u.id', '=', 'e.utilisateur_id')
+            ->join('gnu.inscription_ue as iu', function ($join) use ($assignment): void {
+                $join->on('iu.inscription_classe_id', '=', 'ic.id')->where('iu.ue_id', '=', $assignment->ue_id);
+            })
+            ->where('ic.classe_id', $assignment->classe_id)->where('ic.statut_inscription', 'VALIDEE')
+            ->where('iu.statut_inscription', 'VALIDEE')->get(['e.matricule', 'u.nom', 'u.prenom'])
+            ->keyBy(static fn (object $student): string => mb_strtoupper(trim($student->matricule)));
+
+        $evaluations = $book['plan']['composantes'] ?? [];
+        $proposedProfile = null;
+        if ($evaluations === []) {
+            $proposedProfile = DB::table('gnu.profil_evaluation_ue')->where('ue_id', $assignment->ue_id)->value('code_profil')
+                ?? DB::table('gnu.proposition_profil_evaluation')
+                    ->where('ue_id', $assignment->ue_id)
+                    ->where('enseignant_id', $assignment->enseignant_id)
+                    ->where('affectation_id', $assignment->id)
+                    ->whereIn('statut', ['EN_ATTENTE', 'APPROUVEE'])
+                    ->orderByDesc('created_at')
+                    ->value('code_profil');
+            if ($proposedProfile !== null) {
+                $weights = $this->weightsForProfile($proposedProfile);
+                foreach ($weights as $type => $weight) {
+                    $evaluations[] = [
+                        'type_eval' => $type,
+                        'poids_evaluation' => $weight,
+                    ];
+                }
+            }
+        }
+        $headers = ['Matricule', 'Nom', 'Prénom', 'Classe', 'Niveau', 'Année académique', 'UE', 'EC'];
+        $evaluationHeaders = [];
+        $occurrences = [];
+        foreach ($evaluations as $evaluation) {
+            $type = mb_strtoupper((string) $evaluation['type_eval']);
+            $occurrences[$type] = ($occurrences[$type] ?? 0) + 1;
+            $header = $type.'_'.$occurrences[$type];
+            $headers[] = $header;
+            $evaluationHeaders[] = [
+                'evaluation_id' => isset($evaluation['evaluation_id']) ? (int) $evaluation['evaluation_id'] : null,
+                'header' => $header,
+            ];
+        }
+
+        $rows = [$headers];
+        foreach ($book['etudiants'] ?? [] as $student) {
+            $matricule = mb_strtoupper(trim((string) $student['matricule']));
+            $identity = $roster->get($matricule);
+            if ($identity === null) {
+                continue;
+            }
+            $notesByEvaluation = collect($student['notes'] ?? [])->keyBy('evaluation_id');
+            $row = [
+                (string) $identity->matricule,
+                $identity->nom,
+                $identity->prenom,
+                $class->code_classe,
+                $class->code_niv.' · '.$class->libelle_niv,
+                $class->annee_academique,
+                $assignment->code_ue,
+                $assignment->code_m,
+            ];
+            foreach ($evaluationHeaders as $column) {
+                $note = $column['evaluation_id'] === null ? null : $notesByEvaluation->get($column['evaluation_id']);
+                $row[] = ($note['situation'] ?? null) === 'ABSENTE'
+                    ? 'ABS'
+                    : (($note['valeur_note'] ?? null) === null ? '' : (float) $note['valeur_note']);
+            }
+            $rows[] = $row;
+        }
+        $content = app(GradeWorkbookWriter::class)->write([
+            ['name' => 'Notes', 'rows' => $rows],
+            ['name' => 'Consignes', 'rows' => [
+                ['Modèle de notes GNU'],
+                ['Matricule, nom, prénom, classe, niveau et année académique identifient et vérifient l’étudiant. Ne modifiez pas ces colonnes.'],
+                ['Saisissez chaque note sur 20 dans les colonnes CC_1, TP_1, TPE_1, SN_1 correspondantes.'],
+                ['Laissez une cellule vide si aucune note n’est saisie; inscrivez ABS pour une absence.'],
+                ['À l’importation, chaque étudiant, classe, niveau et valeur est contrôlé. Les notes sont enregistrées en brouillon.'],
+                ['Transmettez ensuite chaque évaluation à la cellule informatique pour contrôle et validation.'],
+                ...($proposedProfile === null ? [] : [['Profil proposé par l’enseignant : '.$proposedProfile.'. Il doit être approuvé par la cellule avant l’enregistrement des notes.']]),
+            ]],
+        ]);
+        $filename = 'modele-notes-'.$this->safeFilename($class->code_classe.'-'.$assignment->code_ue.'-'.$assignment->code_m).'.xlsx';
+
+        return response()->streamDownload(static function () use ($content): void {
+            echo $content;
+        }, $filename, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
+    }
+
     public function importGrades(Request $request, int $affectation, int $evaluation): JsonResponse
     {
         $request->validate(['fichier' => ['required', 'file', 'mimes:xlsx,csv,txt', 'max:10240']]);
         $teacherId = $this->teacherId($request);
         $assignment = $this->ownedAssignment($affectation, $teacherId);
         $event = $this->activeEvaluation($affectation, $evaluation);
-        $this->assertGradesEditable($evaluation);
+        if ($assignment->actif) {
+            $this->assertGradesEditable($evaluation);
+        }
         /** @var UploadedFile $file */
         $file = $request->file('fichier');
         $parsed = app(GradeSpreadsheetReader::class)->read($file);
@@ -834,6 +1408,8 @@ class TeacherPortalController extends Controller
         $seen = [];
         $rows = [];
         $errors = [];
+        $clampedScores = 0;
+        $elMarkers = 0;
         foreach ($parsed as $index => $item) {
             $line = $index + 2;
             $matricule = strtoupper(trim((string) ($item['matricule'] ?? '')));
@@ -850,27 +1426,41 @@ class TeacherPortalController extends Controller
                 continue;
             }
             $seen[$matricule] = true;
-            $situation = match ($declaredSituation) {
-                'NUMERIQUE' => 'NUMERIQUE',
-                'ABS', 'ABSENT', 'ABSENTE' => 'ABSENTE',
-                'MANQUANTE', 'MANQUANT' => 'MANQUANTE',
-                '' => match (mb_strtoupper($raw)) {
-                    'ABS', 'ABSENT', 'ABSENTE' => 'ABSENTE',
-                    '', 'MANQUANTE', 'MANQUANT' => 'MANQUANTE',
-                    default => 'NUMERIQUE',
-                },
-                default => null,
-            };
+            $rawMark = mb_strtoupper($raw);
+            $situation = $raw === '' || in_array($rawMark, ['EL', 'ELIMINE', 'ELIMINEE'], true)
+                ? 'ABSENTE'
+                : match ($declaredSituation) {
+                    'NUMERIQUE' => 'NUMERIQUE',
+                    'ABS', 'ABSENT', 'ABSENTE', 'EL', 'ELIMINE', 'ELIMINEE' => 'ABSENTE',
+                    'MANQUANTE', 'MANQUANT' => 'ABSENTE',
+                    '' => match ($rawMark) {
+                        'ABS', 'ABSENT', 'ABSENTE', 'EL', 'ELIMINE', 'ELIMINEE' => 'ABSENTE',
+                        '', 'MANQUANTE', 'MANQUANT' => 'ABSENTE',
+                        default => 'NUMERIQUE',
+                    },
+                    default => null,
+                };
             if ($situation === null) {
                 $errors[] = ['ligne' => $line, 'message' => 'La situation doit être NUMERIQUE, ABSENTE ou MANQUANTE.'];
 
                 continue;
             }
             $value = $situation === 'NUMERIQUE' ? str_replace(',', '.', $raw) : null;
-            if ($situation === 'NUMERIQUE' && (! is_numeric($value) || (float) $value < 0 || (float) $value > 20)) {
-                $errors[] = ['ligne' => $line, 'message' => 'La note doit être comprise entre 0 et 20, ou indiquée ABS/MANQUANTE.'];
+            if ($situation === 'NUMERIQUE') {
+                if (! is_numeric($value)) {
+                    $errors[] = ['ligne' => $line, 'message' => 'La note doit être numérique, ou indiquée ABS/EL.'];
 
-                continue;
+                    continue;
+                }
+                $numericValue = (float) $value;
+                $boundedValue = min(20.0, max(0.0, $numericValue));
+                if ($boundedValue !== $numericValue) {
+                    $clampedScores++;
+                }
+                $value = $boundedValue;
+            }
+            if ($situation === 'ABSENTE') {
+                $elMarkers++;
             }
             $student = $students[$matricule];
             $rows[] = [
@@ -881,7 +1471,14 @@ class TeacherPortalController extends Controller
             ];
         }
 
-        return response()->json(['data' => ['notes' => $rows, 'erreurs' => $errors, 'importables' => count($rows), 'total' => count($parsed)]]);
+        return response()->json(['data' => [
+            'notes' => $rows,
+            'erreurs' => $errors,
+            'importables' => count($rows),
+            'total' => count($parsed),
+            'notes_bornees' => $clampedScores,
+            'mentions_el' => $elMarkers,
+        ]]);
     }
 
     public function previewGradebookImport(Request $request, int $affectation): JsonResponse
@@ -913,22 +1510,43 @@ class TeacherPortalController extends Controller
         if ($columns === []) {
             throw ValidationException::withMessages(['fichier' => ['Aucune colonne de note CC, TP, TPE ou SN n’a été reconnue.']]);
         }
+        $identityColumns = [
+            'matricule' => $this->findSpreadsheetHeader($table['headers'], ['matricule', 'matricule_etudiant']),
+            'nom' => $this->findSpreadsheetHeader($table['headers'], ['nom', 'nom_etudiant', 'nom_de_famille']),
+            'prenom' => $this->findSpreadsheetHeader($table['headers'], ['prenom', 'prenom_etudiant']),
+            'classe' => $this->findSpreadsheetHeader($table['headers'], ['classe', 'code_classe', 'classe_etudiant']),
+            'niveau' => $this->findSpreadsheetHeader($table['headers'], ['niveau', 'code_niveau', 'niveau_etudiant', 'niveau_de_l_etudiant']),
+        ];
+        $academicYearColumn = $this->findSpreadsheetHeader($table['headers'], ['annee', 'annee_academique', 'annee_scolaire']);
+        $unitColumn = $this->findSpreadsheetHeader($table['headers'], ['ue', 'code_ue', 'unite_enseignement']);
+        $elementColumn = $this->findSpreadsheetHeader($table['headers'], ['ec', 'code_ec', 'code_m', 'element_constitutif']);
+        $missingIdentity = array_keys(array_filter($identityColumns, static fn (?int $index): bool => $index === null));
+        if ($missingIdentity !== []) {
+            throw ValidationException::withMessages(['fichier' => ['Le modèle Excel doit contenir les colonnes Matricule, Nom, Prénom, Classe et Niveau. Colonnes manquantes : '.implode(', ', $missingIdentity).'.']]);
+        }
 
+        $class = DB::table('gnu.classe as c')->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
+            ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('c.id', $assignment->classe_id)->first(['c.code_classe', 'n.code_niv', 'n.libelle_niv', 'an.libelle as annee_academique']);
         $roster = DB::table('gnu.inscription_classe as ic')
             ->join('gnu.etudiant as e', 'e.id', '=', 'ic.etudiant_id')
+            ->join('gnu.utilisateur as u', 'u.id', '=', 'e.utilisateur_id')
             ->join('gnu.inscription_ue as iu', function ($join) use ($assignment): void {
                 $join->on('iu.inscription_classe_id', '=', 'ic.id')->where('iu.ue_id', '=', $assignment->ue_id);
             })
+            ->join('gnu.classe as c', 'c.id', '=', 'ic.classe_id')
+            ->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
             ->where('ic.classe_id', $assignment->classe_id)
             ->where('ic.statut_inscription', 'VALIDEE')
             ->where('iu.statut_inscription', 'VALIDEE')
-            ->pluck('e.matricule')
-            ->map(fn (string $matricule): string => strtoupper(trim($matricule)))
-            ->flip();
+            ->get(['e.matricule', 'u.nom', 'u.prenom', 'c.code_classe', 'n.code_niv', 'n.libelle_niv'])
+            ->keyBy(fn (object $student): string => mb_strtoupper(trim($student->matricule)));
 
         $importable = [];
         $errors = [];
         $seen = [];
+        $clampedScores = 0;
+        $elMarkers = 0;
         foreach ($table['rows'] as $index => $row) {
             $line = $index + 2;
             $matricule = strtoupper(trim((string) ($row[$matriculeIndex] ?? '')));
@@ -943,27 +1561,62 @@ class TeacherPortalController extends Controller
                 continue;
             }
             $seen[$matricule] = true;
+            $student = $roster->get($matricule);
+            $provided = [
+                'nom' => $row[$identityColumns['nom']] ?? '',
+                'prenom' => $row[$identityColumns['prenom']] ?? '',
+                'classe' => $row[$identityColumns['classe']] ?? '',
+                'niveau' => $row[$identityColumns['niveau']] ?? '',
+            ];
+            $identityMatches = $this->normalizeSpreadsheetIdentity((string) $provided['nom']) === $this->normalizeSpreadsheetIdentity($student->nom)
+                && $this->normalizeSpreadsheetIdentity((string) $provided['prenom']) === $this->normalizeSpreadsheetIdentity($student->prenom)
+                && $this->normalizeSpreadsheetIdentity((string) $provided['classe']) === $this->normalizeSpreadsheetIdentity($class->code_classe)
+                && in_array($this->normalizeSpreadsheetIdentity((string) $provided['niveau']), [
+                    $this->normalizeSpreadsheetIdentity($class->code_niv),
+                    $this->normalizeSpreadsheetIdentity($class->libelle_niv),
+                    $this->normalizeSpreadsheetIdentity($class->code_niv.' '.$class->libelle_niv),
+                ], true);
+            if ($unitColumn !== null) {
+                $identityMatches = $identityMatches
+                    && $this->normalizeSpreadsheetIdentity((string) ($row[$unitColumn] ?? '')) === $this->normalizeSpreadsheetIdentity($assignment->code_ue);
+            }
+            if ($elementColumn !== null) {
+                $identityMatches = $identityMatches
+                    && $this->normalizeSpreadsheetIdentity((string) ($row[$elementColumn] ?? '')) === $this->normalizeSpreadsheetIdentity($assignment->code_m);
+            }
+            if ($academicYearColumn !== null) {
+                $identityMatches = $identityMatches
+                    && $this->normalizeSpreadsheetIdentity((string) ($row[$academicYearColumn] ?? '')) === $this->normalizeSpreadsheetIdentity($class->annee_academique);
+            }
+            if (! $identityMatches) {
+                $errors[] = ['ligne' => $line, 'message' => 'Le nom, le prénom, la classe ou le niveau ne correspond pas au matricule inscrit.'];
+
+                continue;
+            }
             $marks = [];
             $rowValid = true;
             foreach ($columns as $column) {
                 $raw = trim((string) ($row[$column['index']] ?? ''));
-                if ($raw === '') {
-                    continue;
-                }
                 $token = mb_strtoupper($raw);
-                if (in_array($token, ['ABS', 'ABSENT', 'ABSENTE'], true)) {
+                if ($raw === '' || in_array($token, ['ABS', 'ABSENT', 'ABSENTE', 'EL', 'ELIMINE', 'ELIMINEE', 'MANQUANTE', 'MANQUANT'], true)) {
                     $marks[] = $column + ['situation' => 'ABSENTE', 'valeur_note' => null];
+                    $elMarkers++;
 
                     continue;
                 }
                 $value = str_replace(',', '.', $raw);
-                if (! is_numeric($value) || (float) $value < 0 || (float) $value > 20) {
-                    $errors[] = ['ligne' => $line, 'message' => 'La note '.$column['entete'].' doit être comprise entre 0 et 20, ou indiquée ABS.'];
+                if (! is_numeric($value)) {
+                    $errors[] = ['ligne' => $line, 'message' => 'La note '.$column['entete'].' doit être numérique, ou indiquée ABS/EL.'];
                     $rowValid = false;
 
                     continue;
                 }
-                $marks[] = $column + ['situation' => 'NUMERIQUE', 'valeur_note' => (float) $value];
+                $numericValue = (float) $value;
+                $boundedValue = min(20.0, max(0.0, $numericValue));
+                if ($boundedValue !== $numericValue) {
+                    $clampedScores++;
+                }
+                $marks[] = $column + ['situation' => 'NUMERIQUE', 'valeur_note' => $boundedValue];
             }
             if ($rowValid && $marks !== []) {
                 $importable[] = ['matricule' => $matricule, 'notes' => $marks];
@@ -985,7 +1638,37 @@ class TeacherPortalController extends Controller
             'importables' => count($importable),
             'total' => count($table['rows']),
             'ponderations' => $weights,
+            'notes_bornees' => $clampedScores,
+            'mentions_el' => $elMarkers,
         ]]);
+    }
+
+    /** @param list<string> $headers @param list<string> $aliases */
+    private function findSpreadsheetHeader(array $headers, array $aliases): ?int
+    {
+        foreach ($aliases as $alias) {
+            $index = array_search($alias, $headers, true);
+            if ($index !== false) {
+                return $index;
+            }
+        }
+
+        return null;
+    }
+
+    private function normalizeSpreadsheetIdentity(string $value): string
+    {
+        $ascii = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', trim($value));
+        $normalized = mb_strtolower((string) $ascii);
+
+        return preg_replace('/[^a-z0-9]+/', '', $normalized) ?? '';
+    }
+
+    private function safeFilename(string $value): string
+    {
+        $ascii = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+
+        return trim(preg_replace('/[^A-Za-z0-9._-]+/', '-', (string) $ascii) ?? 'gnu', '-');
     }
 
     public function provisionalBulletins(Request $request, int $affectation): JsonResponse
@@ -1053,6 +1736,41 @@ class TeacherPortalController extends Controller
             ]);
 
         return response()->json(['data' => $rows]);
+    }
+
+    public function notifications(Request $request): JsonResponse
+    {
+        $this->teacherId($request);
+        $rows = DB::table('gnu.notification')->where('destinataire_id', $request->user()->id)
+            ->orderByDesc('created_at')->limit(100)->get([
+                'id', 'type_notification', 'contenu', 'jour_ouvrable', 'date_envoi', 'date_lecture', 'created_at',
+            ]);
+
+        return response()->json(['data' => $rows->map(fn (object $row): array => [
+            'id' => (int) $row->id,
+            'type' => $row->type_notification,
+            'contenu' => is_string($row->contenu) ? json_decode($row->contenu, true) : $row->contenu,
+            'date' => $row->date_envoi ?? $row->created_at,
+            'lue' => $row->date_lecture !== null,
+            'jour_ouvrable' => $row->jour_ouvrable,
+        ])]);
+    }
+
+    public function markNotificationRead(Request $request, int $notification): JsonResponse
+    {
+        $updated = DB::transaction(function () use ($request, $notification): int {
+            $this->setAuditContext($request, 'Lecture d’une notification académique');
+
+            return DB::table('gnu.notification')->where('id', $notification)
+                ->where('destinataire_id', $request->user()->id)->update([
+                    'date_lecture' => now(),
+                    'updated_at' => now(),
+                ]);
+        });
+        abort_unless($updated > 0 || DB::table('gnu.notification')->where('id', $notification)
+            ->where('destinataire_id', $request->user()->id)->exists(), 404);
+
+        return response()->json(['message' => 'Notification marquée comme lue.']);
     }
 
     public function decideRequest(Request $request, int $requete): JsonResponse
@@ -1233,25 +1951,47 @@ class TeacherPortalController extends Controller
             ->join('gnu.matiere as m', 'm.id', '=', 'a.matiere_id')
             ->join('gnu.ue as u', 'u.id', '=', 'm.ue_id')
             ->leftJoin('gnu.profil_evaluation_ue as profil', 'profil.ue_id', '=', 'u.id')
-            ->where('a.id', $affectation)->where('a.enseignant_id', $teacherId)->where('a.actif', true)
-            ->first(['a.id', 'a.classe_id', 'a.matiere_id', 'a.enseignant_id', 'u.id as ue_id', 'u.code_ue', 'm.code_m', 'c.code_classe', 'profil.code_profil as profil_evaluation']);
+            ->where('a.id', $affectation)->where('a.enseignant_id', $teacherId)
+            ->where(function ($query): void {
+                $query->where('a.actif', true)->orWhereExists(function ($proposal): void {
+                    $proposal->selectRaw('1')->from('gnu.proposition_affectation_enseignant as p')
+                        ->whereColumn('p.affectation_id', 'a.id')->where('p.statut', 'EN_ATTENTE');
+                });
+            })
+            ->first(['a.id', 'a.classe_id', 'a.matiere_id', 'a.enseignant_id', 'a.actif', 'u.id as ue_id', 'u.code_ue', 'm.code_m', 'c.code_classe', 'profil.code_profil as profil_evaluation']);
         abort_unless($assignment !== null, 404, 'Affectation introuvable ou inactive.');
 
         return $assignment;
     }
 
-    /** Create a class plan from the agent-approved UE profile, never from a teacher-side default. */
+    /** Create a class plan from the approved profile or the teacher's request. */
     private function ensureOfficialPlan(Request $request, object $assignment): void
     {
-        if ($assignment->profil_evaluation === null) {
+        $profile = $assignment->profil_evaluation;
+        if ($profile === null) {
+            $profile = DB::table('gnu.profil_evaluation_ue')->where('ue_id', $assignment->ue_id)->value('code_profil')
+                ?? DB::table('gnu.proposition_profil_evaluation')
+                    ->where('ue_id', $assignment->ue_id)
+                    ->where('enseignant_id', $assignment->enseignant_id)
+                    ->where('affectation_id', $assignment->id)
+                    ->where('statut', 'EN_ATTENTE')
+                    ->orderByDesc('created_at')
+                    ->value('code_profil');
+        }
+        if ($profile === null) {
             return;
         }
-        DB::transaction(function () use ($request, $assignment): void {
+        DB::transaction(function () use ($request, $assignment, $profile): void {
             DB::table('gnu.affectation')->where('id', $assignment->id)->lockForUpdate()->first();
+            $profileNow = DB::table('gnu.profil_evaluation_ue')
+                ->where('ue_id', $assignment->ue_id)->value('code_profil');
+            if ($profileNow !== null) {
+                $profile = $profileNow;
+            }
             $activePlan = DB::table('gnu.plan_evaluation')->where('affectation_id', $assignment->id)
                 ->where('portee', 'CLASSE')->where('statut_plan', 'ACTIF')->orderByDesc('version_plan')->first();
             $this->setAuditContext($request, 'Initialisation du carnet à partir du profil officiel de l’UE');
-            $weights = $this->weightsForProfile($assignment->profil_evaluation);
+            $weights = $this->weightsForProfile($profile);
             if ($activePlan !== null) {
                 $currentWeights = DB::table('gnu.ligne_plan as lp')->join('gnu.evaluation as ev', 'ev.id', '=', 'lp.evaluation_id')
                     ->where('lp.plan_id', $activePlan->id)->where('lp.retenue', true)->get(['ev.type_eval', 'lp.poids_evaluation'])
@@ -1399,6 +2139,39 @@ class TeacherPortalController extends Controller
         });
 
         return response()->json(['message' => $data['decision'] === 'VERIFIER' ? 'Notes vérifiées et intégrées aux résultats provisoires.' : 'La transmission a été retournée pour correction.']);
+    }
+
+    /** @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function clampGradeInputs(array $data): array
+    {
+        foreach ($data['notes'] ?? [] as $index => $row) {
+            if (($row['situation'] ?? null) !== 'NUMERIQUE' || ! isset($row['valeur_note']) || ! is_numeric($row['valeur_note'])) {
+                continue;
+            }
+
+            $data['notes'][$index]['valeur_note'] = min(20.0, max(0.0, (float) $row['valeur_note']));
+        }
+
+        return $data;
+    }
+
+    private function markEvaluationRealized(int $evaluation): void
+    {
+        $item = DB::table('gnu.evaluation')->where('id', $evaluation)->lockForUpdate()->first(['statut_evaluation']);
+        abort_unless($item !== null, 404, 'Évaluation introuvable.');
+        if ($item->statut_evaluation === 'REALISEE') {
+            return;
+        }
+
+        if (DB::table('gnu.note')->where('evaluation_id', $evaluation)->exists()) {
+            return;
+        }
+        DB::table('gnu.evaluation')->where('id', $evaluation)->update([
+            'statut_evaluation' => 'REALISEE',
+            'updated_at' => now(),
+        ]);
     }
 
     private function assertGradesEditable(int $evaluation, ?int $inscriptionUE = null): void

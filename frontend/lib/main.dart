@@ -14,6 +14,47 @@ import 'local_portal_navigation.dart';
 
 const _compiledApiBaseUrl = String.fromEnvironment('GNU_API_BASE_URL');
 
+List<int>? _ipv4Octets(String host) {
+  final octets = host.split('.').map(int.tryParse).toList();
+  if (octets.length != 4 ||
+      octets.any((octet) => octet == null || octet < 0 || octet > 255)) {
+    return null;
+  }
+
+  return octets.cast<int>();
+}
+
+bool _isLoopbackHost(String host) {
+  final normalizedHost = host.toLowerCase();
+  if (const ['localhost', '::1'].contains(normalizedHost)) return true;
+
+  final octets = _ipv4Octets(normalizedHost);
+  return octets != null && octets[0] == 127;
+}
+
+bool _isPrivateLanHost(String host) {
+  final octets = _ipv4Octets(host);
+  if (octets == null) return false;
+
+  final first = octets[0];
+  final second = octets[1];
+
+  return first == 10 ||
+      (first == 172 && second >= 16 && second <= 31) ||
+      (first == 192 && second == 168);
+}
+
+String? _localTestPortalHost(Uri apiUri, Uri pageUri) {
+  var host = apiUri.host;
+  if (host == '0.0.0.0' || host == '::') {
+    host = _isPrivateLanHost(pageUri.host) ? pageUri.host : '127.0.0.1';
+  } else if (_isLoopbackHost(host) && _isPrivateLanHost(pageUri.host)) {
+    host = pageUri.host;
+  }
+
+  return _isLoopbackHost(host) || _isPrivateLanHost(host) ? host : null;
+}
+
 bool _releaseApiUrlIsValid() {
   if (!kReleaseMode) return true;
   final uri = Uri.tryParse(_compiledApiBaseUrl.trim());
@@ -178,6 +219,7 @@ class _WelcomePageState extends State<WelcomePage> {
   UserRole selectedRole = UserRole.student;
   final loginController = TextEditingController();
   final passwordController = TextEditingController();
+  bool showPassword = false;
   bool loggingIn = false;
   String? loginError;
 
@@ -208,15 +250,16 @@ class _WelcomePageState extends State<WelcomePage> {
 
   void _openLocalTestAccountPortal() {
     final uri = Uri.tryParse(_compiledApiBaseUrl.trim());
-    if (uri == null ||
-        !const ['localhost', '127.0.0.1', '::1'].contains(uri.host)) {
+    final portalHost = uri == null ? null : _localTestPortalHost(uri, Uri.base);
+    if (uri == null || portalHost == null) {
       setState(() {
-        loginError = 'Le portail de création est réservé à votre installation locale : http://127.0.0.1:8000/local-test-accounts';
+        loginError = 'La création de comptes de test est réservée à une installation locale ou à un réseau privé de test.';
       });
       return;
     }
 
     final portal = uri.replace(
+      host: portalHost,
       path: '/local-test-accounts',
       query: null,
       fragment: null,
@@ -232,21 +275,29 @@ class _WelcomePageState extends State<WelcomePage> {
   Widget build(BuildContext context) => Scaffold(
     body: LayoutBuilder(
       builder: (context, box) {
+        final compact = box.maxWidth < 800;
+        final stacked = box.maxWidth < 900;
         final intro = Container(
-          padding: EdgeInsets.all(box.maxWidth < 800 ? 28 : 56),
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
+          padding: EdgeInsets.all(compact ? 28 : 56),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [navy, Color(0xFF124E4B)],
+              colors: [Color(0xFF102B36), Color(0xFF124E4B)],
             ),
+            borderRadius: compact
+                ? BorderRadius.zero
+                : const BorderRadius.only(
+                    topRight: Radius.circular(34),
+                    bottomRight: Radius.circular(34),
+                  ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Brand(dark: true),
-              const SizedBox(height: 68),
+              SizedBox(height: compact ? 38 : 68),
               const Text(
                 'LE SAVOIR AVANCE.\nVOTRE CAMPUS AUSSI.',
                 style: TextStyle(
@@ -257,11 +308,11 @@ class _WelcomePageState extends State<WelcomePage> {
                 ),
               ),
               const SizedBox(height: 22),
-              const Text(
+              Text(
                 'Un campus connecté.\nDes parcours simplifiés.',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 40,
+                  fontSize: compact ? 32 : 40,
                   height: 1.18,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -1.3,
@@ -276,7 +327,7 @@ class _WelcomePageState extends State<WelcomePage> {
                   height: 1.8,
                 ),
               ),
-              const SizedBox(height: 48),
+              SizedBox(height: compact ? 28 : 48),
               ...[
                 (Icons.school_outlined, 'Votre parcours, au même endroit'),
                 (
@@ -317,13 +368,21 @@ class _WelcomePageState extends State<WelcomePage> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 490),
             child: Padding(
-              padding: EdgeInsets.all(box.maxWidth < 800 ? 24 : 40),
+              padding: EdgeInsets.all(compact ? 24 : 40),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(
+                    children: [
+                      const Brand(),
+                      const Spacer(),
+                      StatusBadge('ACCÈS SÉCURISÉ'),
+                    ],
+                  ),
+                  const SizedBox(height: 38),
                   StatusBadge('PORTAIL ${selectedRole.label.toUpperCase()}'),
-                  const SizedBox(height: 25),
+                  const SizedBox(height: 18),
                   Text(
                     'Bienvenue sur GNU',
                     style: Theme.of(context).textTheme.headlineLarge,
@@ -333,7 +392,7 @@ class _WelcomePageState extends State<WelcomePage> {
                     'Choisissez votre espace, puis connectez-vous avec les identifiants fournis pour votre compte ${selectedRole.label.toLowerCase()}.',
                     style: TextStyle(color: muted, height: 1.7),
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
                     child: SegmentedButton<UserRole>(
@@ -374,11 +433,24 @@ class _WelcomePageState extends State<WelcomePage> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: passwordController,
-                    obscureText: true,
+                    obscureText: !showPassword,
                     onSubmitted: (_) => _submitLogin(),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Mot de passe',
                       prefixIcon: Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        tooltip: showPassword
+                            ? 'Masquer le mot de passe'
+                            : 'Afficher le mot de passe',
+                        onPressed: () => setState(
+                          () => showPassword = !showPassword,
+                        ),
+                        icon: Icon(
+                          showPassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                        ),
+                      ),
                     ),
                   ),
                   if (loginError != null)
@@ -420,7 +492,7 @@ class _WelcomePageState extends State<WelcomePage> {
             ),
           ),
         );
-        return box.maxWidth < 900
+        return stacked
             ? SingleChildScrollView(child: Column(children: [intro, chooser]))
             : Row(
                 children: [
@@ -449,7 +521,8 @@ class _WelcomePageState extends State<WelcomePage> {
 
 typedef Destination = ({String id, String label, IconData icon});
 List<Destination> destinations(UserRole role) => [
-  (id: 'home', label: 'Vue d’ensemble', icon: Icons.grid_view_rounded),
+  if (role != UserRole.teacher)
+    (id: 'home', label: 'Vue d’ensemble', icon: Icons.grid_view_rounded),
   ...switch (role) {
     UserRole.student => [
       (
@@ -472,7 +545,27 @@ List<Destination> destinations(UserRole role) => [
       ),
     ],
     UserRole.teacher => [
-      (id: 'classes', label: 'Mes affectations', icon: Icons.class_outlined),
+      (id: 'classes', label: 'Mes niveaux', icon: Icons.class_outlined),
+      (
+        id: 'gradebook',
+        label: 'Notes & validations',
+        icon: Icons.fact_check_outlined,
+      ),
+      (
+        id: 'requests',
+        label: 'Requêtes & UE',
+        icon: Icons.forum_outlined,
+      ),
+      (
+        id: 'notifications',
+        label: 'Notifications',
+        icon: Icons.notifications_outlined,
+      ),
+      (
+        id: 'profile',
+        label: 'Mon compte',
+        icon: Icons.account_circle_outlined,
+      ),
     ],
     UserRole.agent => [
       (
@@ -499,6 +592,11 @@ List<Destination> destinations(UserRole role) => [
         id: 'grade-transmissions',
         label: 'Numérisation des notes',
         icon: Icons.fact_check_outlined,
+      ),
+      (
+        id: 'normal-sessions',
+        label: 'Sessions normales',
+        icon: Icons.event_available_outlined,
       ),
       (
         id: 'retakes',
@@ -548,6 +646,7 @@ class _PortalState extends State<Portal> {
   @override
   void initState() {
     super.initState();
+    if (widget.role == UserRole.teacher) page = 'classes';
     unawaited(_loadAcademicYears());
   }
 
@@ -619,14 +718,14 @@ class _PortalState extends State<Portal> {
   }
 
   Widget sidebar(bool drawer) => Container(
-    color: Theme.of(context).colorScheme.surface,
+    color: const Color(0xFF12343A),
     child: SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Padding(
-            padding: EdgeInsets.fromLTRB(26, 30, 24, 26),
-            child: Brand(),
+            padding: EdgeInsets.fromLTRB(24, 24, 20, 22),
+            child: Brand(dark: true),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -634,8 +733,9 @@ class _PortalState extends State<Portal> {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: palette(context, canvas),
-                borderRadius: BorderRadius.circular(10),
+                color: const Color(0xFF1B4548),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF315B5D)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -645,19 +745,22 @@ class _PortalState extends State<Portal> {
                     style: TextStyle(
                       fontSize: 9,
                       letterSpacing: 1.5,
-                      color: palette(context, muted),
+                      color: const Color(0xFF9BBAB5),
                     ),
                   ),
                   const SizedBox(height: 5),
                   Text(
                     widget.role.label,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 27),
+          const SizedBox(height: 24),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 28),
             child: Text(
@@ -665,7 +768,7 @@ class _PortalState extends State<Portal> {
               style: TextStyle(
                 fontSize: 10,
                 letterSpacing: 1.5,
-                color: palette(context, muted),
+                color: const Color(0xFF9BBAB5),
               ),
             ),
           ),
@@ -686,14 +789,17 @@ class _PortalState extends State<Portal> {
                             borderRadius: BorderRadius.circular(9),
                           ),
                           selected: page == item.id,
-                          selectedTileColor: const Color(0xFFE9F4F0),
-                          selectedColor: emerald,
-                          iconColor: muted,
+                          selectedTileColor: const Color(0xFF24574F),
+                          selectedColor: const Color(0xFF8BE0C8),
+                          iconColor: const Color(0xFFB1C8C5),
                           leading: Icon(item.icon, size: 20),
                           title: Text(
                             item.label,
                             style: TextStyle(
-                              fontSize: 12,
+                              color: page == item.id
+                                  ? const Color(0xFF9AE5CF)
+                                  : const Color(0xFFD4E2DF),
+                              fontSize: 13,
                               fontWeight: page == item.id
                                   ? FontWeight.w700
                                   : FontWeight.w500,
@@ -710,45 +816,7 @@ class _PortalState extends State<Portal> {
                   .toList(),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: navy,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.auto_awesome_outlined,
-                    color: Color(0xFF87D8C0),
-                    size: 21,
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    'Un nouvel espace pour vous',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  SizedBox(height: 7),
-                  Text(
-                    'Des démarches simples, un suivi plus clair.',
-                    style: TextStyle(
-                      color: Colors.white60,
-                      fontSize: 11,
-                      height: 1.6,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const Divider(height: 1),
+          const Divider(height: 1, color: Color(0xFF315257)),
           Material(
             color: Colors.transparent,
             child: ListTile(
@@ -758,26 +826,34 @@ class _PortalState extends State<Portal> {
               ),
               leading: CircleAvatar(
                 radius: 18,
-                backgroundColor: const Color(0xFFE9F4F0),
+                backgroundColor: const Color(0xFF24574F),
                 child: Text(
                   _initials,
-                  style: const TextStyle(color: emerald, fontSize: 12),
+                  style: const TextStyle(
+                    color: Color(0xFF9AE5CF),
+                    fontSize: 12,
+                  ),
                 ),
               ),
               title: Text(
                 _displayName,
                 style: const TextStyle(
+                  color: Colors.white,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               subtitle: Text(
                 'Compte connecté · ${widget.apiClient!.user?['profil']?['matricule'] ?? widget.apiClient!.user?['profil']?['eid'] ?? widget.role.label}',
-                style: const TextStyle(fontSize: 10),
+                style: const TextStyle(fontSize: 10, color: Color(0xFF9BBAB5)),
               ),
               trailing: IconButton(
                 tooltip: 'Se déconnecter',
-                icon: const Icon(Icons.logout, size: 18),
+                icon: const Icon(
+                  Icons.logout,
+                  size: 18,
+                  color: Color(0xFFB1C8C5),
+                ),
                 onPressed: widget.onExit,
               ),
             ),
@@ -805,10 +881,15 @@ class _PortalState extends State<Portal> {
                 child: Column(
                   children: [
                     Container(
-                      color: Theme.of(context).colorScheme.surface,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        border: Border(
+                          bottom: BorderSide(color: palette(context, stroke)),
+                        ),
+                      ),
                       padding: EdgeInsets.symmetric(
                         horizontal: wide ? 36 : 16,
-                        vertical: 16,
+                        vertical: 13,
                       ),
                       child: SafeArea(
                         bottom: false,
@@ -926,7 +1007,12 @@ class _PortalState extends State<Portal> {
                     Expanded(
                       child: SingleChildScrollView(
                         controller: scroll,
-                        padding: EdgeInsets.all(box.maxWidth < 650 ? 20 : 36),
+                        padding: EdgeInsets.fromLTRB(
+                          box.maxWidth < 650 ? 18 : 36,
+                          box.maxWidth < 650 ? 24 : 32,
+                          box.maxWidth < 650 ? 18 : 36,
+                          36,
+                        ),
                         child: Center(
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 1280),
@@ -951,12 +1037,22 @@ class _PortalState extends State<Portal> {
                                     store: widget.store,
                                   )
                                 else if (widget.apiClient != null &&
+                                    widget.role == UserRole.teacher &&
+                                    (page == 'profile' ||
+                                        page == 'notifications'))
+                                  TeacherAccountPage(
+                                    key: ValueKey('teacher-account-$page'),
+                                    api: widget.apiClient!,
+                                    page: page,
+                                  )
+                                else if (widget.apiClient != null &&
                                     widget.role == UserRole.teacher)
                                   TeacherAssignmentsPage(
                                     key: ValueKey(
                                       'teacher-$page-$selectedAcademicYearId',
                                     ),
                                     api: widget.apiClient!,
+                                    page: page,
                                   )
                                 else if (widget.apiClient != null &&
                                     widget.role == UserRole.agent)

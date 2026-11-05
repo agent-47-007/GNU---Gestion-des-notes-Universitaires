@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 const navy = Color(0xFF142E3A);
 const emerald = Color(0xFF087F6A);
-const canvas = Color(0xFFF4F7F8);
+const canvas = Color(0xFFF3F7F6);
 const muted = Color(0xFF687C86);
-const stroke = Color(0xFFE1E9EB);
+const stroke = Color(0xFFDCE7E4);
 const darkCanvas = Color(0xFF101C24);
 const darkSurface = Color(0xFF172A33);
 const darkRaised = Color(0xFF203640);
@@ -33,6 +33,7 @@ ThemeData buildTheme({bool dark = false}) => ThemeData(
     surface: dark ? darkSurface : Colors.white,
     error: const Color(0xFFB33B43),
   ),
+  visualDensity: VisualDensity.standard,
   fontFamily: 'Arial',
   textTheme: TextTheme(
     headlineLarge: TextStyle(
@@ -73,30 +74,55 @@ ThemeData buildTheme({bool dark = false}) => ThemeData(
     fillColor: dark ? darkRaised : Colors.white,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
     border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(12),
       borderSide: BorderSide(color: dark ? const Color(0xFF34505A) : stroke),
     ),
     enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(12),
       borderSide: BorderSide(color: dark ? const Color(0xFF34505A) : stroke),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(
+        color: dark ? const Color(0xFF60D6B8) : emerald,
+        width: 1.6,
+      ),
+    ),
+    labelStyle: TextStyle(color: dark ? const Color(0xFFADC0C6) : muted),
+    floatingLabelStyle: TextStyle(
+      color: dark ? const Color(0xFF60D6B8) : emerald,
+      fontWeight: FontWeight.w600,
     ),
   ),
   filledButtonTheme: FilledButtonThemeData(
     style: FilledButton.styleFrom(
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 19),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
   ),
   outlinedButtonTheme: OutlinedButtonThemeData(
     style: OutlinedButton.styleFrom(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
       side: BorderSide(color: dark ? const Color(0xFF45636D) : stroke),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
   ),
   dividerTheme: DividerThemeData(
     color: dark ? const Color(0xFF34505A) : stroke,
     thickness: 1,
+  ),
+  cardTheme: CardThemeData(
+    color: dark ? darkSurface : Colors.white,
+    elevation: 0,
+    margin: EdgeInsets.zero,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(18),
+      side: BorderSide(color: dark ? const Color(0xFF34505A) : stroke),
+    ),
+  ),
+  snackBarTheme: SnackBarThemeData(
+    behavior: SnackBarBehavior.floating,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
   ),
   iconTheme: IconThemeData(color: dark ? const Color(0xFFADC0C6) : muted),
   listTileTheme: ListTileThemeData(
@@ -157,7 +183,14 @@ class Panel extends StatelessWidget {
     decoration: BoxDecoration(
       color: Theme.of(context).colorScheme.surface,
       border: Border.all(color: palette(context, stroke)),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(18),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: .025),
+          blurRadius: 18,
+          offset: const Offset(0, 5),
+        ),
+      ],
     ),
     // ListTile paints selection/ink on its nearest Material. Keeping a local
     // transparent Material prevents decorated panels from hiding those effects

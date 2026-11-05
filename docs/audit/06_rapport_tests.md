@@ -1,5 +1,7 @@
 # 06 — Rapport de tests
 
+> **Archive d’audit historique.** Ce document reflète l’état constaté lors de sa rédaction et a été dépassé par les travaux ultérieurs. Pour l’état fonctionnel accepté au 3 novembre 2026 et les seuls prérequis de livraison encore ouverts, consulter [l’état actuel](09_validation_production.md) et [les règles métier](05_audit_regles_metier.md).
+
 ## Tests Flutter
 
 | Commande | Résultat | Preuve |

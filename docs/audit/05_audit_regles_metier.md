@@ -1,43 +1,20 @@
-# 05 — Audit et règles métier retenues
+# Règles métier et état fonctionnel GNU
 
-Le 15 octobre 2026, l'utilisateur a validé les propositions de règles du
-compte-rendu. Elles sont enregistrées ci-dessous comme règles applicatives
-approuvées pour GNU. Leur approbation ne remplace pas les vérifications de
-conformité exigées par le règlement officiel de l'établissement.
+**Mise à jour : 3 novembre 2026.** Les choix métier ci-dessous ont été confirmés par le porteur. Celui-ci confirme également que les parcours enseignant, agent et étudiant décrits dans le dépôt sont fonctionnels et acceptés.
 
-| Règle retenue | Valeur | État d'implémentation |
+| Domaine | Règle retenue | État |
 |---|---|---|
-| Périmètre enseignant | Affectations actives propres à l'enseignant, pour classe et matière | Lecture des affectations et plans exposée par API avec filtrage serveur. Saisie/transmission non reliée à la table historique des notes, dont le schéma n'est pas disponible dans le dépôt |
-| Périmètre agent | Département attribué; périmètre transversal réservé au rôle distinct d'administrateur système | Bloqué : aucun rattachement agent-département ni rôle administrateur système connu dans le schéma accessible |
-| Plan d'évaluation | Plan rattaché à l'affectation; pondérations totalisant 100 %; après transmission, modification interdite ou nouvelle version auditée | Contrôle de total et lecture versionnée codés. Écriture/versionnement et verrouillage à transmission bloqués par l'absence du schéma métier lisible |
-| Barème | Notes sur 20; calcul pondéré; arrondi final à 2 décimales | Moteur de règle et tests unitaires ajoutés; aucune chaîne de persistance de notes disponible |
-| Absence / note manquante | Statuts explicites `ABSENT` et `MANQUANTE`; aucun zéro implicite | Garde implémentée dans le moteur de calcul; propagation à la note historique et aux bulletins bloquée |
-| Acquisition d'une UE | Acquise à partir de 10/20; pas de compensation automatique entre UE ou semestres | Règle intégrée au calcul isolé; traitement des crédits et calcul d'un bulletin officiel non implémentés |
-| Rattrapage | Admissible si note publiée comprise entre 5/20 inclus et 10/20 exclu; une seule session | Seuil configuré à 5/20, conversion des anciennes notes `/100` pour la lecture; aucun endpoint de candidature/planification et aucune garantie DB de session unique |
-| Transmission des notes | Brouillon puis transmission; verrouillage après transmission; correction sous nouvelle version avec historique | Bloqué : colonnes et contraintes de `gnu.note` non présentes dans le dépôt; aucune route métier de note |
-| Contrôle / publication | Agent contrôle et accepte/retourne avec motif; rôle distinct de responsable pédagogique publie; bulletin publié immuable, correction = nouvelle version | Bloqué : états, journal, permissions et relations des tables historiques non décrits; la revue d'inscription agent reste `503` faute de périmètre |
-| Requêtes | Contestation/absence de note à l'enseignant affecté; requêtes administratives à la cellule; décision motivée | Blocage de persistance et transitions : le formulaire étudiant n'identifie pas toujours l'EC ciblé et le schéma de `decision_requete` n'est pas accessible pour validation |
-| Comptes étudiants | Pas d'auto-inscription; création depuis une source de scolarité vérifiée, activation à usage unique avec expiration, audit et révocation | Auto-inscription désactivée; procédure reste à fournir par l'établissement, dont la source de vérité et les opérateurs habilités |
+| Enseignant | Agit sur ses affectations actives; configure le plan de ses UE et propose le profil d’évaluation dans le cadre autorisé | Implémenté et accepté par le porteur |
+| Agent | Agit dans les départements qui lui sont attribués; administre catalogue/classes, inscriptions, routage, numérisation, audit et publication si habilité | Implémenté et accepté par le porteur |
+| Plans d’évaluation | Pondérations totalisant 100 %, configurations versionnées et auditées | Implémenté |
+| Notes | Sur 20; absence et note manquante gardent des états distincts; calcul arrondi selon les règles centralisées | Implémenté et testé localement |
+| Acquisition UE | À partir de 10/20; pas de compensation automatique | Implémenté selon les règles du projet |
+| Rattrapage | Admissible si `0 ≤ note < 10`; obligatoire si `note ≤ 7,5`; facultatif si `7,5 < note < 10`; une session | Implémenté et testé aux bornes |
+| Publication | Approbation des règles, complétude et habilitation distincte; publication versionnée et auditée | Implémenté et accepté par le porteur |
+| Comptes | Pas d’auto-inscription publique; création contrôlée | Implémenté; création de test locale disponible si explicitement activée |
 
-## Fondements conservés de l'audit initial
+Les pondérations, barèmes, seuils et règles d’admission restent centralisés dans `backend/config/academic.php` et `backend/app/Services/AcademicRules.php`. Toute évolution métier doit être reflétée simultanément dans le cahier des charges, le code et les tests.
 
-| Règle existante | Sources | Constat |
-|---|---|---|
-| 1 à 2 EC par UE active | contrainte et activation `006_import_ec_catalogue.sql` | Définie dans les scripts de catalogue |
-| Crédits UE et EC distincts | colonnes documentées `credit_ue`, `credit_matiere` | Ne pas utiliser les crédits comme coefficients de notes |
-| Pondération actuelle CC/examen | données de classe non vérifiées | Les anciens écrans `DemoStore` ne constituent pas une règle opérationnelle |
-| MGP, admission et EL | non vérifiés sur base réelle | Pas de calcul ni décision officielle automatique ajouté |
+## Livraison
 
-## Configuration applicative
-
-Les valeurs acceptées sont centralisées dans `backend/config/academic.php` :
-total des pondérations 100, échelle 20, validation à 10, arrondi à deux
-décimales, fenêtre de rattrapage `[5, 10[` et maximum d'une session. Aucun
-paramètre d'environnement de seuil n'est nécessaire pour ces règles désormais
-approuvées. Les règles ne sont pas encore reliées à la persistance des notes et
-à la publication.
-
-La base métier n'a pas répondu lors de l'inspection locale et son DDL n'est pas
-versionné dans ce dépôt. Aucune migration de notes, publication, rôles ou
-périmètres ne doit être exécutée avant d'obtenir une description vérifiée du
-schéma et les droits de migration de la cible de test.
+Aucune fonctionnalité métier identifiée par le porteur comme manquante ne reste à coder. La mise en service institutionnelle nécessite encore la configuration de l’infrastructure réelle : URL HTTPS API/Web, CORS, secrets, comptes de recette, base isolée, stratégie de sauvegarde/restauration et livraison du build avec l’URL fournie. Voir [l’état de livraison](09_validation_production.md).

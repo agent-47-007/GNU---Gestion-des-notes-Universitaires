@@ -60,10 +60,33 @@ CREATE ROLE gnu_setup LOGIN;
 \password gnu_setup
 GRANT CONNECT ON DATABASE gnu_notes TO gnu_setup;
 GRANT USAGE ON SCHEMA gnu TO gnu_setup;
+GRANT CREATE ON SCHEMA gnu TO gnu_setup;
 GRANT SELECT ON gnu.departement, gnu.classe, gnu.utilisateur, gnu.etudiant, gnu.enseignant TO gnu_setup;
 GRANT INSERT ON gnu.utilisateur, gnu.etudiant, gnu.enseignant, gnu.inscription_classe, gnu.agent_departement TO gnu_setup;
 GRANT USAGE, SELECT ON SEQUENCE gnu.utilisateur_id_seq, gnu.etudiant_id_seq, gnu.enseignant_id_seq TO gnu_setup;
 ```
+
+Pour appliquer les migrations Laravel, utiliser ce compte de configuration avec la connexion `pgsql_setup` (le compte `gnu_app` de l’API ne doit pas recevoir le droit `CREATE` sur le schéma) :
+
+```bash
+GNU_LOCAL_SETUP_DB_USERNAME=gnu_setup \
+GNU_LOCAL_SETUP_DB_PASSWORD='mot-de-passe-local-du-compte-setup' \
+php artisan migrate --database=pgsql_setup --no-interaction
+```
+
+Certaines migrations modifient des tables institutionnelles existantes, par exemple `gnu.notification`. `CREATE` sur le schéma ne donne pas le droit de modifier ces tables : elles doivent être migrées par leur propriétaire. Vérifier le propriétaire avec `\dt+ gnu.notification` dans `psql`. Dans cette configuration GNU, la table appartient au rôle `postgres`. Un administrateur local peut lui accorder temporairement l’appartenance à `gnu_setup` :
+
+```sql
+GRANT postgres TO gnu_setup;
+```
+
+Relancer ensuite la commande Artisan. Une fois toutes les migrations terminées, retirer l’appartenance pour garder `gnu_setup` limité au fonctionnement local prévu :
+
+```sql
+REVOKE postgres FROM gnu_setup;
+```
+
+La variable `GNU_LOCAL_SETUP_DB_PASSWORD` doit contenir le mot de passe réellement défini pour `gnu_setup` via `\password`; le texte d’exemple ci-dessous ne fonctionne pas tel quel. Ne pas transférer la propriété des tables à `gnu_setup` et ne pas donner ces droits au compte applicatif `gnu_app`. Si PostgreSQL n’autorise pas l’appartenance au rôle propriétaire, lancer les migrations avec les identifiants du propriétaire `postgres` local, en ne les inscrivant pas dans les commandes ou un historique partagé.
 
 Les tables `gnu.inscription_classe` et `gnu.agent_departement` doivent exister (migrations appliquées) avant cette étape.
 

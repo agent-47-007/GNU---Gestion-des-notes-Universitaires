@@ -148,7 +148,7 @@ La hiérarchie de référence est : Université, Faculté, Département, Filièr
 \subsection{Catalogue pédagogique}
 Le catalogue contient les UE et leurs éléments constitutifs, appelés EC ou matières dans le recueil initial. Chaque UE précise au minimum son code, son intitulé, son niveau, son semestre, sa version de programme, sa catégorie, son nombre de crédits, son profil d'évaluation et son statut. Chaque EC précise son code, son intitulé, son rang, son nombre de crédits et l'UE parente.
 
-Les codes techniques d'EC créés par l'application ne doivent pas être présentés comme des codes réglementaires lorsque les documents académiques n'en fournissent pas. Une UE active doit disposer d'un ou deux EC dans le catalogue GNU. La somme des crédits EC doit correspondre aux crédits de l'UE, sauf anomalie de programme documentée et approuvée.
+Les codes techniques d'EC créés par l'application ne doivent pas être présentés comme des codes réglementaires lorsque les documents académiques n'en fournissent pas. Une UE active dispose normalement d'un ou deux EC dans le catalogue GNU. L'UE INF500 (mémoire M2-S2, 60 crédits) fait exception : le syllabus la définit comme une UE sans EC. Pour les autres UE, la somme des crédits EC doit correspondre aux crédits de l'UE, sauf anomalie de programme documentée et approuvée.
 
 \subsection{Entités conceptuelles}
 \begin{longtable}{L{3.3cm}L{12.0cm}}
@@ -247,8 +247,8 @@ La décision annuelle est \textbf{ADMIS} si et seulement si les conditions cumul
 
 \subsection{Rattrapage}
 \begin{itemize}
-  \item Une UE publiée avec une note comprise entre 5/20 inclus et 10/20 exclu peut ouvrir droit à une candidature, si l'étudiant n'a pas déjà consommé sa session unique.
-  \item Une note exactement égale à 10/20 n'est pas admissible au rattrapage. Une note inférieure à 5/20 n'y est pas admissible selon la règle fixe GNU.
+  \item Une UE publiée avec une note de 0/20 à 9/20 ouvre droit au rattrapage, si l'étudiant n'a pas déjà consommé sa session unique. Pour une note strictement supérieure à 7,5/20 et inférieure à 10/20, le rattrapage est facultatif; à 7,5/20 ou moins, il est obligatoire.
+  \item Une note de 10/20 ou plus n'est pas admissible au rattrapage.
   \item Le rattrapage porte sur la session normale de l'EC concerné lorsque la note SN de cet EC est strictement inférieure à 50/100. Les évaluations CC, TP ou TPE ne sont pas recréées comme session de rattrapage.
   \item L'étudiant choisit une session ouverte correspondant à sa classe et à l'UE. La cellule achemine sa candidature aux enseignants responsables; l'enseignant autorise ou refuse chaque EC avec un motif. La candidature n'est effective qu'après autorisation.
   \item Une seule session peut être consommée pour une UE et une année. L'absence à la session est enregistrée comme telle et consomme la tentative selon la règle officielle.
@@ -397,7 +397,7 @@ R-05 & Valider chacun des trois profils d'évaluation & Les profils 30/70, 20/20
 R-06 & Laisser une note manquante ou déclarer une absence & Le statut reste distinct d'une note zéro; le calcul officiel/publication est bloqué ou une décision autorisée est requise. \\
 R-07 & Vérifier le barème aux seuils 30, 35, 40, 45, 50, 55, 60, 65, 70, 75 et 80/100 & Les cotes et points correspondent exactement à la grille officielle. \\
 R-08 & Calculer l'admission avec MGP 2,00 et toutes les UE à 35/100 ou plus, sans élimination & La décision annuelle est ADMIS. À MGP 1,99, avec une UE sous 35 ou une élimination, elle est ÉCHEC. \\
-R-09 & Candidater au rattrapage avec 4,99; 5; 9,99; puis 10/20 & 4,99 et 10 sont refusés; 5 et 9,99 sont admissibles si une session reste disponible. \\
+R-09 & Vérifier le rattrapage avec 0; 7,5; 7,51; 9; puis 10/20 & 0 à 9 sont admissibles si une session reste disponible; jusqu’à 7,5 le rattrapage est obligatoire, au-dessus facultatif; 10 est refusé. \\
 R-10 & Candidater une deuxième fois à une UE déjà consommée & La demande est refusée et aucune nouvelle candidature n'est créée. \\
 R-11 & Tenter une requête pour une note non manquante ou évaluation non réalisée & La requête est refusée; une évaluation réalisée sans note peut faire l'objet d'une seule requête ouverte. \\
 R-12 & Déposer une contestation après la fenêtre de 48 heures & Le système refuse la requête et indique que le délai est dépassé. \\
@@ -425,15 +425,15 @@ Les règles ci-dessous ne sont pas inventées dans cette version. Le maître d'o
   \item \textbf{Affectations multiples :} si plusieurs enseignants interviennent sur un même EC, qui est responsable de la transmission, de la réponse aux requêtes et de la vérification finale?
 \end{enumerate}
 
-\section{Écarts connus à traiter dans l'application}
+\section{Clôture des écarts connus}
 
-Cette section sépare le besoin cible de l'état du code. Elle ne change pas les règles fixes définies plus haut.
+Les divergences historiques ci-dessous sont résolues dans l'état fonctionnel accepté le 3 novembre 2026 :
 \begin{itemize}
-  \item La configuration actuelle accepte exactement 10/20 au rattrapage alors que la règle cible est une borne supérieure exclue. L'implémentation et son libellé de configuration doivent être alignés sur \(5 \leq \mathrm{note} < 10\).
-  \item La suite backend contient un test qui attend le refus à 10/20; il révèle actuellement cette divergence.
-  \item Les tests Flutter référencent des méthodes et libellés qui ne correspondent plus à l'API et aux écrans actuels. Ils doivent être réalignés avant de servir de preuve de recette.
-  \item La publication doit rester bloquée en environnement où aucun administrateur système n'est configuré ou où les règles n'ont pas été approuvées et leur empreinte enregistrée.
+  \item La borne de rattrapage est \(0 \leq \mathrm{note} < 10\); le rattrapage est obligatoire à \(\mathrm{note} \leq 7{,}5\) et facultatif au-dessus jusqu'à moins de 10.
+  \item Les tests backend couvrent les limites d'admissibilité, l'obligation à 7,5 et la limite d'une session.
+  \item Les tests Flutter ont été réalignés sur l'authentification et les parcours actuellement exposés.
 \end{itemize}
+La publication reste volontairement impossible sans administrateur système configuré, règles approuvées et empreinte enregistrée; ces contrôles sont des conditions d'autorisation, pas des défauts à contourner.
 
 \section{Traçabilité avec le recueil initial}
 

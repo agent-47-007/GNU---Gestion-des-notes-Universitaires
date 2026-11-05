@@ -1,5 +1,7 @@
 # 03 — Audit backend Laravel
 
+> **Archive d’audit historique.** Ce document reflète l’état constaté lors de sa rédaction et a été dépassé par les travaux ultérieurs. Pour l’état fonctionnel accepté au 3 novembre 2026 et les seuls prérequis de livraison encore ouverts, consulter [l’état actuel](09_validation_production.md) et [les règles métier](05_audit_regles_metier.md).
+
 ## Localisation
 
 Le backend auditable est dans `sauvegardes/ancienne-version-2026-10-12/source/GNU/GNU_Backend/`, pas dans `backend/` courant, qui ne contient que `.gitkeep`.

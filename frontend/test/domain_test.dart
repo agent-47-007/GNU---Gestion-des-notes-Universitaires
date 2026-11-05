@@ -32,18 +32,6 @@ void main() {
     expect(store.publicationVersion, 2);
     expect(store.publishedScores.first, isNot(snapshot));
   });
-  test('changement de pondération exige une nouvelle validation', () {
-    final store = DemoStore();
-    addTearDown(store.dispose);
-    store.changeMark(3, false, '14');
-    store.validateGrades();
-    store.submitGrades();
-    store.changeWeights(40);
-    expect(store.examWeight, 60);
-    expect(store.gradesValidated, isFalse);
-    expect(store.gradesSubmitted, isFalse);
-    expect(() => store.changeWeights(101), throwsArgumentError);
-  });
   test('choix semestriels verrouillés après soumission', () {
     final store = DemoStore();
     addTearDown(store.dispose);

@@ -1,50 +1,44 @@
-# Suivi de réalisation du frontend GNU
+# État du client GNU
 
-Ce tableau suit les fonctionnalités prévues. Une case cochée signifie que le
-parcours est disponible dans l’interface ; elle ne signifie pas encore que
-l’API Laravel et PostgreSQL sont branchés.
+**Mise à jour : 3 novembre 2026.** Le porteur du projet confirme l’acceptation des parcours fonctionnels décrits ci-dessous. Les tests automatisés locaux sont également passés. Le déploiement sur l’infrastructure de l’établissement est suivi séparément dans [l’état de livraison](audit/09_validation_production.md).
 
 ## Authentification et socle
 
-- [ ] Connexion
-- [ ] Inscription
-- [ ] Gestion réelle des rôles et permissions
-- [ ] Intégration API Laravel (authentification, données, validations, erreurs)
+- [x] Connexion API et gestion de session par rôle
+- [x] Inscription publique désactivée; création de comptes contrôlée par l’établissement ou portail de test local
+- [x] Autorisations et erreurs API contrôlées côté serveur
+- [x] Client Flutter connecté à l’API Laravel
+- [x] Interface utilisable en navigateur mobile; session LAN de test compatible HTTP privé
 
 ## Espace étudiant
 
-- [x] Tableau de bord
-- [x] Bulletin semestriel et annuel (aperçu frontend)
-- [x] Résultats et notes de démonstration
-- [x] Requêtes et suivi avec justificatif
-- [x] Guide et normes
-- [x] Notifications et profil (aperçu frontend)
+- [x] Tableau de bord, profil et notifications
+- [x] Inscriptions pédagogiques et soumission
+- [x] Résultats publiés, aperçus provisoires autorisés et bulletins
+- [x] Requêtes, justificatifs, rattrapages
+- [x] Téléchargement/impression du relevé
 
 ## Espace enseignant
 
-- [x] Tableau de bord
-- [x] Classes et matières affectées (aperçu frontend)
-- [x] Configuration des évaluations
-- [x] Saisie et vérification des notes
-- [x] Validation et transmission des notes
-- [x] Traitement des requêtes
-- [x] Rattrapages de démonstration
+- [x] Affectations et étudiants du périmètre
+- [x] Configuration des plans et proposition de profil UE
+- [x] Carnet, saisie/import et transmission des notes
+- [x] Vérification ou retour des numérisations
+- [x] Requêtes affectées, résultats provisoires et notes de rattrapage
 
-## Cellule informatique
+## Espace agent
 
-- [x] Tableau de bord administratif
-- [x] Gestion des utilisateurs de démonstration
-- [x] Structure académique et programmes de démonstration
-- [x] Inscriptions et affectations de démonstration
-- [x] Contrôle et publication de démonstration
-- [x] Gestion des bulletins (aperçu frontend)
-- [x] Journal d’audit (aperçu frontend)
+- [x] Périmètre départemental et tableau de bord
+- [x] Structure, catalogue, classes, comptes et affectations
+- [x] Revue des inscriptions et routage des requêtes
+- [x] Numérisation/retour des notes et journal d’audit
+- [x] Aperçus, habilitation et publication des résultats
+- [x] Sessions et opportunités de rattrapage
 
-## Socle qualité
+## Règles et contrôles
 
-- [ ] Navigation complète et responsive validée
-- [ ] Sécurité, validations serveur et gestion des erreurs API
-- [ ] Tests fonctionnels complets
+- [x] Pondérations validées à 100 %, notes sur 20, absences et notes manquantes distinctes
+- [x] Rattrapage de 0 inclus à 10 exclu; obligatoire jusqu’à 7,5 inclus, facultatif au-dessus; une session
+- [x] Tests Flutter et Laravel locaux
 
-Les fonctionnalités cochées utilisent encore des données fictives conservées en
-mémoire. Elles seront reliées au backend après la finalisation des parcours.
+Les cases reflètent l’état fonctionnel accepté par le porteur et ne signifient pas que l’application est déployée sur le serveur de l’établissement. Les domaines HTTPS, secrets, comptes et base de recette restent propres à l’environnement de livraison.

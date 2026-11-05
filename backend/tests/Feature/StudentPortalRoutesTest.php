@@ -10,7 +10,7 @@ class StudentPortalRoutesTest extends TestCase
     {
         $routes = [
             ['getJson', '/api/v1/profil/etudiant'],
-            ['putJson', '/api/v1/etudiant/profil'],
+            ['putJson', '/api/v1/profil/etudiant'],
             ['getJson', '/api/v1/etudiant/inscriptions?semestre=1'],
             ['putJson', '/api/v1/etudiant/inscriptions'],
             ['postJson', '/api/v1/etudiant/inscriptions/soumettre'],

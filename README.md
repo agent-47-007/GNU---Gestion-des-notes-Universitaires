@@ -1,217 +1,84 @@
-# GNU — Gestion des notes
+# GNU — Gestion des notes universitaires
 
-> **État actuel (15 octobre 2026)** : ce README décrit en partie une ancienne
-> démonstration. L'accueil actuel exige une session étudiante connectée, mais
-> seuls certains parcours étudiants sont reliés à l'API. Les fonctions
-> enseignant, la saisie et la publication réelles des notes ne sont pas
-> opérationnelles. Aucune validation sur le serveur de production n'a été
-> réalisée. Voir [l'analyse de préparation production](docs/audit/09_validation_production.md).
+GNU est une application web/mobile de gestion des parcours académiques. Le dépôt contient un client Flutter et une API Laravel/Sanctum qui accède à PostgreSQL; Flutter ne se connecte jamais directement à la base.
 
-## Architecture principale
+**État fonctionnel au 3 novembre 2026 :** le porteur confirme que les parcours étudiant, enseignant et agent, les contrôles de rôles/périmètres, l’audit, les rattrapages, les bulletins, ainsi que le test sur téléphone sont acceptés. Les tests automatisés locaux sont verts. Le déploiement institutionnel et la recette sur une infrastructure HTTPS fournie par l’établissement restent des opérations d’environnement, pas des fonctions manquantes à coder.
 
-Flutter/Dart → API PHP locale → PostgreSQL local.
+## Parcours disponibles
 
-Flutter ne se connecte jamais directement à PostgreSQL. L’API applique les validations et appelle les fonctions métier du schéma `gnu`.
+- **Étudiant** : session, profil, inscriptions pédagogiques, consultation des résultats publiés, requêtes et justificatifs, notifications, candidatures de rattrapage et bulletins.
+- **Enseignant** : affectations actives, configuration du plan d’évaluation et proposition de profil UE, carnet, saisie/import/transmission des notes, vérification des numérisations, requêtes assignées et rattrapages.
+- **Agent** : travail limité au département attribué, structure et catalogue, classes et affectations, inscriptions, routage des requêtes, numérisation, audit, sessions et publication avec habilitation.
 
-## Saisie et vérifications des notes — démonstration
+Les règles de notes sont centralisées dans `backend/config/academic.php` et `backend/app/Services/AcademicRules.php`. Le rattrapage est admissible pour une note de 0 à moins de 10/20; il est obligatoire jusqu’à 7,5 inclus et facultatif au-dessus. Une session unique est permise.
 
-La navigation enseignant ouvre un registre modifiable par UE puis EC. Les plans
-d’exemple avec TP (20/30/50) et sans TP (30/70) déterminent les colonnes et les
-compteurs. Une cellule vide représente une note manquante ; `ABS` représente une
-absence. Les notes numériques se saisissent sur 20, avec point ou virgule.
+## Démarrer en local
 
-Le calcul convertit les notes sur 100, applique les pondérations, arrondit chaque
-EC à l’entier supérieur, puis calcule l’UE avec les crédits de ses EC et arrondit
-à nouveau. Les grades suivent le barème SQL. Le seuil de 35/100 porte sur l’UE
-pour l’admission annuelle ; une note faible de CC ne produit pas le statut EL.
+Prérequis : PHP 8.5 avec `pdo_pgsql`, Composer, Flutter et une base PostgreSQL initialisée avec le schéma GNU attendu. Les secrets de connexion sont définis uniquement dans `backend/.env`; ne pas les copier dans Git.
 
-Les contrôles et états sont séparés par EC : brouillon, validation, puis
-transmission **simulée**. Une modification impose une nouvelle validation.
-Les notes manquantes, invalides et les absences normales à régulariser bloquent
-la finalisation. Les résultats affichés restent provisoires.
-
-Le bouton de sauvegarde conserve les brouillons de démonstration dans le
-navigateur ; sur les autres plateformes, ils sont conservés pendant la session
-de l’application. Restaurer un brouillon impose une nouvelle validation. Les
-imports/exports Excel et la transmission au Décanat sont simulés. Ce registre
-ne lit ni n’écrit encore les notes du serveur.
-
-Vérification : `cd frontend`, puis `flutter test` et `flutter build web`.
-
-## Prérequis locaux
-
-- PostgreSQL démarré sur le port `5435` ;
-- base `gnu_notes` existante ;
-- schéma `gnu` installé avec `GNU_Creation_PostgreSQL.sql` ;
-- PHP avec l’extension `pdo_pgsql` ;
-- Flutter, uniquement pour lancer l’interface.
-
-Si la base n’est pas encore installée :
+Terminal 1 — API :
 
 ```bash
-createdb -p 5435 -U postgres gnu_notes
-psql -p 5435 -U postgres -d gnu_notes -v ON_ERROR_STOP=1 -f GNU_Creation_PostgreSQL.sql
-psql -p 5435 -U postgres -d gnu_notes -v ON_ERROR_STOP=1 -f database/002_demo.sql
+cd "/home/agent-47/Téléchargements/GNU---Gestion-des-notes-Universitaires/backend"
+php artisan serve --host=127.0.0.1 --port=8000
 ```
 
-## Démarrer l’API sans Docker
+Terminal 2 — client Web :
 
 ```bash
-cp .env.local.example .env.local
-bash scripts/run-api-local.sh
+cd "/home/agent-47/Téléchargements/GNU---Gestion-des-notes-Universitaires/frontend"
+flutter pub get
+flutter run -d web-server --web-hostname 127.0.0.1 --web-port 8780 --dart-define=GNU_API_BASE_URL=http://127.0.0.1:8000/api/v1
 ```
 
-Dans un autre terminal :
+Ouvrir <http://127.0.0.1:8780>.
+
+### Tester depuis un téléphone sur le même Wi-Fi
+
+Récupérer l’adresse IPv4 de l’ordinateur avec `ip -4 -o addr show scope global` et retenir celle de l’interface Wi-Fi (par exemple `192.168.1.25`). Dans les commandes suivantes, remplacer `192.168.1.25` par cette adresse.
+
+Terminal 1 — API avec l’origine CORS locale :
 
 ```bash
-curl http://127.0.0.1:8080/api/health
-bash scripts/check.sh
+cd "/home/agent-47/Téléchargements/GNU---Gestion-des-notes-Universitaires/backend"
+CORS_ALLOWED_ORIGINS="http://127.0.0.1:8780,http://localhost:8780,http://192.168.1.25:8780" php artisan serve --host=0.0.0.0 --port=8000
 ```
 
-Routes principales : `/api/health`, `/api/dashboard`, `/api/classes`, `/api/students`, `/api/students/21T2355/bulletin?period=S1`.
+Terminal 2 — interface joignant l’API par le réseau Wi-Fi :
 
-## Démarrer Flutter
+```bash
+cd "/home/agent-47/Téléchargements/GNU---Gestion-des-notes-Universitaires/frontend"
+flutter run -d web-server --web-hostname 0.0.0.0 --web-port 8780 --dart-define=GNU_API_BASE_URL=http://192.168.1.25:8000/api/v1
+```
+
+Sur le téléphone, ouvrir `http://192.168.1.25:8780`. Le navigateur utilise un stockage local de test pour les sessions sur une adresse privée HTTP; ne pas utiliser de comptes réels dans ce mode. Le portail de création de comptes locaux est à `http://192.168.1.25:8000/local-test-accounts` si `GNU_ENABLE_LOCAL_TEST_ACCOUNT_PORTAL=true` est activé dans la configuration locale.
+
+## Vérifications et build
+
+```bash
+cd backend
+php artisan test
+vendor/bin/pint --dirty --format agent
+
+cd ../frontend
+flutter test --no-pub
+dart analyze lib/api_client.dart lib/session_storage.dart lib/session_storage_factory_stub.dart lib/session_storage_factory_web.dart
+```
+
+Une build Web de production demande l’URL HTTPS réelle de l’API, fournie par l’établissement :
 
 ```bash
 cd frontend
-flutter pub get
-flutter run -d chrome --dart-define=API_BASE=http://127.0.0.1:8080/api
+GNU_API_BASE_URL=https://api-etablissement.example/api/v1 bash tool/build_production.sh
 ```
 
-## Docker — optionnel
+Ne pas utiliser une URL fictive pour un artefact destiné au déploiement. Pour une mise en service institutionnelle, configurer aussi CORS, secrets, comptes, base isolée, sauvegarde et restauration dans l’environnement visé.
 
-Docker reste disponible avec `docker compose up --build` pour reproduire une installation isolée, mais il n’est plus nécessaire et ne doit pas être lancé en même temps qu’un PostgreSQL local utilisant le port `5435`.
-=======
-<<<<<<< HEAD
-# gnu_frontend
+## Documentation
 
-A new Flutter project.
-
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-=======
-# Gestion des Notes d'une Université — Système LMD
-
-Application Web & Mobile de gestion des notes des étudiants, conçue pour le système LMD (Licence-Master-Doctorat) en vigueur dans les universités du Cameroun.
-
-> Projet réalisé dans le cadre du **stage académique ARITED**
-> Présenté par **Ngue Mbong André Fitzgerald** · Encadré par **Dr Thomas Messi Nguele**
-
----
-
-## 📌 Contexte & problématique
-
-Dans de nombreux départements universitaires, la gestion des notes repose encore sur des procédures manuelles ou semi-automatisées (feuilles de calcul, registres papier), gérées de façon cloisonnée par chaque enseignant ou secrétariat pédagogique. Cela engendre des erreurs de saisie, des délais de publication longs (~7 jours en moyenne) et un manque de traçabilité et de visibilité pour les étudiants.
-
-**Objectif :** centraliser, sécuriser et automatiser la gestion des notes, accessible à tous les acteurs (étudiants, enseignants, agents de la cellule informatique) aussi bien depuis un ordinateur que depuis un smartphone.
-
-## 🎯 Objectifs du projet
-
-- Automatiser la saisie et le calcul des moyennes selon la grille officielle (CC / TP / TPE / SN)
-- Centraliser les données académiques (étudiants, UE, EC, notes) dans une base unique
-- Offrir un accès Web et Mobile aux mêmes informations via une architecture commune
-- Sécuriser les accès selon les rôles (étudiant, enseignant, agent)
-- Générer automatiquement les relevés de notes et bulletins semestriels
-
-## 👥 Les acteurs du système
-
-| Acteur | Rôle principal |
-|---|---|
-| **Étudiant** | Choisit ses matières/UE, consulte ses notes et son bulletin, soumet une requête en cas de note manquante |
-| **Enseignant** | Sélectionne ses matières, saisit les notes, vérifie leur numérisation, traite les requêtes |
-| **Agent** (cellule informatique / administrateur) | Gère la structure académique, numérise les notes, calcule la MGP, génère les bulletins, publie les résultats |
-
-Précondition commune aux trois acteurs : **authentification obligatoire** avant toute action.
-
-## 🏫 Le système LMD
-
-```
-Université › Faculté › Département › Filière › Niveau (L1–M2) › Classe
-```
-
-Pondération des évaluations par matière (EC) :
-
-| Type d'UE | CC | TP | TPE | SN |
-|---|---|---|---|---|
-| Théorique ou pratique | 30 % | — | — | 70 % |
-| Théorique ou pratique avec travail personnel | 20 % | — | 20 % | 60 % |
-| Mixte | 20 % | 30 % | — | 50 % |
-
-La grille de la Faculté des Sciences de l’Université de Yaoundé I attribue les points de qualité de 4,00 (note d’UE d’au moins 80/100) à 1,00 (35–39,99/100), et calcule la MGP par pondération des points par les crédits. Une UE notée à 50/100 ou moins est admissible à l’unique session de rattrapage.
-
-## 🔄 Cycle de vie de la publication des notes
-
-1. **Évaluation & saisie** — l'enseignant évalue (CC/TP/TPE/SN) et saisit les notes
-2. **Transmission** — les notes sont transmises à la cellule informatique
-3. **Numérisation & vérification** — numérisation par l'agent, puis vérification par l'enseignant
-4. **Calcul & bulletins** — calcul automatique de la MGP et génération des bulletins
-5. **Publication & consultation** — publication des résultats, consultation par l'étudiant
-
-*Scénario alternatif :* en l'absence de note, l'étudiant soumet une requête ; l'enseignant la traite et corrige la note, qui repart dans le circuit de numérisation.
-
-## 🗂️ Modèle de données
-
-Le recueil des besoins identifie trois familles d'entités :
-
-- **Structure académique** : Université, Faculté, Département, Filière, Niveau, Classe
-- **Pédagogie** : UE, Matière (EC)
-- **Acteurs & évaluation** : Enseignant, Étudiant, Inscription, Note, Requête, Bulletin
-
-Le modèle conceptuel de données (MCD) complet est disponible dans `GESTION_DES_NOTES_drawio.pdf`.
-
-## 🛠️ Stack technique
-
-| Besoin | Choix |
-|---|---|
-| Framework mobile/web | **Flutter** (Dart) |
-| Appels HTTP | `dio` |
-| Gestion d'état | `flutter_riverpod` |
-| Navigation | `go_router` |
-| Stockage local | `shared_preferences`, `hive` |
-| Modélisation | **UML** (cas d'utilisation, classes, séquence, états) |
-
-Le choix de Flutter permet une seule base de code pour les versions Web et Mobile, avec une interface cohérente pour les trois profils d'utilisateurs.
-
-## 📅 Méthodologie — Sprints
-
-| Sprint | Semaines | Contenu |
-|---|---|---|
-| **1 — Fondations** | 1–2 | Authentification, structure académique |
-| **2 — Saisie & sélection** | 3–4 | Choix des matières, saisie des notes |
-| **3 — Traitement & publication** | 5–6 | Numérisation → vérification → calcul → publication |
-| **4 — Consultation & réclamations** | 7–8 | Consultation des résultats, requêtes |
-
-## 📁 Structure du dépôt
-
-```
-├── DOCS/                      # Recueil des besoins, rapports d'apprentissage (UML, Flutter)
-├── DIAGRAMMES/                # Diagrammes UML et MCD (drawio, PDF)
-├── TEST/PAGES WEB ET LOGOS/   # Maquettes générées (Stitch) : dashboards, écrans, logos
-└── (code source Flutter)      # Première itération de l'application
-```
-
-## 📖 Documentation associée
-
-- `RECEUIL_DES_BESOINS.docx` — expression des besoins, dictionnaire de données, entités
-- `Rapport_Apprentissage_UML.docx/.pptx` — apprentissage UML appliqué au projet
-- `Rapport_Apprentissage_Flutter.docx/.pptx` — apprentissage Flutter appliqué au projet
-- `Gestion_des_Notes_Presentation.pptx` — présentation générale du projet
-- `GESTION_DES_NOTES_drawio.pdf` — diagrammes et modèle de données
-
-## ⚠️ Points de vigilance
-
-- **Agent = Administrateur** *(résolu)* : l'administrateur de l'application est la cellule informatique, qui agit à travers ses agents.
-- **Notion de « salle »** *(à valider)* : synonyme de classe, lieu physique, ou groupe de TD/TP ? À confirmer avec le service de la scolarité avant la suite du développement.
-
-
+- [Cahier des charges](docs/CAHIER_DES_CHARGES_GNU.tex)
+- [Règles métier](docs/audit/05_audit_regles_metier.md)
+- [Suivi frontend](docs/FRONTEND_PROGRESS.md)
+- [État et livraison](docs/audit/09_validation_production.md)
+- [Guide de tests manuels](docs/guide-tests-manuels.md)
+- [Documentation backend](backend/README.md)

@@ -122,7 +122,12 @@ class AcademicRules
     {
         return $existingSessions < (int) config('academic.retake_max_sessions', 1)
             && $mark >= (float) config('academic.retake_minimum_mark', 0)
-            && $mark <= (float) config('academic.retake_maximum_inclusive', 10);
+            && $mark < (float) config('academic.retake_maximum_exclusive', 10);
+    }
+
+    public function isRetakeRequired(float $mark): bool
+    {
+        return $mark <= (float) config('academic.retake_voluntary_mark', 7.5);
     }
 
     /** @param array<string, mixed> $snapshot */

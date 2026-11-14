@@ -41,6 +41,66 @@ class AcademicRulesTest extends TestCase
         (new AcademicRules)->validateEvaluationWeights(['CC' => 40, 'EXAMEN' => 50]);
     }
 
+    public function test_it_accepts_the_three_configured_official_ue_evaluation_profiles(): void
+    {
+        $rules = new AcademicRules;
+
+        foreach ([
+            [['type_eval' => 'CC', 'poids' => 30], ['type_eval' => 'SN', 'poids' => 70]],
+            [['type_eval' => 'CC', 'poids' => 20], ['type_eval' => 'TP', 'poids' => 30], ['type_eval' => 'SN', 'poids' => 50]],
+            [['type_eval' => 'CC', 'poids' => 20], ['type_eval' => 'TPE', 'poids' => 20], ['type_eval' => 'SN', 'poids' => 60]],
+        ] as $profile) {
+            $rules->validateOfficialEvaluationWeights($profile);
+            $this->assertTrue(true);
+        }
+    }
+
+    public function test_official_profiles_produce_the_expected_weighted_mark(): void
+    {
+        $rules = new AcademicRules;
+        $cases = [
+            [
+                'profile' => [
+                    'CC' => ['weight' => 30, 'status' => 'PRESENT', 'mark' => 10],
+                    'SN' => ['weight' => 70, 'status' => 'PRESENT', 'mark' => 15],
+                ],
+                'expected' => 13.5,
+            ],
+            [
+                'profile' => [
+                    'CC' => ['weight' => 20, 'status' => 'PRESENT', 'mark' => 10],
+                    'TP' => ['weight' => 30, 'status' => 'PRESENT', 'mark' => 12],
+                    'SN' => ['weight' => 50, 'status' => 'PRESENT', 'mark' => 14],
+                ],
+                'expected' => 12.6,
+            ],
+            [
+                'profile' => [
+                    'CC' => ['weight' => 20, 'status' => 'PRESENT', 'mark' => 12],
+                    'TPE' => ['weight' => 20, 'status' => 'PRESENT', 'mark' => 10],
+                    'SN' => ['weight' => 60, 'status' => 'PRESENT', 'mark' => 15],
+                ],
+                'expected' => 13.4,
+            ],
+        ];
+
+        foreach ($cases as $case) {
+            $this->assertSame($case['expected'], $rules->calculateFinalMark($case['profile'])['mark']);
+        }
+    }
+
+    public function test_official_plan_rejects_duplicate_assessment_types(): void
+    {
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('Une seule évaluation de chaque type');
+
+        (new AcademicRules)->validateOfficialEvaluationWeights([
+            ['type_eval' => 'CC', 'poids' => 15],
+            ['type_eval' => 'CC', 'poids' => 15],
+            ['type_eval' => 'SN', 'poids' => 70],
+        ]);
+    }
+
     public function test_it_applies_retake_boundaries_and_single_session_limit(): void
     {
         $rules = new AcademicRules;

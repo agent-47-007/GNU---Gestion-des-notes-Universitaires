@@ -406,18 +406,29 @@ class SectionTitle extends StatelessWidget {
 }
 
 class EmptyState extends StatelessWidget {
-  const EmptyState(this.title, this.message, {super.key});
+  const EmptyState(
+    this.title,
+    this.message, {
+    super.key,
+    this.compact = false,
+  });
   final String title, message;
+  final bool compact;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.all(26),
+    padding: EdgeInsets.all(compact ? 12 : 26),
     child: Center(
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.inbox_outlined, size: 38, color: palette(context, muted)),
-          const SizedBox(height: 14),
+          Icon(
+            Icons.inbox_outlined,
+            size: compact ? 30 : 38,
+            color: palette(context, muted),
+          ),
+          SizedBox(height: compact ? 8 : 14),
           Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
+          SizedBox(height: compact ? 4 : 8),
           Text(
             message,
             textAlign: TextAlign.center,

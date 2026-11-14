@@ -65,7 +65,7 @@ class AcademicReferenceController extends Controller
             ->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
             ->join('gnu.filiere as f', 'f.id', '=', 'n.filiere_id')
             ->join('gnu.annee_academique as a', 'a.id', '=', 'c.annee_id')
-            ->select(['c.id', 'c.code_classe', 'c.niveau_id', 'n.code_niv', 'f.code_f', 'c.annee_id', 'a.libelle', 'c.version_programme'])
+            ->select(['c.id', 'c.code_classe', 'c.niveau_id', 'n.code_niv', 'f.code_f', 'c.annee_id', 'a.libelle'])
             ->orderByDesc('a.date_debut')->orderBy('c.code_classe');
         foreach (['annee_id', 'niveau_id'] as $field) {
             if ($request->filled($field)) {
@@ -81,7 +81,7 @@ class AcademicReferenceController extends Controller
         $query = DB::table('gnu.ue as u')
             ->join('gnu.niveau as n', 'n.id', '=', 'u.niveau_id')
             ->join('gnu.filiere as f', 'f.id', '=', 'n.filiere_id')
-            ->select(['u.id', 'u.code_ue as code', 'u.intitule_ue as intitule', 'u.niveau_id', 'n.code_niv', 'f.code_f', 'u.version_programme', 'u.numero_semestre as semestre', 'u.categorie_ue as categorie', 'u.credit_ue as credits', 'u.statut_catalogue as statut'])
+            ->select(['u.id', 'u.code_ue as code', 'u.intitule_ue as intitule', 'u.niveau_id', 'n.code_niv', 'f.code_f', 'u.numero_semestre as semestre', 'u.categorie_ue as categorie', 'u.credit_ue as credits', 'u.statut_catalogue as statut'])
             ->orderBy('n.code_niv')->orderBy('u.numero_semestre')->orderBy('u.code_ue');
         if ($request->filled('niveau_id')) {
             $query->where('u.niveau_id', $request->integer('niveau_id'));

@@ -22,7 +22,12 @@ class UtilisateurResource extends JsonResource
             'prenom' => $this->prenom,
             'courriel' => $this->courriel,
             'profil' => match ($this->role) {
-                Role::Etudiant => $this->etudiant ? ['id' => $this->etudiant->id, 'matricule' => $this->etudiant->matricule] : null,
+                Role::Etudiant => $this->etudiant ? [
+                    'id' => $this->etudiant->id,
+                    'matricule' => $this->etudiant->matricule,
+                    'date_naissance' => $this->etudiant->date_naissance,
+                    'lieu_naissance' => $this->etudiant->lieu_naissance,
+                ] : null,
                 Role::Enseignant => $this->enseignant ? [
                     'id' => $this->enseignant->id,
                     'eid' => $this->enseignant->eid,

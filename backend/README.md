@@ -57,6 +57,28 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
 
+## Demandes officielles de compte
+
+Les étudiants, enseignants et agents utilisent « Demander un compte » sur la page de connexion. Une demande ne crée aucun compte utilisable : l’administrateur système vérifie l’identité et le département, puis l’approuve ou la refuse depuis « Comptes & affectations ». L’approbation active le profil; pour un Agent, GNU crée aussi son rattachement départemental. La demande et la décision sont inscrites au journal d’audit. Le mot de passe est stocké sous forme de hash pendant l’examen puis supprimé de la demande après décision.
+
+Le premier administrateur système s’amorce une seule fois depuis un terminal backend, avec la connexion PostgreSQL de configuration (`pgsql_setup`) pointant vers la base voulue :
+
+```bash
+php artisan gnu:bootstrap-system-admin
+```
+
+La commande demande confirmation du nom de la base, les informations de compte et le département, puis demande le mot de passe sans l’afficher. Elle crée un Agent actif, lui attribue son département et inscrit son rôle système avec trace d’audit. Ce droit est enregistré en base; aucune modification de `GNU_PUBLICATION_ADMIN_LOGINS` n’est requise. La commande refuse de s’exécuter si un administrateur système existe déjà. Aucun demandeur ne peut choisir ce rôle ni s’approuver lui-même.
+
+Les migrations modifient parfois des tables institutionnelles et créent des clés étrangères vers des tables existantes. Utilisez le propriétaire PostgreSQL du schéma (généralement `postgres`) ou accordez temporairement au compte `gnu_setup` l’appartenance au rôle propriétaire. Les étapes et commandes `GRANT`/`REVOKE` sont détaillées dans le [guide de recette locale](../docs/guide-tests-manuels.md#activer-le-portail-local-de-création-des-comptes). N’utilisez pas le compte applicatif `gnu_app` pour appliquer les migrations.
+
+Après avoir configuré le compte de propriétaire ou les droits temporaires, appliquez les migrations avec la connexion `pgsql_setup` :
+
+```bash
+GNU_LOCAL_SETUP_DB_USERNAME=postgres GNU_LOCAL_SETUP_DB_PASSWORD='…' php artisan migrate --database=pgsql_setup --no-interaction
+```
+
+La demande recueille une référence de pièce d’identité à contrôler. Le contrôle lui-même reste une action administrative; l’application n’envoie pas de copie de pièce et n’authentifie pas automatiquement l’identité.
+
 ## Comptes de test GNU en local
 
 Les comptes de test sont créés à la main depuis `http://127.0.0.1:8000/local-test-accounts`; aucune donnée d’acteur n’est injectée automatiquement. Copier `.env.example` vers `.env`, générer la clé Laravel et configurer une base PostgreSQL locale :
@@ -66,7 +88,7 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-Dans `backend/.env`, garder `APP_ENV=local`, configurer `DB_*` pour l’API et vérifier que le portail est activé. Le modèle `.env.example` l’active pour les essais locaux; la configuration de production le garde désactivé. La connexion `GNU_LOCAL_SETUP_DB_*` doit être locale, viser la même base et utiliser un compte différent de `DB_USERNAME`, avec les droits de création nécessaires :
+Ce portail est réservé à une base de démonstration jetable; `GNU_ENABLE_LOCAL_TEST_ACCOUNT_PORTAL` reste désactivé par défaut. Ne l’activez pas sur la base officielle. Pour l’utiliser dans un environnement isolé, définissez explicitement `APP_ENV=local` et `GNU_ENABLE_LOCAL_TEST_ACCOUNT_PORTAL=true`; la connexion `GNU_LOCAL_SETUP_DB_*` doit viser uniquement la base de démonstration :
 
 ```dotenv
 GNU_ENABLE_LOCAL_TEST_ACCOUNT_PORTAL=true
@@ -81,7 +103,7 @@ Après installation du schéma GNU et des migrations, ouvrir le portail local et
 
 L’enseignant doit ensuite recevoir une affectation active depuis l’espace Agent avant de voir un cours. Le droit de publication officielle est attribué séparément.
 
-Pour désigner les administrateurs système, renseigner `GNU_PUBLICATION_ADMIN_LOGINS` avec un ou plusieurs logins Agent séparés par des virgules, puis recharger la configuration Laravel. Ces comptes gèrent la structure globale, approuvent les règles MGP/admission et attribuent le droit de publication aux autres agents. Ils ne peuvent pas s’attribuer eux-mêmes ce droit.
+Les administrateurs système actifs peuvent consulter et administrer les droits système depuis l’API Agent : `GET /api/v1/agent/administrateurs-systeme`, `PUT /api/v1/agent/administrateurs-systeme/{utilisateur}` avec un motif, puis `DELETE` sur la même ressource pour révoquer le droit. Un autre administrateur doit effectuer la révocation; le dernier administrateur actif est protégé. `GNU_PUBLICATION_ADMIN_LOGINS` reste disponible pour déclarer des administrateurs fixes par configuration; leur retrait se fait dans cette variable, pas par l’API. Les administrateurs gèrent la structure globale, approuvent les règles MGP/admission et attribuent le droit de publication aux autres agents. Aucun compte ne peut s’attribuer lui-même ce droit.
 
 Pour le parcours complet de démarrage et les scénarios de recette manuelle, consulter [`../docs/guide-tests-manuels.md`](../docs/guide-tests-manuels.md).
 

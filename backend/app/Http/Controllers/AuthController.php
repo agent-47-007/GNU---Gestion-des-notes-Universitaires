@@ -23,7 +23,7 @@ class AuthController extends Controller
             $user = Utilisateur::query()->whereRaw('lower(login) = lower(?)', [$data['login']])->lockForUpdate()->first();
             $hash = $user?->mot_de_passe_hash ?? config('auth.dummy_password_hash');
             $valid = Hash::check($data['password'], $hash);
-            abort_unless($valid && $user && $user->actif && $user->hasCompleteProfile(), 401, 'Identifiants invalides.');
+            abort_unless($valid && $user && $user->actif && $user->supprime_le === null && $user->hasCompleteProfile(), 401, 'Identifiants invalides.');
 
             if (Hash::needsRehash($hash)) {
                 DB::select("SELECT set_config('gnu.acteur_id', ?, true), set_config('gnu.motif', ?, true)", [(string) $user->id, 'Mise à jour du hachage à la connexion']);

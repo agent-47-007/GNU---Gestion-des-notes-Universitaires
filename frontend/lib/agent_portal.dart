@@ -6,9 +6,13 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:printing/printing.dart';
 
 import 'api_client.dart';
+import 'academic_bulletin_pdf.dart';
 import 'file_download.dart';
+import 'gnu_pv_template.dart';
+import 'pdf_theme.dart';
 import 'ui.dart';
 
 class AgentPortalPage extends StatefulWidget {
@@ -33,9 +37,17 @@ class AgentPortalPage extends StatefulWidget {
 
 class _AgentPortalPageState extends State<AgentPortalPage> {
   int revision = 0;
+  bool refreshing = false;
+  late Future<Object> pageData;
+  final Set<int> decidedAssignmentProposalIds = {};
+  final Map<int, Future<Map<String, dynamic>>> publicationHistoryFutures = {};
   int? selectedClass;
+  int? selectedPublicationVersion;
   String period = 'S1';
   String accountSearch = '';
+  String accountRequestSearch = '';
+  String accountRequestRole = 'Tous';
+  String accountRequestDepartment = 'Tous';
   String assignmentSearch = '';
   String assignmentYear = 'Toutes';
   String assignmentDepartment = 'Tous';
@@ -54,6 +66,20 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
   );
 
   @override
+  void initState() {
+    super.initState();
+    pageData = _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant AgentPortalPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.page != widget.page || oldWidget.api != widget.api) {
+      pageData = _load();
+    }
+  }
+
+  @override
   void dispose() {
     profileFirstName.dispose();
     profileLastName.dispose();
@@ -66,6 +92,7 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
       widget.api.agentAccounts(),
       widget.api.agentAssignments(),
       widget.api.agentAssignmentProposals(),
+      widget.api.agentAccountRequests(),
     ]),
     'enrollment' => widget.api.agentEnrollments(),
     'academic' => Future.wait([
@@ -87,6 +114,7 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
       widget.api.agentAccounts(),
     ]),
     'grade-transmissions' => widget.api.agentGradeTransmissions(),
+    'notifications' => widget.api.agentNotifications(),
     'profile' => Future.wait([
       widget.api.getProfile(),
       widget.api.academicYears(),
@@ -94,19 +122,35 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
     _ => widget.api.agentDashboard(),
   };
 
-  void _reload() => setState(() => revision++);
+  Future<void> _reload() async {
+    if (refreshing) return;
+    publicationHistoryFutures.clear();
+    final request = _load();
+    setState(() {
+      refreshing = true;
+      revision++;
+      pageData = request;
+    });
+    try {
+      await request;
+    } catch (_) {
+      // The FutureBuilder presents the load error while retaining its retry action.
+    } finally {
+      if (mounted) setState(() => refreshing = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) => FutureBuilder<Object>(
-    key: ValueKey(revision),
-    future: _load(),
+    future: pageData,
     builder: (context, snapshot) {
       final title = switch (widget.page) {
         'academic' => 'Structure & catalogue',
         'accounts' => 'Comptes & affectations',
         'enrollment' => 'Inscriptions à examiner',
         'requests' => 'Requêtes étudiantes',
-        'grade-transmissions' => 'Numérisation des notes',
+        'grade-transmissions' => 'Traitement des PV',
+        'notifications' => 'Notifications',
         'bulletins' || 'publications' => 'Contrôle & publications',
         'audit' => 'Journal d’audit',
         'retakes' => 'Sessions de rattrapage',
@@ -120,7 +164,8 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
           'Comptes rattachés au département et affectations pédagogiques.',
         'enrollment' => 'Examinez les choix soumis; vous pouvez ajouter un motif facultatif à la décision.',
         'requests' => 'Transmettez chaque dossier à un enseignant affecté à la classe et à l’UE.',
-        'grade-transmissions' => 'Contrôlez les grilles transmises par les enseignants puis retournez-les pour leur vérification.',
+        'grade-transmissions' => 'Suivez les grilles transmises, le traitement des PV et les publications à effectuer.',
+        'notifications' => 'Suivez les nouvelles transmissions de notes et les événements de votre périmètre.',
         'bulletins' || 'publications' =>
           'Prévisualisez les calculs avant tout gel officiel des résultats.',
         'audit' =>
@@ -138,9 +183,14 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
             title,
             subtitle,
             action: IconButton(
-              onPressed: _reload,
-              tooltip: 'Actualiser',
-              icon: const Icon(Icons.refresh),
+              onPressed: refreshing ? null : _reload,
+              tooltip: refreshing ? 'Actualisation en cours' : 'Actualiser',
+              icon: refreshing
+                  ? const SizedBox.square(
+                      dimension: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh),
             ),
           ),
           if (snapshot.hasError) ...[
@@ -174,6 +224,7 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
     'normal-sessions' => _normalSessions(data as List),
     'requests' => _requests(data as List),
     'grade-transmissions' => _gradeTransmissions(data as List),
+    'notifications' => _notifications(data as List),
     'profile' => _profile(data as List),
     _ => _dashboard(data as Map<String, dynamic>),
   };
@@ -220,79 +271,367 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
     final rows = _maps(data);
     if (rows.isEmpty) {
       return const EmptyState(
-        'Aucune transmission à numériser',
-        'Les notes transmises par les enseignants de votre département apparaîtront ici.',
+        'Aucun PV en cours de traitement',
+        'Les notes validées par les enseignants et les anciens PV à traiter apparaîtront ici.',
+      );
+    }
+    final received = <Map<String, dynamic>>[];
+    final digitizing = <Map<String, dynamic>>[];
+    final scannedReady = <Map<String, dynamic>>[];
+    final teacherReview = <Map<String, dynamic>>[];
+    final corrections = <Map<String, dynamic>>[];
+    final readyToPublish = <Map<String, dynamic>>[];
+    final legacyEc = <Map<String, dynamic>>[];
+    for (final row in rows) {
+      if (row['ancienne_grille_ec'] == true) {
+        legacyEc.add(row);
+        continue;
+      }
+      switch (row['statut']) {
+        case 'TRANSMISE':
+          final notes = _maps(row['notes']);
+          final digitized = notes
+              .where((note) => note['situation_numerisee'] != null)
+              .length;
+          if (digitized == 0) {
+            received.add(row);
+          } else if (digitized == notes.length) {
+            scannedReady.add(row);
+          } else {
+            digitizing.add(row);
+          }
+          break;
+        case 'A_VERIFIER':
+          teacherReview.add(row);
+          break;
+        case 'A_CORRIGER':
+          corrections.add(row);
+          break;
+        case 'VERIFIEE':
+        case 'VALIDEE_ENSEIGNANT':
+          readyToPublish.add(row);
+          break;
+      }
+    }
+    final sections = [
+      (
+        'Données reçues · à numériser',
+        'Transmissions reçues par la cellule, sans ligne numérisée.',
+        Icons.inbox_outlined,
+        const Color(0xFFB87516),
+        received,
+      ),
+      (
+        'Numérisation en cours',
+        'Une partie des notes est numérisée; terminez la saisie avant le retour.',
+        Icons.document_scanner_outlined,
+        const Color(0xFF3478A5),
+        digitizing,
+      ),
+      (
+        'Numérisation terminée · retour à faire',
+        'Toutes les notes sont saisies. Joignez le PV traité et retournez-le à l’enseignant.',
+        Icons.forward_to_inbox_outlined,
+        const Color(0xFF3478A5),
+        scannedReady,
+      ),
+      (
+        'PV traité · visa enseignant attendu',
+        'La cellule a traité et renvoyé ces PV. L’enseignant doit vérifier les notes.',
+        Icons.pending_actions_outlined,
+        const Color(0xFFB87516),
+        teacherReview,
+      ),
+      (
+        'Corrections à reprendre',
+        'L’enseignant a demandé une correction avant de vérifier le PV.',
+        Icons.edit_note_outlined,
+        const Color(0xFFB64242),
+        corrections,
+      ),
+      (
+        'Validation enseignant · publication à effectuer',
+        'Les notes validées par l’enseignant attendent la publication aux étudiants.',
+        Icons.task_alt_outlined,
+        emerald,
+        readyToPublish,
+      ),
+      (
+        'Anciennes transmissions par EC · historique',
+        'Ces PV ont été transmis avant le carnet unique par UE. Ils restent consultables, mais ne peuvent plus être numérisés ou publiés comme notes de l’UE.',
+        Icons.inventory_2_outlined,
+        const Color(0xFF687982),
+        legacyEc,
+      ),
+    ].where((section) => section.$5.isNotEmpty).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Panel(
+          padding: 16,
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              const Text('Dossiers classés par état :'),
+              for (final section in sections)
+                Chip(
+                  avatar: Icon(section.$3, size: 16, color: section.$4),
+                  label: Text('${section.$1} · ${section.$5.length}'),
+                  visualDensity: VisualDensity.compact,
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        for (var index = 0; index < sections.length; index++)
+          _gradeTransmissionSection(
+            title: sections[index].$1,
+            description: sections[index].$2,
+            icon: sections[index].$3,
+            color: sections[index].$4,
+            rows: sections[index].$5,
+            initiallyExpanded: index == 0,
+          ),
+      ],
+    );
+  }
+
+  Widget _gradeTransmissionSection({
+    required String title,
+    required String description,
+    required IconData icon,
+    required Color color,
+    required List<Map<String, dynamic>> rows,
+    required bool initiallyExpanded,
+  }) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Panel(
+      padding: 8,
+      child: ExpansionTile(
+        initiallyExpanded: initiallyExpanded,
+        leading: Icon(icon, color: color),
+        title: Text('$title · ${rows.length}'),
+        subtitle: Text(description),
+        children: [
+          for (final row in rows)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+              child: _gradeTransmissionCard(row),
+            ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _gradeTransmissionCard(Map<String, dynamic> row) => Panel(
+    padding: 18,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            '${row['code_classe']} · ${row['code_ue']} · ${row['code_m']}',
+          ),
+          subtitle: Text(
+            '${row['intitule_matiere']}\n${row['enseignant_prenom']} ${row['enseignant_nom']} · ${_gradeEvaluationLabel(row)}${row['evaluation']?['mode_evaluation'] == 'RATTRAPAGE' ? '' : ' · ${row['poids_evaluation'] ?? '—'} %'} · version ${row['version']}',
+          ),
+          isThreeLine: true,
+          trailing: StatusBadge(
+            _gradeTransmissionStatus(row),
+            color: switch (_gradeTransmissionStatus(row)) {
+              'Reçu · à numériser' => const Color(0xFFB87516),
+              'Numérisation en cours' => const Color(0xFF3478A5),
+              'Numérisé · prêt à retourner' => const Color(0xFF3478A5),
+              'Visa enseignant' => const Color(0xFFB87516),
+              'Correction demandée' => const Color(0xFFB64242),
+              'Prêt à publier' => emerald,
+              'Validé par l’enseignant · prêt à publier' => emerald,
+              _ => const Color(0xFFB87516),
+            },
+          ),
+        ),
+        if (row['statut'] == 'TRANSMISE') ...[
+          Builder(
+            builder: (context) {
+              final notes = _maps(row['notes']);
+              final digitized = notes
+                  .where((note) => note['situation_numerisee'] != null)
+                  .length;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Numérisation : $digitized/${notes.length} ligne(s)',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              );
+            },
+          ),
+        ],
+        Text(
+          '${switch (row['statut']) {
+            'TRANSMISE' => 'Motif de transmission',
+            'A_CORRIGER' => 'Correction demandée par l’enseignant',
+            'A_VERIFIER' => 'Visa de l’enseignant',
+            'VALIDEE_ENSEIGNANT' => 'Validation de l’enseignant',
+            _ => 'Décision de l’enseignant',
+          }} : ${row['motif'] ?? 'Aucun motif précisé.'}',
+        ),
+        if (row['ancienne_grille_ec'] == true)
+          const Notice(
+            'PV historique d’une ancienne grille par EC. Il est conservé pour la traçabilité et n’intervient plus dans la note de l’UE. Utilisez le carnet unique de l’UE pour transmettre la grille actuelle.',
+            warning: true,
+          ),
+        const SizedBox(height: 8),
+        ..._maps(row['notes']).map(
+          (note) => ListTile(
+            dense: true,
+            title: Text(
+              '${note['matricule']} · ${note['prenom']} ${note['nom']}',
+            ),
+            subtitle: note['hors_compte'] == true
+                ? Text('${note['observation'] ?? 'Non inscrit; observation à vérifier.'}')
+                : null,
+            trailing: Text(
+              row['ancienne_grille_ec'] == true
+                  ? '${note['situation'] == 'NUMERIQUE' ? '${note['valeur_note']} /20' : note['situation']} · historique'
+                  : row['statut'] == 'VALIDEE_ENSEIGNANT'
+                  ? '${note['situation'] == 'NUMERIQUE' ? '${note['valeur_note']} /20' : note['situation']} · saisi par l’enseignant'
+                  : '${note['situation'] == 'NUMERIQUE' ? '${note['valeur_note']} /20' : note['situation']}'
+                      ' → ${note['situation_numerisee'] == 'NUMERIQUE' ? '${note['valeur_numerisee']} /20' : note['situation_numerisee'] ?? 'à numériser'}',
+            ),
+          ),
+        ),
+        if (row['ancienne_grille_ec'] == true &&
+            row['proces_verbal_disponible'] == true)
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              onPressed: () => _downloadGradeMinutes(row),
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              label: const Text('Consulter le PV historique'),
+            ),
+          )
+        else if (row['ancienne_grille_ec'] == true)
+          const Notice(
+            'Le fichier du PV historique est absent ou indisponible.',
+            warning: true,
+          )
+        else if (row['statut'] == 'TRANSMISE') ...[
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              onPressed: () => _digitizeGradeTransmission(row),
+              icon: const Icon(Icons.document_scanner_outlined),
+              label: const Text('Saisir ou importer la numérisation'),
+            ),
+          ),
+          if (!_maps(row['notes'])
+              .every((note) => note['situation_numerisee'] != null))
+            const Notice(
+              'Numérisez toutes les lignes avant de retourner la grille à l’enseignant.',
+              warning: true,
+            ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: _maps(row['notes']).every(
+                (note) => note['situation_numerisee'] != null,
+              )
+                  ? () => _returnGradeTransmission(row)
+                  : null,
+              icon: const Icon(Icons.forward_to_inbox_outlined),
+              label: const Text('Joindre le PV et retourner à l’enseignant'),
+            ),
+          ),
+        ] else if (row['statut'] == 'A_VERIFIER' ||
+            row['statut'] == 'A_CORRIGER') ...[
+          Notice(
+            row['statut'] == 'A_VERIFIER'
+                ? 'PV traité par la cellule et renvoyé à l’enseignant. La transmission attend son visa avant publication.'
+                : 'L’enseignant a demandé une correction. Le PV attend une nouvelle transmission de notes.',
+            warning: row['statut'] == 'A_CORRIGER',
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              onPressed: () => _downloadGradeMinutes(row),
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              label: const Text('Consulter le PV traité'),
+            ),
+          ),
+        ] else if (row['statut'] == 'VERIFIEE' ||
+            row['statut'] == 'VALIDEE_ENSEIGNANT') ...[
+          const Notice(
+            'L’enseignant a validé les notes. Publiez-les pour prévenir les étudiants.',
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Wrap(
+              spacing: 8,
+              children: [
+                if (row['proces_verbal_disponible'] == true)
+                  OutlinedButton.icon(
+                    onPressed: () => _downloadGradeMinutes(row),
+                    icon: const Icon(Icons.picture_as_pdf_outlined),
+                    label: const Text('Télécharger le PV'),
+                  ),
+                FilledButton.icon(
+                  onPressed: () => _publishGradeTransmission(row),
+                  icon: const Icon(Icons.campaign_outlined),
+                  label: const Text('Publier les notes aux étudiants'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
+
+  Widget _notifications(List data) {
+    final rows = _maps(data);
+    if (rows.isEmpty) {
+      return const EmptyState(
+        'Aucune notification',
+        'Les transmissions de notes et décisions apparaîtront ici.',
       );
     }
     return Column(
-      children: rows
-          .map(
-            (row) => Panel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      '${row['code_classe']} · ${row['code_ue']} · ${row['code_m']}',
-                    ),
-                    subtitle: Text(
-                      '${row['intitule_matiere']}\n${row['enseignant_prenom']} ${row['enseignant_nom']} · ${row['evaluation']?['type_eval'] ?? 'Évaluation'} · ${row['poids_evaluation'] ?? '—'} % · version ${row['version']}',
-                    ),
-                    isThreeLine: true,
-                    trailing: StatusBadge(
-                      'À contrôler',
-                      color: const Color(0xFFB87516),
-                    ),
-                  ),
-                  Text('Motif de transmission : ${row['motif']}'),
-                  const SizedBox(height: 8),
-                  ..._maps(row['notes']).map(
-                    (note) => ListTile(
-                      dense: true,
-                      title: Text(
-                        '${note['matricule']} · ${note['prenom']} ${note['nom']}',
-                      ),
-                      trailing: Text(
-                        '${note['situation'] == 'NUMERIQUE' ? '${note['valeur_note']} /20' : note['situation']}'
-                        ' → ${note['situation_numerisee'] == 'NUMERIQUE' ? '${note['valeur_numerisee']} /20' : note['situation_numerisee'] ?? 'à numériser'}',
-                      ),
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _digitizeGradeTransmission(row),
-                      icon: const Icon(Icons.document_scanner_outlined),
-                      label: const Text('Saisir ou importer la numérisation'),
-                    ),
-                  ),
-                  if (!_maps(row['notes'])
-                      .every((note) => note['situation_numerisee'] != null))
-                    const Notice(
-                      'Numérisez toutes les lignes avant de retourner la grille à l’enseignant.',
-                      warning: true,
-                    ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: FilledButton.icon(
-                      onPressed:
-                          _maps(
-                            row['notes'],
-                          ).every((note) => note['situation_numerisee'] != null)
-                          ? () => _returnGradeTransmission(row)
-                          : null,
-                      icon: const Icon(Icons.forward_to_inbox_outlined),
-                      label: const Text(
-                        'Terminer le contrôle et retourner à l’enseignant',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+      children: rows.map((row) {
+        final content = row['contenu'] is Map
+            ? Map<String, dynamic>.from(row['contenu'] as Map)
+            : <String, dynamic>{};
+        final id = (row['id'] as num?)?.toInt();
+        return Panel(
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(
+              row['lue'] == true
+                  ? Icons.notifications_none
+                  : Icons.notifications_active_outlined,
             ),
-          )
-          .toList(),
+            title: Text(
+              content['titre']?.toString() ?? 'Notification académique',
+            ),
+            subtitle: Text('${content['message'] ?? ''}\n${row['date'] ?? ''}'),
+            isThreeLine: true,
+            trailing: row['lue'] == true || id == null
+                ? null
+                : IconButton(
+                    tooltip: 'Marquer comme lue',
+                    icon: const Icon(Icons.done),
+                    onPressed: () async {
+                      await widget.api.agentMarkNotificationRead(id);
+                      _reload();
+                    },
+                  ),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -432,6 +771,7 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
           'situation': absent ? 'ABSENTE' : 'NUMERIQUE',
           'valeur_note': normalized,
           'version_note': note['version_note'],
+          if (note['hors_compte'] == true) 'hors_compte': true,
         });
       }
       final reason = await _reasonDialog('Motif de numérisation');
@@ -499,9 +839,16 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
             ? columns[2].toUpperCase()
             : '';
         final rawMark = columns[1].toUpperCase();
-        final situation = columns[1].isEmpty ||
-                const ['EL', 'ELIMINE', 'ELIMINEE', 'ABS', 'ABSENT', 'ABSENTE']
-                    .contains(rawMark)
+        final situation =
+            columns[1].isEmpty ||
+                const [
+                  'EL',
+                  'ELIMINE',
+                  'ELIMINEE',
+                  'ABS',
+                  'ABSENT',
+                  'ABSENTE',
+                ].contains(rawMark)
             ? 'ABSENTE'
             : declaredSituation.isNotEmpty
             ? declaredSituation
@@ -523,12 +870,363 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
   Future<void> _returnGradeTransmission(Map<String, dynamic> row) async {
     final reason = await _reasonDialog('Motif du retour à l’enseignant');
     if (reason == null) return;
-    await _mutate(
-      () => widget.api.agentReturnGradeTransmission(
+    await _mutate(() async {
+      final bytes = await _buildGradeMinutesPdf(row);
+      await widget.api.agentReturnGradeTransmission(
         row['id'] as int,
+        filename: _gradeMinutesFilename(row),
+        pdfFile: bytes,
         reason: reason,
+      );
+    });
+  }
+
+  Future<void> _publishGradeTransmission(Map<String, dynamic> row) async {
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Publier les notes vérifiées ?'),
+        content: const Text(
+          'Chaque étudiant recevra uniquement sa propre note provisoire. Le procès-verbal complet reste réservé aux personnes habilitées.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Publier'),
+          ),
+        ],
       ),
     );
+    if (accepted != true) return;
+    await _mutate(
+      () => widget.api.agentPublishGradeTransmission(row['id'] as int),
+    );
+  }
+
+  Future<void> _downloadGradeMinutes(Map<String, dynamic> row) async {
+    try {
+      final bytes = await widget.api.agentDownloadGradeTransmissionMinutes(
+        row['id'] as int,
+      );
+      await downloadFile(_gradeMinutesFilename(row), bytes);
+    } catch (error) {
+      if (mounted) toast(context, _error(error));
+    }
+  }
+
+  String _gradeMinutesFilename(Map<String, dynamic> row) {
+    final period = row['numero_semestre'] == 2 ? 'S2' : 'S1';
+    final year = '${row['annee_academique'] ?? 'GNU'}'.replaceAll('-', '_');
+    final eval = row['evaluation']?['mode_evaluation'] == 'RATTRAPAGE'
+        ? 'RATTRAPAGE_SN'
+        : '${row['evaluation']?['type_eval'] ?? 'EVALUATION'}';
+    return 'PV_${eval}_${row['code_ue']}_${row['code_classe']}_${period}_$year.pdf'
+        .replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '_');
+  }
+
+  String _gradeTransmissionStatus(Map<String, dynamic> row) {
+    if (row['statut'] == 'TRANSMISE') {
+      final notes = _maps(row['notes']);
+      final digitized = notes
+          .where((note) => note['situation_numerisee'] != null)
+          .length;
+      if (digitized == 0) return 'Reçu · à numériser';
+      if (digitized < notes.length) return 'Numérisation en cours';
+      return 'Numérisé · prêt à retourner';
+    }
+    return switch (row['statut']) {
+      'A_VERIFIER' => 'Visa enseignant',
+      'A_CORRIGER' => 'Correction demandée',
+      'VERIFIEE' => 'Prêt à publier',
+      'VALIDEE_ENSEIGNANT' => 'Validé par l’enseignant · prêt à publier',
+      _ => 'État inconnu',
+    };
+  }
+
+  String _gradeEvaluationLabel(Map<String, dynamic> row) =>
+      row['evaluation']?['mode_evaluation'] == 'RATTRAPAGE'
+      ? 'Rattrapage de SN'
+      : '${row['evaluation']?['type_eval'] ?? 'Évaluation'}';
+
+  Future<Uint8List> _buildGradeMinutesPdf(Map<String, dynamic> row) async {
+    final period = row['numero_semestre'] == 2
+        ? 'SEMESTRE 2 / SEMESTER 2'
+        : 'SEMESTRE 1 / SEMESTER 1';
+    final year = '${row['annee_academique'] ?? '—'}';
+    final currentAgent =
+        '${widget.api.user?['prenom'] ?? ''} ${widget.api.user?['nom'] ?? ''}'
+            .trim();
+    final title = '${row['intitule_ue'] ?? row['intitule_matiere'] ?? ''}';
+    final isRetake = row['evaluation']?['mode_evaluation'] == 'RATTRAPAGE';
+    final reference =
+        'PV-${row['code_ue']}-${isRetake ? 'RATTRAPAGE-SN' : row['evaluation']?['type_eval']}-${row['code_classe']}-${row['id']}';
+    final logoData = row['logo_structure'] is Map
+        ? Map<String, dynamic>.from(row['logo_structure'] as Map)
+        : null;
+    Uint8List? logoBytes = logoData?['base64'] is String
+        ? base64Decode(logoData!['base64'] as String)
+        : null;
+    if (logoBytes == null) {
+      try {
+        logoBytes = (await rootBundle.load('assets/uy1_crest.png')).buffer
+            .asUint8List();
+      } catch (_) {
+        logoBytes = null;
+      }
+    }
+    final crest = logoBytes == null ? null : pw.MemoryImage(logoBytes);
+    final document = pw.Document(theme: await gnuPdfTheme());
+    document.addPage(
+      pw.MultiPage(
+        pageFormat: pdf.PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.fromLTRB(36, 28, 36, 36),
+        header: (_) => pw.Column(
+          children: [
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Expanded(
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'RÉPUBLIQUE DU CAMEROUN',
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      pw.Text(
+                        'Paix – Travail – Patrie',
+                        style: const pw.TextStyle(fontSize: 8),
+                      ),
+                      pw.Text(
+                        'UNIVERSITÉ DE YAOUNDÉ I',
+                        style: pw.TextStyle(
+                          fontSize: 8,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: crest == null
+                      ? null
+                      : pw.Image(crest, fit: pw.BoxFit.contain),
+                ),
+                pw.SizedBox(width: 12),
+                pw.Expanded(
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text(
+                        'REPUBLIC OF CAMEROON',
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      pw.Text(
+                        'Peace – Work – Fatherland',
+                        style: const pw.TextStyle(fontSize: 8),
+                      ),
+                      pw.Text(
+                        'THE UNIVERSITY OF YAOUNDÉ I',
+                        style: pw.TextStyle(
+                          fontSize: 8,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 5),
+            pw.Text(
+              'FACULTÉ DES SCIENCES · ${row['nom_depart'] ?? 'DÉPARTEMENT'}',
+              style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.Divider(thickness: 1),
+            pw.SizedBox(height: 8),
+            pw.Text(
+              isRetake
+                  ? 'PROCÈS-VERBAL DE RATTRAPAGE'
+                  : 'PROCÈS-VERBAL DE L’UNITÉ D’ENSEIGNEMENT',
+              textAlign: pw.TextAlign.center,
+              style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 5),
+            pw.Text(
+              '${row['code_ue']} · $title',
+              textAlign: pw.TextAlign.center,
+              style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.Text(
+              'EC : ${row['code_m']} · ${row['intitule_matiere'] ?? ''}',
+              textAlign: pw.TextAlign.center,
+              style: const pw.TextStyle(fontSize: 9),
+            ),
+            pw.SizedBox(height: 8),
+          ],
+        ),
+        footer: (context) => pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Text(
+              '© UY1/CI · $reference · $year',
+              style: const pw.TextStyle(fontSize: 7),
+            ),
+            pw.Text(
+              '${context.pageNumber}/${context.pagesCount}',
+              style: const pw.TextStyle(fontSize: 7),
+            ),
+          ],
+        ),
+        build: (_) => [
+          pw.TableHelper.fromTextArray(
+            headers: ['Élément', 'Valeur'],
+            data: [
+              ['UE / unité d’enseignement', '${row['code_ue']} · $title'],
+              [
+                'EC / élément constitutif',
+                '${row['code_m']} · ${row['intitule_matiere'] ?? '—'}',
+              ],
+              [
+                'Évaluation',
+                isRetake
+                    ? 'RATTRAPAGE DE SN'
+                    : '${row['evaluation']?['type_eval'] ?? '—'} · ${row['poids_evaluation'] ?? '—'} %',
+              ],
+              [
+                'Date de l’épreuve',
+                '${row['evaluation']?['date_evaluation'] ?? '—'}',
+              ],
+              [
+                'Filière / spécialité',
+                '${row['code_f'] ?? '—'} · ${row['libelle_specialite'] ?? '—'}',
+              ],
+              [
+                'Niveau / classe',
+                '${row['code_niv'] ?? '—'} · ${row['code_classe'] ?? '—'}',
+              ],
+              ['Semestre / année académique', '$period · $year'],
+              ['Transmis par l’enseignant le', '${row['transmis_le'] ?? '—'}'],
+              [
+                'Enseignant',
+                '${row['enseignant_prenom'] ?? ''} ${row['enseignant_nom'] ?? ''}',
+              ],
+              [
+                'Contrôlé par l’agent',
+                '${row['agent_traitant'] ?? currentAgent} · ${row['pv_traite_le'] ?? DateTime.now().toIso8601String().split('T').first}',
+              ],
+            ],
+            headerStyle: pw.TextStyle(
+              fontSize: 8,
+              fontWeight: pw.FontWeight.bold,
+            ),
+            cellStyle: const pw.TextStyle(fontSize: 8),
+            cellAlignments: {
+              0: pw.Alignment.centerLeft,
+              1: pw.Alignment.centerLeft,
+            },
+            border: pw.TableBorder.all(color: pdf.PdfColors.black, width: .5),
+            cellPadding: const pw.EdgeInsets.all(4),
+          ),
+          pw.SizedBox(height: 12),
+          pw.TableHelper.fromTextArray(
+            headers: [
+              'N°',
+              'MATRICULE',
+              'NOMS ET PRÉNOMS',
+              'NOTE /20',
+              'OBSERVATIONS',
+            ],
+            data: [
+              for (var index = 0; index < _maps(row['notes']).length; index++)
+                (() {
+                  final note = _maps(row['notes'])[index];
+                  final absent = note['situation_numerisee'] == 'ABSENTE';
+                  return [
+                    '${index + 1}',
+                    '${note['matricule']}',
+                    '${note['nom']} ${note['prenom']}',
+                    absent ? 'EL' : '${note['valeur_numerisee'] ?? '—'}',
+                    note['hors_compte'] == true
+                        ? 'Sans compte'
+                        : absent
+                        ? 'ÉLIMINÉ(E)'
+                        : '',
+                  ];
+                })(),
+            ],
+            headerStyle: pw.TextStyle(
+              fontSize: 7,
+              fontWeight: pw.FontWeight.bold,
+            ),
+            cellStyle: const pw.TextStyle(fontSize: 7),
+            cellAlignment: pw.Alignment.center,
+            cellAlignments: {2: pw.Alignment.centerLeft},
+            border: pw.TableBorder.all(color: pdf.PdfColors.black, width: .45),
+            cellPadding: const pw.EdgeInsets.symmetric(
+              horizontal: 4,
+              vertical: 4,
+            ),
+            columnWidths: {
+              0: const pw.FixedColumnWidth(28),
+              1: const pw.FixedColumnWidth(72),
+              2: const pw.FlexColumnWidth(3),
+              3: const pw.FixedColumnWidth(52),
+              4: const pw.FlexColumnWidth(1.5),
+            },
+          ),
+          pw.SizedBox(height: 18),
+          pw.Text(
+            'Procès-verbal de salle établi à partir de la grille transmise par l’enseignant et de sa numérisation par la cellule informatique.',
+            style: const pw.TextStyle(fontSize: 8),
+          ),
+          pw.SizedBox(height: 24),
+          pw.Align(
+            alignment: pw.Alignment.centerRight,
+            child: pw.Text(
+              'Fait à Yaoundé, le ${DateTime.now().toLocal().toIso8601String().split('T').first}',
+              style: const pw.TextStyle(fontSize: 8),
+            ),
+          ),
+          pw.SizedBox(height: 24),
+          pw.TableHelper.fromTextArray(
+            headers: [
+              'Enseignant responsable',
+              'Cellule informatique',
+              'Chef du département',
+            ],
+            data: [
+              [
+                '${row['enseignant_prenom'] ?? ''} ${row['enseignant_nom'] ?? ''}\nSignature',
+                '${row['agent_traitant'] ?? currentAgent}\nVisa et cachet',
+                'Visa et cachet',
+              ],
+            ],
+            headerStyle: pw.TextStyle(
+              fontSize: 8,
+              fontWeight: pw.FontWeight.bold,
+            ),
+            cellStyle: const pw.TextStyle(fontSize: 8),
+            cellAlignment: pw.Alignment.bottomCenter,
+            border: pw.TableBorder.all(color: pdf.PdfColors.black, width: .5),
+            cellPadding: const pw.EdgeInsets.fromLTRB(5, 8, 5, 35),
+          ),
+        ],
+      ),
+    );
+    return document.save();
   }
 
   Widget _metric(String title, Object? value, VoidCallback onTap) => SizedBox(
@@ -833,9 +1531,68 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
     confirmation.dispose();
   }
 
+  String _formatProposalDate(Object? value) {
+    final submittedAt = DateTime.tryParse('${value ?? ''}')?.toLocal();
+    if (submittedAt == null) return 'date indisponible';
+    String twoDigits(int number) => number.toString().padLeft(2, '0');
+
+    return '${twoDigits(submittedAt.day)}/${twoDigits(submittedAt.month)}/${submittedAt.year} à ${twoDigits(submittedAt.hour)}:${twoDigits(submittedAt.minute)}';
+  }
+
   Widget _accounts(List data) {
     final allAccounts = _maps(data[0]);
-    final proposals = _maps(data[2]);
+    final proposals = _maps(data[2])
+        .where(
+          (item) =>
+              !decidedAssignmentProposalIds.contains((item['id'] as num).toInt()),
+        )
+        .toList();
+    final accountRequests = _maps(data[3]);
+    final requestRoles =
+        <String>{
+          'Tous',
+          ...accountRequests
+              .map((item) => '${item['role'] ?? ''}')
+              .where((value) => value.isNotEmpty),
+        }.toList()..sort(
+          (a, b) => a == 'Tous'
+              ? -1
+              : b == 'Tous'
+              ? 1
+              : a.compareTo(b),
+        );
+    final requestDepartments =
+        <String>{
+          'Tous',
+          ...accountRequests
+              .map((item) => '${item['code_de'] ?? ''}')
+              .where((value) => value.isNotEmpty),
+        }.toList()..sort(
+          (a, b) => a == 'Tous'
+              ? -1
+              : b == 'Tous'
+              ? 1
+              : a.compareTo(b),
+        );
+    final requestQuery = accountRequestSearch.trim().toLowerCase();
+    final filteredAccountRequests = accountRequests.where((item) {
+      final searchable = [
+        item['nom'],
+        item['prenom'],
+        item['role'],
+        item['login'],
+        item['identifiant_profil'],
+        item['courriel'],
+        item['nom_depart'],
+        item['code_de'],
+        item['reference_identite'],
+      ].join(' ').toLowerCase();
+      return (requestQuery.isEmpty || searchable.contains(requestQuery)) &&
+          (accountRequestRole == 'Tous' ||
+              item['role'] == accountRequestRole) &&
+          (accountRequestDepartment == 'Tous' ||
+              item['code_de'] == accountRequestDepartment);
+    }).toList();
     final search = accountSearch.trim().toLowerCase();
     final accounts = allAccounts.where((account) {
       if (search.isEmpty) return true;
@@ -955,6 +1712,92 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              SectionTitle(
+                'Demandes de comptes à valider',
+                subtitle: accountRequests.isEmpty
+                    ? 'Aucune demande en attente dans votre département.'
+                    : '${filteredAccountRequests.length} affichée(s) sur ${accountRequests.length} demande(s) en attente. Examinez les informations avant toute décision.',
+              ),
+              if (accountRequests.isNotEmpty) ...[
+                TextField(
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search),
+                    labelText: 'Rechercher une demande',
+                    hintText: 'Nom, EID, courriel, département ou référence',
+                  ),
+                  onChanged: (value) =>
+                      setState(() => accountRequestSearch = value),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  children: [
+                    _assignmentFilter(
+                      'Rôle demandé',
+                      accountRequestRole,
+                      'Tous',
+                      requestRoles,
+                      (value) => setState(() => accountRequestRole = value),
+                    ),
+                    _assignmentFilter(
+                      'Département',
+                      accountRequestDepartment,
+                      'Tous',
+                      requestDepartments,
+                      (value) =>
+                          setState(() => accountRequestDepartment = value),
+                    ),
+                    if (requestQuery.isNotEmpty ||
+                        accountRequestRole != 'Tous' ||
+                        accountRequestDepartment != 'Tous')
+                      TextButton.icon(
+                        onPressed: () => setState(() {
+                          accountRequestSearch = '';
+                          accountRequestRole = 'Tous';
+                          accountRequestDepartment = 'Tous';
+                        }),
+                        icon: const Icon(Icons.filter_alt_off_outlined),
+                        label: const Text('Effacer les filtres'),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (filteredAccountRequests.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text('Aucune demande ne correspond aux filtres.'),
+                    ),
+                  ),
+                ...filteredAccountRequests.map(
+                  (item) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    onTap: () => _showAccountRequestDetails(item),
+                    leading: const Icon(Icons.verified_user_outlined),
+                    title: Text(
+                      '${item['prenom']} ${item['nom']} · ${item['role']}',
+                    ),
+                    subtitle: Text(
+                      '${item['login']} · ${item['identifiant_profil']} · ${item['courriel'] ?? 'Courriel absent'}\n${item['nom_depart']} (${item['code_de']})',
+                    ),
+                    isThreeLine: true,
+                    trailing: OutlinedButton.icon(
+                      onPressed: () => _showAccountRequestDetails(item),
+                      icon: const Icon(Icons.visibility_outlined),
+                      label: const Text('Examiner'),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (accountRequests.isNotEmpty) const SizedBox(height: 16),
+        Panel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               const SectionTitle(
                 'Comptes du département',
                 subtitle: 'Comptes regroupés par classe et enseignements. Les données restent limitées à votre périmètre.',
@@ -977,8 +1820,13 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                   title: Text(group.key),
                   subtitle: Text('${group.value.length} compte(s)'),
                   children: group.value
-                      .map(
-                        (account) => ListTile(
+                      .map((account) {
+                        final deleted = account['supprime_le'] != null;
+                        final manageable =
+                            account['gestionnable'] != false &&
+                            account['role'] != 'AGENT';
+
+                        return ListTile(
                           contentPadding: EdgeInsets.zero,
                           onTap: () => _showAccountProfile(account),
                           leading: CircleAvatar(
@@ -998,20 +1846,26 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               StatusBadge(
-                                account['actif'] == true ? 'Actif' : 'Suspendu',
-                                color: account['actif'] == true
+                                deleted
+                                    ? 'Supprimé'
+                                    : account['actif'] == true
+                                    ? 'Actif'
+                                    : 'Suspendu',
+                                color: deleted
+                                    ? Theme.of(context).colorScheme.error
+                                    : account['actif'] == true
                                     ? emerald
                                     : muted,
                               ),
                               const SizedBox(width: 8),
                               IconButton(
-                                onPressed:
-                                    account['role'] == 'AGENT' ||
-                                        account['gestionnable'] == false
+                                onPressed: !manageable || deleted
                                     ? null
                                     : () => _toggleAccount(account),
-                                tooltip: account['gestionnable'] == false
+                                tooltip: !manageable
                                     ? 'Gestion réservée à son périmètre de rattachement'
+                                    : deleted
+                                    ? 'Compte supprimé'
                                     : account['actif'] == true
                                     ? 'Suspendre'
                                     : 'Réactiver',
@@ -1023,17 +1877,25 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                               ),
                               IconButton(
                                 tooltip: 'Modifier le profil',
-                                onPressed:
-                                    account['gestionnable'] == false ||
-                                        account['role'] == 'AGENT'
+                                onPressed: !manageable || deleted
                                     ? null
                                     : () => _editAccount(account),
                                 icon: const Icon(Icons.edit_outlined),
                               ),
+                              IconButton(
+                                tooltip: deleted
+                                    ? 'Compte déjà supprimé'
+                                    : 'Supprimer le compte en conservant son dossier académique',
+                                onPressed: !manageable || deleted
+                                    ? null
+                                    : () => _deleteAccount(account),
+                                color: Theme.of(context).colorScheme.error,
+                                icon: const Icon(Icons.delete_outline),
+                              ),
                             ],
                           ),
-                        ),
-                      )
+                        );
+                      })
                       .toList(),
                 ),
               ),
@@ -1047,45 +1909,112 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
             children: [
               SectionTitle(
                 'Choix d’enseignement à valider',
-                subtitle:
-                    '${proposals.length} choix en attente de validation.',
+                subtitle: '${proposals.length} choix en attente de validation.',
               ),
               if (proposals.isEmpty)
                 const EmptyState(
                   'Aucun choix à valider',
                   'Les UE et EC acceptés par les enseignants apparaîtront ici.',
                 ),
-              ...proposals.map(
-                (proposal) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.pending_actions_outlined),
-                  title: Text(
-                    '${proposal['prenom_enseignant'] ?? ''} ${proposal['nom_enseignant'] ?? ''} · ${proposal['eid'] ?? ''}'
-                        .trim(),
+              ...proposals.map((proposal) {
+                final teacherName =
+                    '${proposal['prenom_enseignant'] ?? ''} ${proposal['nom_enseignant'] ?? ''}'
+                        .trim();
+                final teacherEmail =
+                    '${proposal['courriel_enseignant'] ?? ''}'.trim();
+                final teacherNote =
+                    '${proposal['motif_enseignant'] ?? ''}'.trim();
+                return Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Panel(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.only(top: 3, right: 12),
+                              child: Icon(Icons.pending_actions_outlined),
+                            ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    teacherName.isEmpty
+                                        ? 'Enseignant non identifié'
+                                        : teacherName,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium,
+                                  ),
+                                  Text(
+                                    'Identifiant enseignant : ${proposal['eid'] ?? '—'}',
+                                  ),
+                                  if (teacherEmail.isNotEmpty)
+                                    Text('Courriel : $teacherEmail'),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Classe : ${proposal['code_classe'] ?? '—'} · ${proposal['code_niv'] ?? ''} ${proposal['libelle_niv'] ?? ''}'
+                              .trim(),
+                        ),
+                        Text(
+                          'Année académique : ${proposal['annee_academique'] ?? '—'} · Semestre ${proposal['numero_semestre'] ?? '—'}',
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Unité d’enseignement : ${proposal['code_ue'] ?? '—'} · ${proposal['intitule_ue'] ?? 'Intitulé indisponible'}',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        Text(
+                          'Élément constitutif : ${proposal['code_m'] ?? '—'} · ${proposal['intitule_matiere'] ?? 'Intitulé indisponible'}',
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Soumis le : ${_formatProposalDate(proposal['soumise_le'])}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        if (teacherNote.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Notice('Message de l’enseignant : $teacherNote'),
+                        ],
+                        const SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              OutlinedButton.icon(
+                                onPressed: () => _decideAssignmentProposal(
+                                  proposal,
+                                  'REJETER',
+                                ),
+                                icon: const Icon(Icons.close),
+                                label: const Text('Refuser'),
+                              ),
+                              FilledButton.tonalIcon(
+                                onPressed: () => _decideAssignmentProposal(
+                                  proposal,
+                                  'APPROUVER',
+                                ),
+                                icon: const Icon(Icons.check),
+                                label: const Text('Valider'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  subtitle: Text(
-                    '${proposal['code_classe']} · ${proposal['libelle_niv']} · S${proposal['numero_semestre']} · ${proposal['code_ue']}/${proposal['code_m']}\nChoix confirmé par l’enseignant · ${proposal['annee_academique']}',
-                  ),
-                  isThreeLine: true,
-                  trailing: Wrap(
-                    spacing: 6,
-                    children: [
-                      IconButton.filledTonal(
-                        tooltip: 'Valider ce choix d’enseignement',
-                        onPressed: () =>
-                            _decideAssignmentProposal(proposal, 'APPROUVER'),
-                        icon: const Icon(Icons.check),
-                      ),
-                      IconButton.outlined(
-                        tooltip: 'Refuser ce choix',
-                        onPressed: () =>
-                            _decideAssignmentProposal(proposal, 'REJETER'),
-                        icon: const Icon(Icons.close),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+                );
+              }),
             ],
           ),
         ),
@@ -1099,16 +2028,23 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                 subtitle:
                     '${visibleAssignments.length} sur ${assignments.length} affectation(s) · filtrables par année et département.',
               ),
+              const SizedBox(height: 16),
               TextField(
+                textInputAction: TextInputAction.search,
                 decoration: const InputDecoration(
                   prefixIcon: Icon(Icons.search),
                   labelText: 'Rechercher classe, UE, EC ou enseignant',
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 18,
+                  ),
                 ),
                 onChanged: (value) => setState(() => assignmentSearch = value),
               ),
+              const SizedBox(height: 14),
               Wrap(
-                spacing: 12,
-                runSpacing: 8,
+                spacing: 14,
+                runSpacing: 14,
                 children: [
                   _assignmentFilter(
                     'Faculté',
@@ -1125,8 +2061,9 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                     (value) => setState(() => assignmentDepartment = value),
                   ),
                   SizedBox(
-                    width: 220,
+                    width: 250,
                     child: DropdownButtonFormField<String>(
+                      isExpanded: true,
                       initialValue:
                           years.contains(assignmentYear) ||
                               assignmentYear == 'Toutes'
@@ -1134,6 +2071,10 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                           : 'Toutes',
                       decoration: const InputDecoration(
                         labelText: 'Année académique',
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 17,
+                        ),
                       ),
                       items: ['Toutes', ...years]
                           .map(
@@ -1170,29 +2111,62 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
               ...groupedAssignments.entries.map(
                 (group) => ExpansionTile(
-                  title: Text(group.key),
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: Theme.of(context).dividerColor),
+                  ),
+                  collapsedShape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: Theme.of(context).dividerColor),
+                  ),
+                  title: Text(group.key, style: Theme.of(context).textTheme.titleSmall),
                   subtitle: Text('${group.value.length} affectation(s)'),
-                  children: group.value
-                      .map(
-                        (item) => ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            '${item['code_classe']} · ${item['code_ue']} · ${item['code_m']}',
-                          ),
-                          subtitle: Text(
-                            '${item['prenom'] ?? ''} ${item['nom'] ?? ''} · ${item['eid'] ?? ''} · ${item['nom_fac'] ?? ''} / ${item['nom_depart'] ?? ''}',
-                          ),
-                          trailing: Switch(
-                            value: item['actif'] == true,
-                            onChanged: (active) => _setAssignment(item, active),
+                  children: [
+                    for (final item in group.value)
+                      Card(
+                        margin: const EdgeInsets.only(top: 8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            minVerticalPadding: 12,
+                            title: Text(
+                              '${item['code_classe']} · ${item['code_ue']} · ${item['code_m']}',
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Text(
+                                '${item['prenom'] ?? ''} ${item['nom'] ?? ''} · ${item['eid'] ?? ''} · ${item['nom_fac'] ?? ''} / ${item['nom_depart'] ?? ''}\nResponsable notes UE : ${item['responsable_notes_prenom'] ?? ''} ${item['responsable_notes_nom'] ?? 'à désigner'}',
+                              ),
+                            ),
+                            trailing: Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              children: [
+                                IconButton(
+                                  tooltip: 'Choisir le responsable unique des notes pour cette UE',
+                                  icon: const Icon(Icons.assignment_ind_outlined),
+                                  onPressed: () => _chooseGradeManager(item, allAccounts),
+                                ),
+                                Switch(
+                                  value: item['actif'] == true,
+                                  onChanged: (active) => _setAssignment(item, active),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      )
-                      .toList(),
+                      ),
+                  ],
                 ),
               ),
+              const SizedBox(height: 16),
               OutlinedButton.icon(
                 onPressed: () => _createAssignment(accounts, assignments),
                 icon: const Icon(Icons.add),
@@ -1220,6 +2194,262 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
     );
   }
 
+  Future<void> _deleteAccount(Map<String, dynamic> account) async {
+    final reasonController = TextEditingController();
+    final fullName =
+        '${account['prenom'] ?? ''} ${account['nom'] ?? ''}'.trim();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Supprimer le compte'),
+          content: SizedBox(
+            width: 460,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Confirmez la suppression du compte de $fullName.'),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'L’accès sera bloqué et les sessions fermées. Les inscriptions, notes, affectations et traces académiques seront conservées. Cette action ne peut pas être annulée depuis l’application.',
+                  ),
+                  if (account['role'] == 'ENSEIGNANT') ...[
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Vérifiez ses affectations pédagogiques avant de continuer; elles seront conservées dans le dossier.',
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: reasonController,
+                    minLines: 2,
+                    maxLines: 4,
+                    onChanged: (_) => setDialogState(() {}),
+                    decoration: InputDecoration(
+                      labelText: 'Motif obligatoire',
+                      helperText:
+                          'Au moins 8 caractères (${reasonController.text.trim().length}/8).',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Annuler'),
+            ),
+            FilledButton.icon(
+              onPressed: reasonController.text.trim().length < 8
+                  ? null
+                  : () => Navigator.pop(
+                      dialogContext,
+                      reasonController.text.trim(),
+                    ),
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('Confirmer la suppression'),
+            ),
+          ],
+        ),
+      ),
+    );
+    reasonController.dispose();
+    if (reason == null) return;
+
+    try {
+      await widget.api.agentDeleteAccount(
+        account['id'] as int,
+        reason: reason,
+      );
+      if (!mounted) return;
+      toast(context, 'Compte supprimé; son dossier académique est conservé.');
+      _reload();
+    } catch (error) {
+      if (mounted) toast(context, _error(error));
+    }
+  }
+
+  Future<void> _decideAccountRequest(
+    Map<String, dynamic> item,
+    String decision,
+  ) async {
+    final reason = await _reasonDialog(
+      decision == 'APPROUVER'
+          ? 'Vérification et approbation du compte'
+          : 'Refus de la demande de compte',
+    );
+    if (reason == null) return;
+    if (decision == 'REFUSER' && reason.trim().length < 8) {
+      toast(
+        context,
+        'Un motif de refus d’au moins 8 caractères est obligatoire.',
+      );
+      return;
+    }
+    try {
+      final response = await widget.api.agentDecideAccountRequest(
+        item['id'] as int,
+        decision: decision,
+        reason: reason,
+      );
+      if (!mounted) return;
+      if (decision == 'APPROUVER') {
+        final data = response['data'] is Map
+            ? Map<String, dynamic>.from(response['data'] as Map)
+            : <String, dynamic>{};
+        final notification = '${data['notification_courriel'] ?? ''}';
+        final isStudentRequest = item['role'] == 'ETUDIANT';
+        final message = switch (notification) {
+          'ENVOYEE' => isStudentRequest
+              ? 'Compte activé, inscription à la classe validée et courriel envoyé.'
+              : 'Compte activé et courriel d’approbation envoyé.',
+          'ADRESSE_FICTIVE' =>
+            'Compte activé. Adresse de test .invalid : aucun courriel envoyé.',
+          'MAILER_LOCAL' => 'Compte activé. Courriel non livré : configurez un serveur SMTP (MAIL_MAILER=smtp).',
+          'ADRESSE_ABSENTE' =>
+            'Compte activé, mais aucun courriel n’est renseigné.',
+          'ECHEC' => 'Compte activé, mais l’envoi du courriel a échoué. Vérifiez la configuration SMTP et les journaux.',
+          _ => 'Compte activé.',
+        };
+        toast(context, message);
+      } else {
+        toast(context, 'Demande refusée.');
+      }
+      _reload();
+    } catch (error) {
+      if (mounted) toast(context, _error(error));
+    }
+  }
+
+  Future<void> _showAccountRequestDetails(Map<String, dynamic> item) async {
+    final studentClassMissing =
+        item['role'] == 'ETUDIANT' && item['classe_id'] == null;
+    final trackLabel = switch (item['role']) {
+      'ETUDIANT' => 'Filière / mention demandée',
+      'ENSEIGNANT' => 'Domaine d’enseignement indiqué',
+      _ => 'Filière / domaine indiqué',
+    };
+    final specialtyLabel = item['role'] == 'ENSEIGNANT'
+        ? 'Spécialité d’enseignement indiquée'
+        : 'Option / spécialité demandée';
+    final approvalGuidance = studentClassMissing
+        ? 'Cette ancienne demande ne contient pas d’année ni de classe. Refusez-la avec un motif, puis invitez la personne à renvoyer sa demande avec ces informations.'
+        : item['role'] == 'ETUDIANT'
+        ? 'Vérifiez l’identité, l’année et la classe demandées. L’approbation crée le compte et valide l’inscription à cette classe.'
+        : 'Vérifiez les justificatifs avant d’approuver. Une approbation active le compte.';
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Détails de la demande de compte'),
+        content: SizedBox(
+          width: 520,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _accountRequestDetail('Nom', item['nom']),
+                _accountRequestDetail('Prénom(s)', item['prenom']),
+                _accountRequestDetail('Rôle demandé', item['role']),
+                _accountRequestDetail(
+                  'Identifiant de connexion',
+                  item['login'],
+                ),
+                _accountRequestDetail(
+                  'Identifiant de profil',
+                  item['identifiant_profil'],
+                ),
+                _accountRequestDetail('Courriel', item['courriel']),
+                _accountRequestDetail(
+                  'Département',
+                  '${item['nom_depart'] ?? '—'} (${item['code_de'] ?? '—'})',
+                ),
+                _accountRequestDetail(trackLabel, item['nom_f']),
+                _accountRequestDetail(specialtyLabel, item['libelle_specialite']),
+                if (item['role'] == 'ETUDIANT') ...[
+                  _accountRequestDetail('Année demandée', item['annee_academique']),
+                  _accountRequestDetail(
+                    'Classe / salle demandée',
+                    item['code_classe'] == null
+                        ? null
+                        : '${item['code_classe']} · ${item['libelle_niv'] ?? ''}',
+                  ),
+                ],
+                _accountRequestDetail(
+                  'Référence d’identité déclarée',
+                  item['reference_identite'],
+                ),
+                _accountRequestDetail('Demande reçue le', item['soumise_le']),
+                const SizedBox(height: 12),
+                Text(
+                  approvalGuidance,
+                  style: Theme.of(dialogContext).textTheme.bodySmall,
+                ),
+                if (studentClassMissing) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    'Approbation désactivée : la classe doit être sélectionnée dans le nouveau formulaire.',
+                    style: TextStyle(
+                      color: Theme.of(dialogContext).colorScheme.error,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Fermer'),
+          ),
+          OutlinedButton.icon(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _decideAccountRequest(item, 'REFUSER');
+            },
+            icon: const Icon(Icons.close),
+            label: const Text('Refuser'),
+          ),
+          FilledButton.icon(
+            onPressed: studentClassMissing
+                ? null
+                : () {
+                    Navigator.pop(dialogContext);
+                    _decideAccountRequest(item, 'APPROUVER');
+                  },
+            icon: const Icon(Icons.check),
+            label: const Text('Approuver'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _accountRequestDetail(String label, Object? value) => Padding(
+    padding: const EdgeInsets.only(bottom: 9),
+    child: RichText(
+      text: TextSpan(
+        style: DefaultTextStyle.of(context).style,
+        children: [
+          TextSpan(
+            text: '$label : ',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          TextSpan(
+            text: value == null || '$value'.trim().isEmpty
+                ? 'Non renseigné'
+                : '$value',
+          ),
+        ],
+      ),
+    ),
+  );
+
   Widget _assignmentFilter(
     String label,
     String selected,
@@ -1229,11 +2459,20 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
   ) => SizedBox(
     width: 220,
     child: DropdownButtonFormField<String>(
+      isDense: true,
+      isExpanded: true,
       initialValue: values.contains(selected) || selected == allLabel
           ? selected
           : allLabel,
-      decoration: InputDecoration(labelText: label),
-      items: [allLabel, ...values]
+      decoration: InputDecoration(
+        labelText: label,
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+      ),
+      items: <String>{allLabel, ...values}
           .map(
             (value) => DropdownMenuItem(
               value: value,
@@ -1249,6 +2488,39 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
       _mutate(
         () => widget.api.agentSetAssignmentStatus(item['id'] as int, active),
       );
+
+  Future<void> _chooseGradeManager(
+    Map<String, dynamic> assignment,
+    List<Map<String, dynamic>> allAccounts,
+  ) async {
+    final teachers = allAccounts.where((account) =>
+      account['role'] == 'ENSEIGNANT' && account['actif'] == true && account['enseignant_id'] != null
+    ).toList();
+    final selected = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Responsable des notes · ${assignment['code_ue']}'),
+        content: SizedBox(
+          width: 440,
+          child: ListView(
+            shrinkWrap: true,
+            children: teachers.map((teacher) => ListTile(
+              leading: const Icon(Icons.person_outline),
+              title: Text('${teacher['prenom'] ?? ''} ${teacher['nom'] ?? ''}'),
+              subtitle: Text('${teacher['eid'] ?? ''}'),
+              trailing: teacher['enseignant_id'] == assignment['responsable_notes_enseignant_id']
+                  ? const Icon(Icons.check_circle, color: Colors.teal)
+                  : null,
+              onTap: () => Navigator.pop(dialogContext, teacher['enseignant_id'] as int),
+            )).toList(),
+          ),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Annuler'))],
+      ),
+    );
+    if (selected == null || !mounted) return;
+    await _mutate(() => widget.api.agentSetGradeManager(assignment['id'] as int, selected));
+  }
 
   Future<void> _decideAssignmentProposal(
     Map<String, dynamic> proposal,
@@ -1274,13 +2546,21 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
       );
       return;
     }
-    await _mutate(
-      () => widget.api.agentDecideAssignmentProposal(
+    try {
+      await widget.api.agentDecideAssignmentProposal(
         proposal['id'] as int,
         decision: decision,
         reason: reason,
-      ),
-    );
+      );
+      if (!mounted) return;
+      setState(() {
+        decidedAssignmentProposalIds.add((proposal['id'] as num).toInt());
+      });
+      toast(context, 'Décision enregistrée. Les données se mettent à jour.');
+      _reload();
+    } catch (error) {
+      if (mounted) toast(context, _error(error));
+    }
   }
 
   Future<void> _createAssignment(
@@ -1308,9 +2588,7 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
               (unit) =>
                   unit['statut_catalogue'] == 'ACTIF' &&
                   unit['niveau_id'].toString() ==
-                      selectedClass['niveau_id'].toString() &&
-                  unit['version_programme'].toString() ==
-                      selectedClass['version_programme'].toString(),
+                      selectedClass['niveau_id'].toString(),
             )
             .map((unit) => unit['id'])
             .toSet();
@@ -1507,61 +2785,147 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
 
   Widget _enrollments(List data) {
     final rows = _maps(data);
+    final submitted = rows.where((row) => row['statut'] == 'SOUMISE').toList();
+    final reviewed = rows.where((row) => row['statut'] != 'SOUMISE').toList();
     if (rows.isEmpty)
       return const EmptyState(
         'Aucune inscription à examiner',
         'Les nouvelles demandes apparaîtront ici.',
       );
     return Column(
-      children: rows
-          .map(
-            (row) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Panel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SectionTitle(
-                      '${row['prenom'] ?? ''} ${row['nom'] ?? ''} · ${row['matricule']}',
-                      subtitle:
-                          '${row['code_classe']} · ${row['libelle_niv']} · ${row['annee_academique'] ?? ''}',
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _enrollmentSection(
+          title: 'À examiner',
+          description: 'Demandes soumises qui attendent une décision de l’administration.',
+          rows: submitted,
+          actionable: true,
+          initiallyExpanded: true,
+        ),
+        const SizedBox(height: 16),
+        _enrollmentSection(
+          title: 'Historique des inscriptions',
+          description: 'Comptes et classes conservés après validation ou retour de dossier.',
+          rows: reviewed,
+          actionable: false,
+          initiallyExpanded: reviewed.isNotEmpty && submitted.isEmpty,
+        ),
+      ],
+    );
+  }
+
+  Widget _enrollmentSection({
+    required String title,
+    required String description,
+    required List<Map<String, dynamic>> rows,
+    required bool actionable,
+    required bool initiallyExpanded,
+  }) => Panel(
+    padding: 12,
+    child: ExpansionTile(
+      initiallyExpanded: initiallyExpanded,
+      tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+      title: Text('$title · ${rows.length}'),
+      subtitle: Text(description),
+      children: rows.isEmpty
+          ? [
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(actionable ? 'Aucune demande en attente.' : 'Aucune inscription traitée pour le moment.'),
+              ),
+            ]
+          : rows.map((row) => _enrollmentCard(row, actionable: actionable)).toList(),
+    ),
+  );
+
+  Widget _enrollmentCard(
+    Map<String, dynamic> row, {
+    required bool actionable,
+  }) {
+    final status = '${row['statut'] ?? '—'}';
+    final semesters = _maps(row['semestres']);
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Panel(
+        padding: 18,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 2, right: 12),
+                  child: Icon(Icons.school_outlined),
+                ),
+                Expanded(
+                  child: SectionTitle(
+                    '${row['prenom'] ?? ''} ${row['nom'] ?? ''} · ${row['matricule']}',
+                    subtitle: '${row['code_classe']} · ${row['libelle_niv']} · ${row['annee_academique'] ?? ''} · ${row['nom_depart'] ?? ''}',
+                  ),
+                ),
+                StatusBadge(status),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text('Semestre soumis : S${row['numero_semestre']} · ${row['date_soumission'] ?? 'date non précisée'}'),
+            if (semesters.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              for (final semester in semesters)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .35),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    Text(
-                      'Semestre ${row['numero_semestre']} · soumis le ${row['date_soumission'] ?? '—'}',
-                    ),
-                    if (row['fiche_academique_disponible'] == true) ...[
-                      const SizedBox(height: 10),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: OutlinedButton.icon(
-                          onPressed: () => _downloadAcademicSheet(row),
-                          icon: const Icon(Icons.picture_as_pdf_outlined),
-                          label: const Text('Consulter la fiche annuelle'),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 14),
-                    Wrap(
-                      spacing: 8,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        FilledButton.icon(
-                          onPressed: () => _review(row, 'VALIDER'),
-                          icon: const Icon(Icons.check),
-                          label: const Text('Valider'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: () => _review(row, 'REFUSER'),
-                          icon: const Icon(Icons.undo),
-                          label: const Text('Retourner l’inscription'),
-                        ),
+                        Text('Semestre ${semester['numero_semestre']} · ${semester['statut']}', style: Theme.of(context).textTheme.titleSmall),
+                        const SizedBox(height: 6),
+                        ..._maps(semester['ues']).map((ue) => Padding(
+                          padding: const EdgeInsets.only(top: 3),
+                          child: Text('• ${ue['code_ue']} · ${ue['intitule_ue']} — ${ue['statut']}'),
+                        )),
                       ],
                     ),
-                  ],
+                  ),
                 ),
+            ],
+            if (row['fiche_academique_disponible'] == true) ...[
+              const SizedBox(height: 6),
+              OutlinedButton.icon(
+                onPressed: () => _downloadAcademicSheet(row),
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                label: const Text('Consulter la fiche annuelle'),
               ),
-            ),
-          )
-          .toList(),
+            ],
+            if (actionable) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () => _review(row, 'VALIDER'),
+                    icon: const Icon(Icons.check),
+                    label: const Text('Valider'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => _review(row, 'REFUSER'),
+                    icon: const Icon(Icons.undo),
+                    label: const Text('Retourner l’inscription'),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -1608,17 +2972,16 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
     final unitsByLevel = <int, List<Map<String, dynamic>>>{};
     for (final unit in units) {
       final levelId = (unit['niveau_id'] as num?)?.toInt();
-      if (levelId != null) unitsByLevel.putIfAbsent(levelId, () => []).add(unit);
+      if (levelId != null)
+        unitsByLevel.putIfAbsent(levelId, () => []).add(unit);
     }
     for (final levelUnits in unitsByLevel.values) {
       levelUnits.sort((left, right) {
-        final semesterOrder = (left['numero_semestre'] as num? ?? 0)
-            .compareTo(right['numero_semestre'] as num? ?? 0);
+        final semesterOrder = (left['numero_semestre'] as num? ?? 0).compareTo(
+          right['numero_semestre'] as num? ?? 0,
+        );
         if (semesterOrder != 0) return semesterOrder;
-        final codeOrder = '${left['code_ue']}'.compareTo('${right['code_ue']}');
-        if (codeOrder != 0) return codeOrder;
-        return (left['version_programme'] as num? ?? 0)
-            .compareTo(right['version_programme'] as num? ?? 0);
+        return '${left['code_ue']}'.compareTo('${right['code_ue']}');
       });
     }
     final programGroups = <String, List<Map<String, dynamic>>>{};
@@ -1644,7 +3007,9 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                   OutlinedButton.icon(
                     onPressed: () => _manageAcademicStructure(structure),
                     icon: const Icon(Icons.edit_note_outlined),
-                    label: const Text('Gérer départements, filières et parcours'),
+                    label: const Text(
+                      'Gérer départements, filières et parcours',
+                    ),
                   ),
                 ],
               ),
@@ -1701,13 +3066,17 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                 (year) => ExpansionTile(
                   tilePadding: EdgeInsets.zero,
                   initiallyExpanded: year == academicYearsOrdered.first,
-                  title: Text('$year · ${classesByYear[year]!.length} classe(s)'),
+                  title: Text(
+                    '$year · ${classesByYear[year]!.length} classe(s)',
+                  ),
                   children: classesByYear[year]!
                       .map(
                         (item) => ListTile(
                           contentPadding: const EdgeInsets.only(left: 16),
                           leading: const Icon(Icons.groups_outlined),
-                          title: Text('${item['code_classe']} · ${item['libelle_niv']}'),
+                          title: Text(
+                            '${item['code_classe']} · ${item['libelle_niv']}',
+                          ),
                           subtitle: Text(
                             '${item['nom_univ']} · ${item['nom_fac']} · ${item['nom_depart']} · ${item['code_f']}',
                           ),
@@ -1733,7 +3102,7 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
             children: [
               const SectionTitle(
                 'Catalogue des UE et EC',
-                subtitle: 'Par niveau, puis selon l’approbation du barème par la cellule informatique.',
+                subtitle: 'Syllabus courant par niveau, puis selon l’approbation du barème par la cellule informatique.',
               ),
               if (units.isEmpty)
                 const EmptyState(
@@ -1742,7 +3111,8 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                 ),
               ...levels.map((level) {
                 final levelId = (level['id'] as num).toInt();
-                final levelUnits = unitsByLevel[levelId] ?? const <Map<String, dynamic>>[];
+                final levelUnits =
+                    unitsByLevel[levelId] ?? const <Map<String, dynamic>>[];
                 final approvedUnits = levelUnits
                     .where((unit) => unit['profil_evaluation'] != null)
                     .toList();
@@ -1751,7 +3121,9 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                     .toList();
                 return ExpansionTile(
                   tilePadding: EdgeInsets.zero,
-                  title: Text('${level['code_f']} · ${level['code_niv']} · ${level['libelle_niv']}'),
+                  title: Text(
+                    '${level['code_f']} · ${level['code_niv']} · ${level['libelle_niv']}',
+                  ),
                   subtitle: Text(
                     '${level['nom_depart']} · ${level['nom_f']}${level['libelle_specialite'] == null ? '' : ' · ${level['libelle_specialite']}'} · ${approvedUnits.length} barème(s) approuvé(s) · ${pendingUnits.length} à traiter',
                   ),
@@ -1772,7 +3144,9 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                         padding: EdgeInsets.symmetric(vertical: 12),
                         child: Align(
                           alignment: Alignment.centerLeft,
-                          child: Text('Aucune UE dans le catalogue pour ce niveau.'),
+                          child: Text(
+                            'Aucune UE dans le catalogue pour ce niveau.',
+                          ),
                         ),
                       ),
                     Align(
@@ -1808,9 +3182,7 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
           .toList();
       return ExpansionTile(
         tilePadding: const EdgeInsets.only(left: 12),
-        title: Text(
-          '${unit['code_ue']} · ${unit['intitule_ue']} · version ${unit['version_programme']}',
-        ),
+        title: Text('${unit['code_ue']} · ${unit['intitule_ue']}'),
         subtitle: Text(
           'S${unit['numero_semestre']} · ${unit['credit_ue']} crédits · ${unit['statut_catalogue']} · ${unit['profil_evaluation'] == null ? (unit['profil_propose'] == null ? 'Aucun barème proposé' : 'Proposition en attente : ${_evaluationProfileLabel(unit['profil_propose'])}') : _evaluationProfileLabel(unit['profil_evaluation'])}',
         ),
@@ -1826,7 +3198,9 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
           ...children.map(
             (element) => ListTile(
               dense: true,
-              title: Text('${element['code_m']} · ${element['intitule_matiere']}'),
+              title: Text(
+                '${element['code_m']} · ${element['intitule_matiere']}',
+              ),
               subtitle: Text(
                 'EC ${element['rang_ec']} · ${element['credit_matiere']} crédits',
               ),
@@ -1919,10 +3293,8 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                 Padding(
                   padding: const EdgeInsets.all(12),
                   child: OutlinedButton.icon(
-                    onPressed: () => _generateAcademicLevels(
-                      dialogContext,
-                      structure,
-                    ),
+                    onPressed: () =>
+                        _generateAcademicLevels(dialogContext, structure),
                     icon: const Icon(Icons.auto_awesome_outlined),
                     label: const Text('Générer les niveaux d’une filière'),
                   ),
@@ -1970,10 +3342,12 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
       title: Text('$title (${rows.length})'),
       children: [
         ...rows.map((item) {
-          final canEdit = (kind != 'universite' && kind != 'faculte') ||
+          final canEdit =
+              (kind != 'universite' && kind != 'faculte') ||
               item['modifiable'] != false;
           return ListTile(
-            leading: item['logo'] is Map && (item['logo'] as Map)['base64'] is String
+            leading:
+                item['logo'] is Map && (item['logo'] as Map)['base64'] is String
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(6),
                     child: Image.memory(
@@ -1995,10 +3369,21 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (canEdit && const {'universite', 'faculte', 'departement'}.contains(kind))
+                if (canEdit &&
+                    const {
+                      'universite',
+                      'faculte',
+                      'departement',
+                    }.contains(kind))
                   IconButton(
-                    tooltip: item['logo'] == null ? 'Ajouter le logo' : 'Remplacer le logo',
-                    icon: Icon(item['logo'] == null ? Icons.add_photo_alternate_outlined : Icons.image_outlined),
+                    tooltip: item['logo'] == null
+                        ? 'Ajouter le logo'
+                        : 'Remplacer le logo',
+                    icon: Icon(
+                      item['logo'] == null
+                          ? Icons.add_photo_alternate_outlined
+                          : Icons.image_outlined,
+                    ),
                     onPressed: () => _uploadStructureLogo(kind, item),
                   ),
                 IconButton(
@@ -2193,11 +3578,18 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                     initialValue: cycle,
                     decoration: const InputDecoration(labelText: 'Cycle'),
                     items: const [
-                      DropdownMenuItem(value: 'LICENCE', child: Text('Licence')),
+                      DropdownMenuItem(
+                        value: 'LICENCE',
+                        child: Text('Licence'),
+                      ),
                       DropdownMenuItem(value: 'MASTER', child: Text('Master')),
-                      DropdownMenuItem(value: 'DOCTORAT', child: Text('Doctorat')),
+                      DropdownMenuItem(
+                        value: 'DOCTORAT',
+                        child: Text('Doctorat'),
+                      ),
                     ],
-                    onChanged: (value) => setDialog(() => cycle = value ?? cycle),
+                    onChanged: (value) =>
+                        setDialog(() => cycle = value ?? cycle),
                   ),
                   if (specialtyRows.isNotEmpty)
                     DropdownButtonFormField<int?>(
@@ -2219,7 +3611,8 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                           ),
                         ),
                       ],
-                      onChanged: (value) => setDialog(() => specialtyId = value),
+                      onChanged: (value) =>
+                          setDialog(() => specialtyId = value),
                     ),
                 ],
                 TextField(
@@ -2341,9 +3734,18 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                     initialValue: cycle,
                     decoration: const InputDecoration(labelText: 'Cycle'),
                     items: const [
-                      DropdownMenuItem(value: 'LICENCE', child: Text('Licence · 3 niveaux')),
-                      DropdownMenuItem(value: 'MASTER', child: Text('Master · 2 niveaux')),
-                      DropdownMenuItem(value: 'DOCTORAT', child: Text('Doctorat · 3 niveaux')),
+                      DropdownMenuItem(
+                        value: 'LICENCE',
+                        child: Text('Licence · 3 niveaux'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'MASTER',
+                        child: Text('Master · 2 niveaux'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'DOCTORAT',
+                        child: Text('Doctorat · 3 niveaux'),
+                      ),
                     ],
                     onChanged: (value) => setDialog(() {
                       cycle = value ?? cycle;
@@ -2364,7 +3766,9 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                         ...specialties.map(
                           (item) => DropdownMenuItem<int?>(
                             value: (item['id'] as num).toInt(),
-                            child: Text('${item['code_specialite']} · ${item['libelle_specialite']}'),
+                            child: Text(
+                              '${item['code_specialite']} · ${item['libelle_specialite']}',
+                            ),
                           ),
                         ),
                       ],
@@ -2402,7 +3806,8 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                 child: const Text('Annuler'),
               ),
               FilledButton(
-                onPressed: trackId == null ||
+                onPressed:
+                    trackId == null ||
                         (specialtyId != null && startLevel == null)
                     ? null
                     : () => Navigator.pop(context, {
@@ -2773,6 +4178,7 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                     .toList(),
                 onChanged: (value) => setState(() {
                   selectedClass = value;
+                  selectedPublicationVersion = null;
                   revision++;
                 }),
               ),
@@ -2786,6 +4192,7 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                 ],
                 onChanged: (value) => setState(() {
                   period = value!;
+                  selectedPublicationVersion = null;
                   revision++;
                 }),
               ),
@@ -2830,18 +4237,27 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                           icon: const Icon(Icons.picture_as_pdf_outlined),
                           label: const Text('Prévisualiser les bulletins PDF'),
                         ),
-                        if ((preview['version_courante'] as num?) != null)
-                          OutlinedButton.icon(
-                            onPressed: () =>
-                                _exportBulletinsExcel(preview, published: true),
-                            icon: const Icon(Icons.verified_outlined),
-                            label: Text(
-                              'Exporter la version officielle ${preview['version_courante']}',
-                            ),
-                          ),
+                        OutlinedButton.icon(
+                          onPressed: preview['pret'] == true
+                              ? () => _exportCohortMinutesPdf(preview)
+                              : null,
+                          icon: const Icon(Icons.table_chart_outlined),
+                          label: const Text('Produire le PV récapitulatif'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: selectedClass == null
+                              ? null
+                              : () => _exportRequestMinutesPdf(selectedClass!),
+                          icon: const Icon(Icons.fact_check_outlined),
+                          label: const Text('Produire le PV des requêtes'),
+                        ),
                       ],
                     ),
                   ),
+                  if ((preview['version_courante'] as num?) != null) ...[
+                    const SizedBox(height: 12),
+                    _publicationArchiveControls(preview),
+                  ],
                   Notice(
                     preview['pret'] == true
                         ? 'Tous les bulletins sont calculables. Vérifiez la prévisualisation avant de publier.'
@@ -2925,9 +4341,339 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
               );
             },
           ),
+        if (selectedClass != null && period != 'ANNUELLE') ...[
+          const SizedBox(height: 16),
+          FutureBuilder<Map<String, dynamic>>(
+            future: widget.api.agentUnitMinutes(selectedClass!, period),
+            key: ValueKey('pv-ue-$selectedClass-$period-$revision'),
+            builder: (context, snapshot) {
+              if (snapshot.hasError)
+                return Notice(_error(snapshot.error!), warning: true);
+              if (!snapshot.hasData)
+                return const Center(child: CircularProgressIndicator());
+              final data = snapshot.data!;
+              final units = _maps(data['ues']);
+              return Panel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SectionTitle(
+                      'Procès-verbaux semestriels par UE',
+                      subtitle: 'Document de fin de semestre établi à partir des notes calculées par GNU et des approbations enregistrées.',
+                    ),
+                    if (units.isEmpty)
+                      const EmptyState(
+                        'Aucune UE affectée',
+                        'Aucune UE de ce semestre ne possède d’affectation active dans cette classe.',
+                      ),
+                    ...units.map((unit) {
+                      final evaluations = _maps(unit['evaluations']);
+                      final ready = unit['pret'] == true;
+                      return Card(
+                        margin: const EdgeInsets.only(top: 8),
+                        child: ListTile(
+                          title: Text(
+                            '${unit['code_ue']} · ${unit['intitule_ue']}',
+                          ),
+                          subtitle: Text(
+                            '${unit['effectif']} étudiant(s) · ${evaluations.length} évaluation(s) · ${ready ? 'Approbations enseignant et cellule enregistrées' : 'Approbations ou notes à compléter'}',
+                          ),
+                          trailing: FilledButton.tonalIcon(
+                            onPressed: ready
+                                ? () => _exportUnitMinutes(data, unit)
+                                : null,
+                            icon: const Icon(Icons.picture_as_pdf_outlined),
+                            label: const Text('Produire le PV PDF'),
+                          ),
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 8),
+                    const Notice(
+                      'Le PDF est produit seulement lorsque chaque évaluation retenue possède le retour de la cellule publié et la vérification de l’enseignant. Les signatures manuscrites restent à apposer sur le document imprimé.',
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
       ],
     );
   }
+
+  Future<void> _exportUnitMinutes(
+    Map<String, dynamic> data,
+    Map<String, dynamic> unit,
+  ) async {
+    final evaluations = _maps(unit['evaluations']);
+    final students = _maps(unit['etudiants']);
+    if (unit['pret'] != true || evaluations.isEmpty || students.isEmpty) {
+      toast(
+        context,
+        'Le procès-verbal est bloqué tant que les notes et approbations ne sont pas complètes.',
+      );
+      return;
+    }
+    final structure = Map<String, dynamic>.from(
+      data['structure'] as Map? ?? {},
+    );
+    final logoData = Map<String, dynamic>.from(structure['logo'] as Map? ?? {});
+    Uint8List? logoBytes = logoData['base64'] is String
+        ? base64Decode(logoData['base64'] as String)
+        : null;
+    if (logoBytes == null &&
+        '${structure['universite'] ?? ''}'.toUpperCase().contains('YAOUND')) {
+      try {
+        logoBytes = (await rootBundle.load('assets/uy1_crest.png')).buffer
+            .asUint8List();
+      } catch (_) {}
+    }
+    final crest = logoBytes == null ? null : pw.MemoryImage(logoBytes);
+    final periodLabel = data['periode'] == 'S1' ? 'SEMESTRE 1' : 'SEMESTRE 2';
+    final document = pw.Document(theme: await gnuPdfTheme());
+    document.addPage(
+      pw.MultiPage(
+        pageFormat: pdf.PdfPageFormat.a4.landscape,
+        margin: const pw.EdgeInsets.fromLTRB(28, 22, 28, 28),
+        header: (_) => pw.Column(
+          children: [
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Expanded(
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'RÉPUBLIQUE DU CAMEROUN',
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      pw.Text(
+                        'Paix – Travail – Patrie',
+                        style: const pw.TextStyle(fontSize: 8),
+                      ),
+                      pw.Text(
+                        '${structure['universite'] ?? 'UNIVERSITÉ'}'
+                            .toUpperCase(),
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(
+                  width: 52,
+                  height: 52,
+                  child: crest == null
+                      ? null
+                      : pw.Image(crest, fit: pw.BoxFit.contain),
+                ),
+                pw.Expanded(
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text(
+                        'REPUBLIC OF CAMEROON',
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      pw.Text(
+                        'Peace – Work – Fatherland',
+                        style: const pw.TextStyle(fontSize: 8),
+                      ),
+                      pw.Text(
+                        'THE UNIVERSITY OF YAOUNDÉ I',
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 4),
+            pw.Text(
+              '${structure['faculte'] ?? ''} · ${structure['departement'] ?? ''}',
+              style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.Divider(thickness: 1),
+            pw.Text(
+              'PROCÈS-VERBAL DES NOTES DE L’UNITÉ D’ENSEIGNEMENT',
+              textAlign: pw.TextAlign.center,
+              style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.Text(
+              '${unit['code_ue']} · ${unit['intitule_ue']} · $periodLabel · ${data['annee']}',
+              textAlign: pw.TextAlign.center,
+              style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.Text(
+              'Filière ${data['filiere']} · Niveau ${data['niveau']} · Classe ${data['classe']} · ${unit['credit_ue']} crédits',
+              textAlign: pw.TextAlign.center,
+              style: const pw.TextStyle(fontSize: 8),
+            ),
+            pw.SizedBox(height: 7),
+          ],
+        ),
+        footer: (context) => pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Text(
+              'GNU · PV UE ${unit['code_ue']} · ${data['annee']}',
+              style: const pw.TextStyle(fontSize: 7),
+            ),
+            pw.Text(
+              '${context.pageNumber}/${context.pagesCount}',
+              style: const pw.TextStyle(fontSize: 7),
+            ),
+          ],
+        ),
+        build: (_) => [
+          pw.TableHelper.fromTextArray(
+            headers: [
+              'N°',
+              'MATRICULE',
+              'NOMS ET PRÉNOMS',
+              ...evaluations.map(
+                (e) =>
+                    '${e['code_ec']} ${e['type_eval'] == 'SN' ? 'SN / RATTRAPAGE' : e['type_eval']}\n${e['poids']} %',
+              ),
+              'TOTAL /100',
+              'DÉC.',
+              'MENTION',
+            ],
+            data: [
+              for (var i = 0; i < students.length; i++)
+                (() {
+                  final student = students[i];
+                  final marks = _maps(student['notes_evaluations']);
+                  final note100 = student['note_100'];
+                  final eliminated = student['eliminatoire'] == true;
+                  final numeric = note100 is num ? note100.toDouble() : null;
+                  final decision = eliminated
+                      ? 'EL'
+                      : numeric != null && numeric >= 35
+                      ? (numeric >= 50 ? 'CA' : 'CANT')
+                      : 'NC';
+                  return [
+                    '${i + 1}',
+                    '${student['matricule']}',
+                    '${student['nom']} ${student['prenom']}',
+                    for (var j = 0; j < evaluations.length; j++)
+                      (() {
+                        final mark = j < marks.length
+                            ? marks[j]
+                            : <String, dynamic>{};
+                        if (mark['situation'] == 'ABSENTE' ||
+                            mark['situation'] == 'MANQUANTE')
+                          return 'EL';
+                        final points = mark['points_pondere'];
+                        if (points is num) {
+                          final replacement = mark['rattrapage'] == true;
+                          return '${replacement ? 'R ' : ''}${points.toStringAsFixed(2)}';
+                        }
+                        return mark['valeur'] == null
+                            ? '—'
+                            : '${mark['valeur']}';
+                      })(),
+                    numeric?.toStringAsFixed(2) ?? '—',
+                    decision,
+                    '${student['mention'] ?? 'EL'}',
+                  ];
+                })(),
+            ],
+            headerStyle: pw.TextStyle(
+              fontSize: 6.6,
+              fontWeight: pw.FontWeight.bold,
+            ),
+            cellStyle: const pw.TextStyle(fontSize: 6.4),
+            cellAlignment: pw.Alignment.center,
+            cellAlignments: {2: pw.Alignment.centerLeft},
+            border: pw.TableBorder.all(color: pdf.PdfColors.black, width: .45),
+            cellPadding: const pw.EdgeInsets.symmetric(
+              horizontal: 3,
+              vertical: 4,
+            ),
+          ),
+          pw.SizedBox(height: 10),
+          pw.Text(
+            'Les colonnes présentent les points pondérés retenus dans le calcul officiel de l’UE. « R » indique qu’une note de rattrapage a remplacé la note de SN pour l’étudiant concerné. Le total est sur 100.',
+            style: const pw.TextStyle(fontSize: 7),
+          ),
+          pw.SizedBox(height: 6),
+          pw.Text(
+            'STATISTIQUES DE VALIDATION · Effectif : ${unit['effectif']} · CA : ${unit['ca']} (${unit['ca_pct']} %) · CANT : ${unit['cant']} (${unit['cant_pct']} %) · NC : ${unit['nc']} (${unit['nc_pct']} %) · EL : ${unit['el']} (${unit['el_pct']} %)',
+            style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 12),
+          pw.Text(
+            'Approbations GNU enregistrées pour chaque évaluation :',
+            style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold),
+          ),
+          ...evaluations.map(
+            (e) => pw.Text(
+              '${e['code_ec']} · ${e['type_eval']} : enseignant ${e['enseignant'] ?? '—'} (${e['enseignant_le'] ?? '—'}) ; cellule ${e['cellule'] ?? '—'} (${e['cellule_le'] ?? '—'})',
+              style: const pw.TextStyle(fontSize: 7),
+            ),
+          ),
+          pw.SizedBox(height: 12),
+          pw.Text(
+            'Les approbations numériques ci-dessus attestent du contrôle et de la vérification des notes. Les signatures manuscrites et le cachet sont apposés sur l’exemplaire officiel.',
+            style: const pw.TextStyle(fontSize: 7),
+          ),
+          pw.SizedBox(height: 18),
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            children: [
+              pw.Expanded(
+                child: _unitMinutesSignature(
+                  'Enseignant(s) responsable(s) · vérification enregistrée',
+                ),
+              ),
+              pw.SizedBox(width: 28),
+              pw.Expanded(
+                child: _unitMinutesSignature(
+                  'Cellule informatique · contrôle enregistré',
+                ),
+              ),
+              pw.SizedBox(width: 28),
+              pw.Expanded(
+                child: _unitMinutesSignature(
+                  'Chef de département · signature et cachet',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    final filename =
+        'PV-UE-${unit['code_ue']}-${data['classe']}-${data['periode']}-${data['annee']}.pdf';
+    await downloadFile(filename, await document.save());
+  }
+
+  pw.Widget _unitMinutesSignature(String title) => pw.Column(
+    crossAxisAlignment: pw.CrossAxisAlignment.center,
+    children: [
+      pw.Text(
+        title,
+        textAlign: pw.TextAlign.center,
+        style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold),
+      ),
+      pw.SizedBox(height: 34),
+      pw.Container(height: .6, color: pdf.PdfColors.black),
+    ],
+  );
 
   Widget _publicationRulesCard() => FutureBuilder<Map<String, dynamic>>(
     key: ValueKey('publication-rules-$revision'),
@@ -2947,9 +4693,7 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
           children: [
             Row(
               children: [
-                const Expanded(
-                  child: SectionTitle('Règles de publication'),
-                ),
+                const Expanded(child: SectionTitle('Règles de publication')),
                 const StatusBadge('Règles universitaires', color: emerald),
               ],
             ),
@@ -2963,16 +4707,117 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
             Text(
               'Rattrapage : de ${rules['rattrapage']?['minimum_sur_20']} à moins de ${rules['rattrapage']?['maximum_sur_20_exclus']}/20; obligatoire jusqu’à ${rules['rattrapage']?['seuil_rattrapage_obligatoire_sur_20']}/20, facultatif au-dessus; ${rules['rattrapage']?['nombre_maximum_sessions']} session(s) maximum.',
             ),
-            Text('${data['source'] ?? 'Règles académiques officielles de l’Université'}.'),
+            Text(
+              '${data['source'] ?? 'Règles académiques officielles de l’Université'}.',
+            ),
           ],
         ),
       );
     },
   );
 
+  Widget _publicationArchiveControls(Map<String, dynamic> preview) {
+    final classId = (preview['classe_id'] as num?)?.toInt() ?? selectedClass;
+    if (classId == null) return const SizedBox.shrink();
+    final historyFuture = publicationHistoryFutures.putIfAbsent(
+      classId,
+      () => widget.api.agentPublicationHistory(classId),
+    );
+
+    return FutureBuilder<Map<String, dynamic>>(
+      future: historyFuture,
+      key: ValueKey('publication-history-$classId-$revision'),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Notice(_error(snapshot.error!), warning: true);
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final publications = _maps(snapshot.data?['publications'])
+            .where((item) => item['periode'] == period)
+            .toList();
+        if (publications.isEmpty) return const SizedBox.shrink();
+
+        final current = publications.where((item) => item['courante'] == true);
+        final latest = current.isNotEmpty
+            ? current.first
+            : publications.reduce(
+                (left, right) => (left['version'] as num).compareTo(
+                          right['version'] as num,
+                        ) >=
+                        0
+                    ? left
+                    : right,
+              );
+        final selected = publications.where(
+          (item) => (item['version'] as num?)?.toInt() == selectedPublicationVersion,
+        );
+        final versionRow = selected.isNotEmpty ? selected.first : latest;
+        final version = (versionRow['version'] as num).toInt();
+
+        return Panel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SectionTitle(
+                'Historique des bulletins publiés',
+                subtitle: 'Classe ${preview['code_classe'] ?? ''} · $period · ${publications.length} version(s)',
+              ),
+              DropdownButtonFormField<int>(
+                initialValue: version,
+                decoration: const InputDecoration(labelText: 'Version officielle'),
+                items: publications.map((item) {
+                  final itemVersion = (item['version'] as num).toInt();
+                  final date = '${item['date_publication'] ?? ''}'.split('T').first;
+                  final currentLabel = item['courante'] == true ? ' · courante' : '';
+                  return DropdownMenuItem(
+                    value: itemVersion,
+                    child: Text(
+                      'V$itemVersion · $date · ${item['nombre_bulletins'] ?? 0} bulletin(s)$currentLabel',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) => setState(() => selectedPublicationVersion = value),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => _printPublishedBulletinsPdf(preview, version),
+                    icon: const Icon(Icons.print_outlined),
+                    label: Text('Imprimer les bulletins · V$version'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => _exportPublishedBulletinsPdf(preview, version),
+                    icon: const Icon(Icons.download_outlined),
+                    label: Text('Télécharger le PDF · V$version'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => _exportBulletinsExcel(
+                      preview,
+                      published: true,
+                      version: version,
+                    ),
+                    icon: const Icon(Icons.grid_on_outlined),
+                    label: Text('Exporter Excel · V$version'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _exportBulletinsExcel(
     Map<String, dynamic> preview, {
     bool published = false,
+    int? version,
   }) async {
     final classId = (preview['classe_id'] as num?)?.toInt() ?? selectedClass;
     if (classId == null) return;
@@ -2981,10 +4826,11 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
         classId,
         period,
         published: published,
+        version: version,
       );
       final code = '${preview['code_classe'] ?? 'classe'}';
       await downloadFile(
-        'bulletins-$code-$period-${published ? 'officiel' : 'apercu'}.xlsx',
+        'bulletins-$code-$period-${published ? 'officiel-v${version ?? 'courante'}' : 'apercu'}.xlsx',
         bytes,
       );
     } catch (error) {
@@ -2992,185 +4838,568 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
     }
   }
 
-  Future<void> _exportBulletinPreviewsPdf(
-    Map<String, dynamic> preview,
-  ) async {
+  Future<void> _exportCohortMinutesPdf(Map<String, dynamic> preview) async {
     final students = _maps(preview['etudiants']);
-    if (students.isEmpty || students.any((student) => student['pret'] != true)) {
-      toast(context, 'Tous les dossiers doivent être calculables pour générer les aperçus PDF.');
+    if (students.isEmpty || students.any((row) => row['pret'] != true)) {
+      toast(
+        context,
+        'Les bulletins de toute la classe doivent être calculables avant de produire le PV récapitulatif.',
+      );
       return;
     }
-    final structure = Map<String, dynamic>.from(preview['structure'] as Map? ?? {});
+    final structure = Map<String, dynamic>.from(
+      preview['structure'] as Map? ?? {},
+    );
     final logoData = Map<String, dynamic>.from(structure['logo'] as Map? ?? {});
+    Uint8List? logoBytes = logoData['base64'] is String
+        ? base64Decode(logoData['base64'] as String)
+        : null;
+    if (logoBytes == null) {
+      try {
+        logoBytes = (await rootBundle.load('assets/uy1_crest.png')).buffer
+            .asUint8List();
+      } catch (_) {}
+    }
+    final logo = logoBytes == null ? null : pw.MemoryImage(logoBytes);
+    final unitsByCode = <String, Map<String, dynamic>>{};
+    for (final student in students) {
+      final content = Map<String, dynamic>.from(
+        student['contenu'] as Map? ?? {},
+      );
+      for (final unit in _maps(content['ues'])) {
+        final code = '${unit['code_ue'] ?? ''}';
+        if (code.isNotEmpty) unitsByCode.putIfAbsent(code, () => unit);
+      }
+    }
+    final units = unitsByCode.values.toList()
+      ..sort((left, right) {
+        final leftSemester = '${left['semestre'] ?? ''}';
+        final rightSemester = '${right['semestre'] ?? ''}';
+        final semesterOrder = leftSemester.compareTo(rightSemester);
+        return semesterOrder != 0
+            ? semesterOrder
+            : '${left['code_ue']}'.compareTo('${right['code_ue']}');
+      });
+    final periodLabel = switch (preview['periode']) {
+      'S1' => 'SEMESTRE 1',
+      'S2' => 'SEMESTRE 2',
+      _ => 'ANNÉE ACADÉMIQUE',
+    };
+    final document = pw.Document(theme: await gnuPdfTheme());
+    document.addPage(
+      pw.MultiPage(
+        pageFormat: pdf.PdfPageFormat.a4.landscape,
+        margin: const pw.EdgeInsets.fromLTRB(22, 20, 22, 26),
+        header: (_) => gnuPvHeader(
+          crest: logo,
+          university: '${structure['universite'] ?? 'UNIVERSITÉ DE YAOUNDÉ I'}',
+          faculty: '${structure['faculte'] ?? 'FACULTÉ'}',
+          department: '${structure['departement'] ?? 'DÉPARTEMENT'}',
+          title: 'PROCÈS-VERBAL DE SYNTHÈSE DES RÉSULTATS',
+          subtitle:
+              '${structure['filiere'] ?? ''} · ${structure['specialite'] ?? ''}',
+          details:
+              '${structure['niveau'] ?? preview['niveau'] ?? ''} · ${preview['code_classe'] ?? ''} · $periodLabel · ${preview['annee_academique'] ?? ''}',
+          status: (preview['version_courante'] as num?) == null
+              ? 'APERÇU · NON OFFICIEL'
+              : 'VERSION PUBLIÉE ${preview['version_courante']}',
+        ),
+        footer: (context) => gnuPvFooter(
+          'GNU · ${preview['code_classe'] ?? ''} · ${preview['annee_academique'] ?? ''}',
+          context,
+        ),
+        build: (_) => [
+          pw.TableHelper.fromTextArray(
+            headers: [
+              'N°',
+              'NOMS ET PRÉNOMS',
+              'MATRICULE',
+              'NIVEAU',
+              ...units.map(
+                (unit) => '${unit['code_ue']}\n${unit['credit'] ?? 0} cr.',
+              ),
+              'CRÉDITS ACQUIS',
+              'MGP',
+              'DÉCISION',
+            ],
+            data: [
+              for (var index = 0; index < students.length; index++)
+                (() {
+                  final student = students[index];
+                  final content = Map<String, dynamic>.from(
+                    student['contenu'] as Map? ?? {},
+                  );
+                  final studentUnits = {
+                    for (final unit in _maps(content['ues']))
+                      '${unit['code_ue']}': unit,
+                  };
+                  final mgpKey = preview['periode'] == 'ANNUELLE'
+                      ? 'mgp_total'
+                      : 'mgp_${preview['periode']}'.toLowerCase();
+                  final acquired = _maps(content['ues']).fold<double>(
+                    0,
+                    (sum, unit) =>
+                        sum +
+                        (((unit['arrondi'] as num?) ?? 0) >= 35
+                            ? ((unit['credit'] as num?)?.toDouble() ?? 0)
+                            : 0),
+                  );
+                  final registered =
+                      (content['total_credits'] as num?)?.toDouble() ?? 0;
+                  return [
+                    '${index + 1}',
+                    '${student['nom'] ?? ''} ${student['prenom'] ?? ''}',
+                    '${student['matricule'] ?? ''}',
+                    '${structure['niveau'] ?? preview['niveau'] ?? ''}',
+                    ...units.map((unit) {
+                      final result = studentUnits['${unit['code_ue']}'];
+                      return result == null
+                          ? '—'
+                          : result['arrondi'] == null
+                          ? 'EL'
+                          : '${result['arrondi']}\n${result['grade'] ?? ''}';
+                    }),
+                    '${acquired.toStringAsFixed(0)}/${registered.toStringAsFixed(0)}',
+                    '${content[mgpKey] ?? '—'}',
+                    '${content['decision_admission'] ?? '—'}',
+                  ];
+                })(),
+            ],
+            headerStyle: pw.TextStyle(
+              fontSize: 6.2,
+              fontWeight: pw.FontWeight.bold,
+            ),
+            cellStyle: const pw.TextStyle(fontSize: 6.1),
+            cellAlignment: pw.Alignment.center,
+            cellAlignments: {1: pw.Alignment.centerLeft},
+            headerDecoration: const pw.BoxDecoration(
+              color: pdf.PdfColor(.86, .91, .89),
+            ),
+            border: pw.TableBorder.all(
+              color: pdf.PdfColors.blueGrey800,
+              width: .45,
+            ),
+            cellPadding: const pw.EdgeInsets.symmetric(
+              horizontal: 3,
+              vertical: 3,
+            ),
+          ),
+          pw.SizedBox(height: 12),
+          pw.Text(
+            'Effectif : ${students.length} · Crédit acquis : total de cohorte ${students.fold<double>(0, (sum, row) {
+              final content = Map<String, dynamic>.from(row['contenu'] as Map? ?? {});
+              return sum + _maps(content['ues']).fold<double>(0, (credits, unit) => credits + (((unit['arrondi'] as num?) ?? 0) >= 35 ? ((unit['credit'] as num?)?.toDouble() ?? 0) : 0));
+            }).toStringAsFixed(0)}',
+            style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 16),
+          pw.Row(
+            children: [
+              pw.Expanded(
+                child: _transcriptSignature(
+                  'Le Président du Jury / President of the Jury',
+                ),
+              ),
+              pw.SizedBox(width: 30),
+              pw.Expanded(
+                child: _transcriptSignature(
+                  'Le Chef de Département / Head of Department',
+                ),
+              ),
+            ],
+          ),
+          pw.Center(
+            child: pw.Text(
+              'Les signatures et le cachet seront apposés après validation officielle.',
+              style: const pw.TextStyle(fontSize: 7),
+            ),
+          ),
+        ],
+      ),
+    );
+    try {
+      final name =
+          'PV-recapitulatif-${preview['code_classe'] ?? 'classe'}-${preview['periode']}-${preview['annee_academique'] ?? ''}.pdf';
+      await downloadFile(name, await document.save());
+    } catch (error) {
+      if (mounted) toast(context, _error(error));
+    }
+  }
+
+  Future<void> _exportRequestMinutesPdf(int classId) async {
+    try {
+      final data = await widget.api.agentRequestMinutes(classId, period);
+      final requests = _maps(data['requetes']);
+      if (requests.isEmpty) {
+        toast(
+          context,
+          'Aucune requête ne correspond à cette classe et cette période.',
+        );
+        return;
+      }
+      final structure = Map<String, dynamic>.from(
+        data['structure'] as Map? ?? {},
+      );
+      final logoData = Map<String, dynamic>.from(
+        structure['logo'] as Map? ?? {},
+      );
+      Uint8List? logoBytes = logoData['base64'] is String
+          ? base64Decode(logoData['base64'] as String)
+          : null;
+      if (logoBytes == null) {
+        try {
+          logoBytes = (await rootBundle.load('assets/uy1_crest.png')).buffer
+              .asUint8List();
+        } catch (_) {}
+      }
+      final logo = logoBytes == null ? null : pw.MemoryImage(logoBytes);
+      final ready = data['pret'] == true;
+      final periodLabel = switch (period) {
+        'S1' => 'SEMESTRE 1',
+        'S2' => 'SEMESTRE 2',
+        _ => 'ANNÉE ACADÉMIQUE',
+      };
+      final document = pw.Document(theme: await gnuPdfTheme());
+      document.addPage(
+        pw.MultiPage(
+          pageFormat: pdf.PdfPageFormat.a4.landscape,
+          margin: const pw.EdgeInsets.fromLTRB(24, 20, 24, 26),
+          header: (_) => pw.Column(
+            children: [
+              pw.Row(
+                children: [
+                  pw.Expanded(
+                    child: _transcriptHeaderSide(
+                      'RÉPUBLIQUE DU CAMEROUN',
+                      'Paix - Travail - Patrie',
+                      '${structure['universite'] ?? 'UNIVERSITÉ'}',
+                    ),
+                  ),
+                  pw.SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: logo == null
+                        ? null
+                        : pw.Image(logo, fit: pw.BoxFit.contain),
+                  ),
+                  pw.Expanded(
+                    child: _transcriptHeaderSide(
+                      'REPUBLIC OF CAMEROON',
+                      'Peace - Work - Fatherland',
+                      'THE ${structure['universite'] ?? 'UNIVERSITY'}',
+                    ),
+                  ),
+                ],
+              ),
+              pw.Text(
+                '${structure['faculte'] ?? 'FACULTÉ'} · ${structure['departement'] ?? 'DÉPARTEMENT'}',
+                style: pw.TextStyle(
+                  fontSize: 8,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.Divider(),
+              pw.Text(
+                'PROCÈS-VERBAL DES REQUÊTES ÉTUDIANTES',
+                textAlign: pw.TextAlign.center,
+                style: pw.TextStyle(
+                  fontSize: 12,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.Text(
+                '${structure['filiere'] ?? data['filiere'] ?? ''} · ${structure['specialite'] ?? ''} · ${data['niveau'] ?? ''} · ${data['classe'] ?? ''} · $periodLabel · ${data['annee'] ?? ''}',
+                textAlign: pw.TextAlign.center,
+                style: const pw.TextStyle(fontSize: 8),
+              ),
+              pw.Text(
+                ready
+                    ? 'REQUÊTES DÉCIDÉES'
+                    : 'PROJET · ${data['en_attente'] ?? 0} REQUÊTE(S) EN ATTENTE',
+                style: pw.TextStyle(
+                  fontSize: 8,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 6),
+            ],
+          ),
+          footer: (context) => pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(
+                'GNU · Document réservé aux personnes habilitées · ${data['annee'] ?? ''}',
+                style: const pw.TextStyle(fontSize: 6),
+              ),
+              pw.Text(
+                '${context.pageNumber}/${context.pagesCount}',
+                style: const pw.TextStyle(fontSize: 6),
+              ),
+            ],
+          ),
+          build: (_) => [
+            pw.TableHelper.fromTextArray(
+              headers: const [
+                'N°',
+                'SOUMISE LE',
+                'MATRICULE',
+                'ÉTUDIANT',
+                'UE / EC',
+                'TYPE',
+                'MOTIF',
+                'NOTE',
+                'DÉCISION / STATUT',
+                'EXAMINATEUR',
+              ],
+              data: [
+                for (var i = 0; i < requests.length; i++)
+                  [
+                    '${i + 1}',
+                    '${requests[i]['soumise_le'] ?? ''}',
+                    '${requests[i]['matricule'] ?? ''}',
+                    '${requests[i]['nom'] ?? ''} ${requests[i]['prenom'] ?? ''}',
+                    '${requests[i]['code_ue'] ?? ''} ${requests[i]['code_ec'] ?? ''}',
+                    '${requests[i]['type'] ?? ''} · ${requests[i]['evaluation'] ?? ''}',
+                    '${requests[i]['objet'] ?? ''}\n${requests[i]['description'] ?? ''}',
+                    requests[i]['situation_note'] == 'ABSENTE' ||
+                            requests[i]['situation_note'] == 'MANQUANTE'
+                        ? 'EL'
+                        : '${requests[i]['note_courante'] ?? '—'}',
+                    '${requests[i]['decision'] ?? 'EN ATTENTE'}\n${requests[i]['motif_decision'] ?? requests[i]['statut'] ?? ''}',
+                    '${requests[i]['examinateur'] ?? '—'}',
+                  ],
+              ],
+              headerStyle: pw.TextStyle(
+                fontSize: 5.8,
+                fontWeight: pw.FontWeight.bold,
+              ),
+              cellStyle: const pw.TextStyle(fontSize: 5.6),
+              cellAlignment: pw.Alignment.center,
+              cellAlignments: {
+                3: pw.Alignment.centerLeft,
+                6: pw.Alignment.centerLeft,
+                8: pw.Alignment.centerLeft,
+              },
+              border: pw.TableBorder.all(color: pdf.PdfColors.black, width: .4),
+              cellPadding: const pw.EdgeInsets.symmetric(
+                horizontal: 2,
+                vertical: 3,
+              ),
+            ),
+            pw.SizedBox(height: 12),
+            pw.Text(
+              'Effectif des requêtes : ${requests.length} · En attente : ${data['en_attente'] ?? 0} · Ce document restitue les requêtes et décisions enregistrées dans GNU ; il ne remplace pas une délibération de jury non saisie dans le système.',
+              style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 15),
+            pw.Row(
+              children: [
+                pw.Expanded(
+                  child: _transcriptSignature(
+                    'Rapporteur / Secrétariat du jury',
+                  ),
+                ),
+                pw.SizedBox(width: 25),
+                pw.Expanded(child: _transcriptSignature('Président du Jury')),
+                pw.SizedBox(width: 25),
+                pw.Expanded(child: _transcriptSignature('Chef de Département')),
+              ],
+            ),
+          ],
+        ),
+      );
+      final name =
+          'PV-requetes-${data['classe'] ?? 'classe'}-$period-${data['annee'] ?? ''}.pdf';
+      await downloadFile(name, await document.save());
+    } catch (error) {
+      if (mounted) toast(context, _error(error));
+    }
+  }
+
+  Future<void> _exportBulletinPreviewsPdf(Map<String, dynamic> preview) async {
+    final students = _maps(preview['etudiants']);
+    if (students.isEmpty || students.any((row) => row['pret'] != true)) {
+      toast(
+        context,
+        'Tous les dossiers doivent être calculables pour générer les aperçus PDF.',
+      );
+      return;
+    }
+    final structure = Map<String, dynamic>.from(
+      preview['structure'] as Map? ?? {},
+    );
+    final logoData = Map<String, dynamic>.from(
+      structure['logo'] as Map? ?? {},
+    );
     Uint8List? logoBytes;
     if (logoData['base64'] is String) {
       logoBytes = base64Decode(logoData['base64'] as String);
     } else if ('${structure['universite'] ?? ''}'.toUpperCase().contains('YAOUNDÉ I') ||
         '${structure['universite'] ?? ''}'.toUpperCase().contains('YAOUNDE I')) {
-      logoBytes = (await rootBundle.load('assets/uy1_crest.png')).buffer.asUint8List();
+      logoBytes = (await rootBundle.load('assets/uy1_crest.png'))
+          .buffer
+          .asUint8List();
     }
-    final logo = logoBytes == null ? null : pw.MemoryImage(logoBytes);
-    final periodLabel = switch (period) {
-      'S1' => 'SEMESTRE 1 / SEMESTER 1',
-      'S2' => 'SEMESTRE 2 / SEMESTER 2',
-      _ => 'ANNUEL / ANNUAL',
-    };
-    final academicYear = '${preview['annee_academique'] ?? '—'}';
-    final examYear = academicYear.split(RegExp('[-/]')).last;
-    final institution = '${structure['universite'] ?? 'UNIVERSITÉ'}'.toUpperCase();
-    final document = pw.Document();
-
-    for (final student in students) {
-      final content = Map<String, dynamic>.from(student['contenu'] as Map? ?? {});
-      final units = _maps(content['ues']);
-      final totalCredits = (content['total_credits'] as num?)?.toDouble() ?? 0;
-      final capitalizedCredits = units.fold<double>(
-        0,
-        (sum, unit) => sum + (((unit['arrondi'] as num?) ?? 0) >= 35
-            ? ((unit['credit'] as num?)?.toDouble() ?? 0)
-            : 0),
-      );
-      final mgp = content[period == 'ANNUELLE' ? 'mgp_total' : 'mgp_${period.toLowerCase()}'] ?? '—';
-      document.addPage(
-        pw.MultiPage(
-          pageFormat: pdf.PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.fromLTRB(35, 22, 35, 28),
-          header: (_) => pw.Column(children: [
-            pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-              pw.Expanded(child: _transcriptHeaderSide('RÉPUBLIQUE DU CAMEROUN', 'Paix - Travail - Patrie', institution)),
-              pw.SizedBox(width: 70, height: 70, child: logo == null ? null : pw.Image(logo, fit: pw.BoxFit.contain)),
-              pw.Expanded(child: _transcriptHeaderSide('REPUBLIC OF CAMEROON', 'Peace - Work - Fatherland', institution)),
-            ]),
-            pw.SizedBox(height: 3),
-            pw.Text('${structure['faculte'] ?? ''}'.toUpperCase(), style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-            pw.Text('${structure['departement'] ?? ''}', style: const pw.TextStyle(fontSize: 8)),
-            pw.SizedBox(height: 4),
-            pw.Text('RELEVÉ DE NOTES / TRANSCRIPT', style: pw.TextStyle(fontSize: 17, fontWeight: pw.FontWeight.bold)),
-            pw.Text('APERÇU DE TRAVAIL · NON OFFICIEL', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-            pw.Divider(thickness: 1.2),
-          ]),
-          footer: (context) => pw.Align(
-            alignment: pw.Alignment.centerRight,
-            child: pw.Text('GNU · ${academicYear} · ${context.pageNumber}/${context.pagesCount}', style: const pw.TextStyle(fontSize: 7, color: pdf.PdfColors.grey)),
-          ),
-          build: (_) => [
-            pw.Row(children: [
-              pw.Expanded(child: _transcriptInfo('Noms et prénoms / Surname and Name', '${student['nom'] ?? ''} ${student['prenom'] ?? ''}'.trim())),
-              pw.Expanded(child: _transcriptInfo('Matricule / Registration N°', '${student['matricule'] ?? '—'}')),
-            ]),
-            pw.Row(children: [
-              pw.Expanded(child: _transcriptInfo('Domaine / Domain', '${structure['domaine'] ?? '—'}')),
-              pw.Expanded(child: _transcriptInfo('Niveau / Level', '${structure['niveau'] ?? '—'}')),
-            ]),
-            pw.Row(children: [
-              pw.Expanded(child: _transcriptInfo('Filière / Discipline', '${structure['filiere'] ?? '—'}')),
-              pw.Expanded(child: _transcriptInfo('Spécialité / Option', '${structure['specialite'] ?? '—'}')),
-            ]),
-            pw.Row(children: [
-              pw.Expanded(child: _transcriptInfo('Année académique / Academic Year', academicYear)),
-              pw.Expanded(child: _transcriptInfo('Période / Period', periodLabel)),
-            ]),
-            pw.SizedBox(height: 7),
-            pw.TableHelper.fromTextArray(
-              headers: ['Code UE', 'Intitulé de l’UE / UE Title', 'Crédits', 'Moy /100', 'Mention', 'Sem.', 'Année', 'Décision'],
-              data: [
-                for (final unit in units)
-                  [
-                    '${unit['code_ue'] ?? ''}', '${unit['intitule_ue'] ?? ''}', '${unit['credit'] ?? 0}',
-                    unit['arrondi'] == null ? '—' : (unit['arrondi'] as num).toStringAsFixed(2),
-                    '${unit['grade'] ?? '—'}', '${unit['semestre'] ?? ''}', examYear,
-                    ((unit['arrondi'] as num?) ?? 0) >= 35 ? 'CA' : (unit['grade'] == 'EL' ? 'EL' : 'NC'),
-                  ],
-              ],
-              headerStyle: pw.TextStyle(fontSize: 6.2, fontWeight: pw.FontWeight.bold),
-              cellStyle: const pw.TextStyle(fontSize: 6.1),
-              cellAlignment: pw.Alignment.center,
-              cellAlignments: {1: pw.Alignment.centerLeft},
-              border: pw.TableBorder.all(color: pdf.PdfColors.black, width: .45),
-              cellPadding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 3),
-              columnWidths: {
-                0: const pw.FixedColumnWidth(48), 1: const pw.FlexColumnWidth(3.5),
-                2: const pw.FixedColumnWidth(30), 3: const pw.FixedColumnWidth(42),
-                4: const pw.FixedColumnWidth(38), 5: const pw.FixedColumnWidth(28),
-                6: const pw.FixedColumnWidth(35), 7: const pw.FixedColumnWidth(38),
-              },
-            ),
-            pw.SizedBox(height: 10),
-            pw.Text('Crédits capitalisés : ${capitalizedCredits.toStringAsFixed(0)} / ${totalCredits.toStringAsFixed(0)}', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-            pw.Text('Moyenne Générale Pondérée (MGP) : $mgp / 4', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-            pw.Text('Décision : ${content['decision_admission'] ?? '—'}', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-            pw.SizedBox(height: 10),
-            pw.Text('Légende / Legend', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-            pw.TableHelper.fromTextArray(
-              headers: ['Note /100', 'Code', 'Points de qualité', 'Mention'],
-              data: const [
-                ['80–100', 'A', '4.00', 'Très bien / Excellent'],
-                ['75–79', 'A-', '3.70', 'Très bien / Very good'],
-                ['70–74', 'B+', '3.30', 'Bien / Good'],
-                ['65–69', 'B', '3.00', 'Bien / Good'],
-                ['60–64', 'B-', '2.70', 'Assez bien / Fairly good'],
-                ['55–59', 'C+', '2.30', 'Passable / Satisfactory'],
-                ['50–54', 'C', '2.00', 'Passable / Satisfactory'],
-                ['45–49', 'C-', '1.70', 'Capitalisé non transférable'],
-                ['40–44', 'D+', '1.30', 'Capitalisé non transférable'],
-                ['35–39', 'D', '1.00', 'Capitalisé non transférable'],
-                ['30–34', 'E', '0.00', 'Échec / Fail'],
-                ['< 30', 'F', '0.00', 'Échec / Fail'],
-              ],
-              headerStyle: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold),
-              cellStyle: const pw.TextStyle(fontSize: 6),
-              border: pw.TableBorder.all(color: pdf.PdfColors.black, width: .35),
-              cellPadding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 2),
-            ),
-            pw.SizedBox(height: 15),
-            pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
-              pw.Expanded(child: _transcriptSignature('Le Président du Jury / President of the Jury')),
-              pw.SizedBox(width: 35),
-              pw.Expanded(child: _transcriptSignature('Le Chef de Département / Head of Department')),
-            ]),
-            pw.Center(child: pw.Text('Les signatures et le cachet seront apposés après validation officielle.', style: const pw.TextStyle(fontSize: 7))),
-          ],
-        ),
-      );
-    }
-
     try {
-      final filename = 'apercus-bulletins-${preview['code_classe'] ?? 'classe'}-$period.pdf';
-      await FilePicker.platform.saveFile(
-        fileName: filename,
-        bytes: await document.save(),
-        type: FileType.custom,
-        allowedExtensions: const ['pdf'],
+      final bytes = await buildAcademicBulletinsPdf(
+        bulletins: students,
+        structure: structure,
+        period: period,
+        academicYear: '${preview['annee_academique'] ?? '—'}',
+        official: false,
+        crest: logoBytes == null ? null : pw.MemoryImage(logoBytes),
+      );
+      final filename =
+          'apercus-bulletins-${preview['code_classe'] ?? 'classe'}-$period.pdf';
+      await downloadFile(filename, bytes);
+    } catch (error) {
+      if (mounted) toast(context, _error(error));
+    }
+  }
+
+  Future<void> _exportPublishedBulletinsPdf(
+    Map<String, dynamic> preview,
+    int version,
+  ) async {
+    final classId = (preview['classe_id'] as num?)?.toInt() ?? selectedClass;
+    if (classId == null) return;
+    try {
+      final published = await widget.api.agentPublishedBulletins(
+        classId,
+        period,
+        version: version,
+      );
+      final students = _maps(published['etudiants']);
+      if (students.isEmpty) {
+        toast(context, 'Aucun bulletin officiel n’est disponible pour cette période.');
+        return;
+      }
+      final structure = Map<String, dynamic>.from(
+        published['structure'] as Map? ?? {},
+      );
+      final logoData = Map<String, dynamic>.from(structure['logo'] as Map? ?? {});
+      Uint8List? logoBytes;
+      if (logoData['base64'] is String) {
+        logoBytes = base64Decode(logoData['base64'] as String);
+      } else {
+        try {
+          logoBytes = (await rootBundle.load('assets/uy1_crest.png')).buffer.asUint8List();
+        } catch (_) {}
+      }
+      final bytes = await buildAcademicBulletinsPdf(
+        bulletins: students,
+        structure: structure,
+        period: period,
+        academicYear: '${published['annee_academique'] ?? '—'}',
+        official: true,
+        crest: logoBytes == null ? null : pw.MemoryImage(logoBytes),
+      );
+      await downloadFile(_publishedBulletinsFilename(published), bytes);
+    } catch (error) {
+      if (mounted) toast(context, _error(error));
+    }
+  }
+
+  Future<void> _printPublishedBulletinsPdf(
+    Map<String, dynamic> preview,
+    int version,
+  ) async {
+    final classId = (preview['classe_id'] as num?)?.toInt() ?? selectedClass;
+    if (classId == null) return;
+    try {
+      final published = await widget.api.agentPublishedBulletins(
+        classId,
+        period,
+        version: version,
+      );
+      final students = _maps(published['etudiants']);
+      if (students.isEmpty) {
+        toast(context, 'Aucun bulletin officiel n’est disponible pour cette version.');
+        return;
+      }
+      final structure = Map<String, dynamic>.from(published['structure'] as Map? ?? {});
+      final logoData = Map<String, dynamic>.from(structure['logo'] as Map? ?? {});
+      Uint8List? logoBytes;
+      if (logoData['base64'] is String) {
+        logoBytes = base64Decode(logoData['base64'] as String);
+      } else {
+        try {
+          logoBytes = (await rootBundle.load('assets/uy1_crest.png')).buffer.asUint8List();
+        } catch (_) {}
+      }
+      final bytes = await buildAcademicBulletinsPdf(
+        bulletins: students,
+        structure: structure,
+        period: period,
+        academicYear: '${published['annee_academique'] ?? '—'}',
+        official: true,
+        crest: logoBytes == null ? null : pw.MemoryImage(logoBytes),
+      );
+      await Printing.layoutPdf(
+        onLayout: (_) async => bytes,
+        name: _publishedBulletinsFilename(published),
       );
     } catch (error) {
       if (mounted) toast(context, _error(error));
     }
   }
 
-  pw.Widget _transcriptHeaderSide(String title, String motto, String institution) => pw.Column(
+  String _publishedBulletinsFilename(Map<String, dynamic> published) =>
+      'bulletins-officiels-${published['code_classe'] ?? 'classe'}-$period-V${published['version']}.pdf';
+
+  pw.Widget _transcriptHeaderSide(
+    String title,
+    String motto,
+    String institution,
+  ) => pw.Column(
     children: [
-      pw.Text(title, textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-      pw.Text(motto, textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 7)),
+      pw.Text(
+        title,
+        textAlign: pw.TextAlign.center,
+        style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold),
+      ),
+      pw.Text(
+        motto,
+        textAlign: pw.TextAlign.center,
+        style: const pw.TextStyle(fontSize: 7),
+      ),
       pw.SizedBox(height: 5),
-      pw.Text(institution, textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+      pw.Text(
+        institution,
+        textAlign: pw.TextAlign.center,
+        style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+      ),
     ],
   );
 
   pw.Widget _transcriptInfo(String label, String value) => pw.Padding(
     padding: const pw.EdgeInsets.fromLTRB(2, 3, 5, 3),
-    child: pw.RichText(text: pw.TextSpan(children: [
-      pw.TextSpan(text: '$label : ', style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)),
-      pw.TextSpan(text: value, style: const pw.TextStyle(fontSize: 8)),
-    ])),
+    child: pw.RichText(
+      text: pw.TextSpan(
+        children: [
+          pw.TextSpan(
+            text: '$label : ',
+            style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.TextSpan(text: value, style: const pw.TextStyle(fontSize: 8)),
+        ],
+      ),
+    ),
   );
 
-  pw.Widget _transcriptSignature(String title) => pw.Column(children: [
-    pw.SizedBox(height: 25),
-    pw.Container(height: 1, color: pdf.PdfColors.black),
-    pw.SizedBox(height: 3),
-    pw.Text(title, textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 7)),
-    pw.SizedBox(height: 42),
-  ]);
+  pw.Widget _transcriptSignature(String title) => pw.Column(
+    children: [
+      pw.SizedBox(height: 25),
+      pw.Container(height: 1, color: pdf.PdfColors.black),
+      pw.SizedBox(height: 3),
+      pw.Text(
+        title,
+        textAlign: pw.TextAlign.center,
+        style: const pw.TextStyle(fontSize: 7),
+      ),
+      pw.SizedBox(height: 42),
+    ],
+  );
 
   Future<void> _publish(Map<String, dynamic> preview) async {
     final current = preview['version_courante'];
@@ -3295,7 +5524,9 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${item['code_classe']} · ${item['code_m']} · Session normale'),
+                Text(
+                  '${item['code_classe']} · ${item['code_m']} · Session normale',
+                ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: () async {
@@ -3308,7 +5539,9 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                     if (selected != null) setDialog(() => date = selected);
                   },
                   icon: const Icon(Icons.calendar_month_outlined),
-                  label: Text('Date : ${date.toIso8601String().substring(0, 10)}'),
+                  label: Text(
+                    'Date : ${date.toIso8601String().substring(0, 10)}',
+                  ),
                 ),
                 Row(
                   children: [
@@ -3319,7 +5552,8 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                             context: dialogContext,
                             initialTime: start,
                           );
-                          if (selected != null) setDialog(() => start = selected);
+                          if (selected != null)
+                            setDialog(() => start = selected);
                         },
                         child: Text('Début : ${start.format(context)}'),
                       ),
@@ -3352,7 +5586,9 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                 if (validationMessage.isNotEmpty)
                   Text(
                     validationMessage,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
               ],
             ),
@@ -3368,11 +5604,17 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                 final endMinutes = end.hour * 60 + end.minute;
                 final normalizedRoom = room.text.trim().toUpperCase();
                 if (endMinutes <= startMinutes) {
-                  setDialog(() => validationMessage = 'L’heure de fin doit suivre l’heure de début.');
+                  setDialog(
+                    () => validationMessage =
+                        'L’heure de fin doit suivre l’heure de début.',
+                  );
                   return;
                 }
-                if (!RegExp(r'^[A-Z0-9][A-Z0-9-]{0,31}$').hasMatch(normalizedRoom)) {
-                  setDialog(() => validationMessage = 'Saisissez un code de salle simple, par exemple A101 ou LAB-02.');
+                if (!RegExp(r'^[A-Z0-9][A-Z0-9-]{0,31}$')
+                    .hasMatch(normalizedRoom)) {
+                  setDialog(
+                    () => validationMessage = 'Saisissez un code de salle simple, par exemple A101 ou LAB-02.',
+                  );
                   return;
                 }
                 Navigator.pop(dialogContext, {
@@ -3724,6 +5966,11 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
               children: [
                 Text('Rôle : ${account['role']}'),
                 Text('Identifiant : ${account['login']}'),
+                if (account['supprime_le'] != null) ...[
+                  const SizedBox(height: 8),
+                  Text('Compte supprimé le : ${account['supprime_le']}'),
+                  Text('Motif : ${account['motif_suppression'] ?? '—'}'),
+                ],
                 if (account['matricule'] != null)
                   Text('Matricule : ${account['matricule']}'),
                 if (account['eid'] != null)
@@ -3761,7 +6008,9 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
           ),
         ),
         actions: [
-          if (account['gestionnable'] != false && account['role'] != 'AGENT')
+          if (account['gestionnable'] != false &&
+              account['role'] != 'AGENT' &&
+              account['supprime_le'] == null)
             TextButton.icon(
               onPressed: () {
                 Navigator.pop(context);
@@ -3784,6 +6033,12 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
     final prenom = TextEditingController(text: '${account['prenom'] ?? ''}');
     final courriel = TextEditingController(
       text: '${account['courriel'] ?? ''}',
+    );
+    final dateNaissance = TextEditingController(
+      text: '${account['date_naissance'] ?? ''}',
+    );
+    final lieuNaissance = TextEditingController(
+      text: '${account['lieu_naissance'] ?? ''}',
     );
     final motif = TextEditingController();
     final result = await showDialog<Map<String, String>>(
@@ -3808,6 +6063,22 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                   controller: courriel,
                   decoration: const InputDecoration(labelText: 'Courriel'),
                 ),
+                if (account['role'] == 'ETUDIANT') ...[
+                  TextField(
+                    controller: dateNaissance,
+                    keyboardType: TextInputType.datetime,
+                    decoration: const InputDecoration(
+                      labelText: 'Date de naissance',
+                      hintText: 'AAAA-MM-JJ',
+                    ),
+                  ),
+                  TextField(
+                    controller: lieuNaissance,
+                    decoration: const InputDecoration(
+                      labelText: 'Lieu de naissance',
+                    ),
+                  ),
+                ],
                 TextField(
                   controller: motif,
                   minLines: 2,
@@ -3836,6 +6107,10 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                   'nom': nom.text.trim(),
                   'prenom': prenom.text.trim(),
                   'courriel': courriel.text.trim(),
+                  if (account['role'] == 'ETUDIANT') ...{
+                    'date_naissance': dateNaissance.text.trim(),
+                    'lieu_naissance': lieuNaissance.text.trim(),
+                  },
                   'motif': motif.text.trim(),
                 });
               }
@@ -3848,12 +6123,22 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
     nom.dispose();
     prenom.dispose();
     courriel.dispose();
+    dateNaissance.dispose();
+    lieuNaissance.dispose();
     motif.dispose();
     if (result == null) return;
     await _mutate(
       () => widget.api.agentUpdateAccount(account['id'] as int, {
         ...result,
         'courriel': result['courriel']!.isEmpty ? null : result['courriel'],
+        if (result['date_naissance'] != null)
+          'date_naissance': result['date_naissance']!.isEmpty
+              ? null
+              : result['date_naissance'],
+        if (result['lieu_naissance'] != null)
+          'lieu_naissance': result['lieu_naissance']!.isEmpty
+              ? null
+              : result['lieu_naissance'],
       }),
     );
   }

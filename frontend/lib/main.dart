@@ -122,8 +122,9 @@ class _GnuAppState extends State<GnuApp> {
   bool darkMode = false;
   StudentApiClient? liveStudentApi;
 
-  StudentApiClient _roleClient(UserRole role) {
+  StudentApiClient _roleClient(UserRole role, String apiBaseUrl) {
     final client = StudentApiClient(
+      baseUrl: apiBaseUrl,
       storage: widget.sessionStorage,
       expectedRole: _apiRole(role),
     );
@@ -169,8 +170,9 @@ class _GnuAppState extends State<GnuApp> {
     UserRole selectedRole,
     String login,
     String password,
+    String apiBaseUrl,
   ) async {
-    final client = _roleClient(selectedRole);
+    final client = _roleClient(selectedRole, apiBaseUrl);
     try {
       await client.login(login, password);
       if (!mounted) {
@@ -209,7 +211,12 @@ String _apiRole(UserRole role) => switch (role) {
 
 class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key, required this.onRoleLogin});
-  final Future<void> Function(UserRole role, String login, String password)
+  final Future<void> Function(
+    UserRole role,
+    String login,
+    String password,
+    String apiBaseUrl,
+  )
   onRoleLogin;
   @override
   State<WelcomePage> createState() => _WelcomePageState();
@@ -219,27 +226,72 @@ class _WelcomePageState extends State<WelcomePage> {
   UserRole selectedRole = UserRole.student;
   final loginController = TextEditingController();
   final passwordController = TextEditingController();
+  late final TextEditingController apiBaseUrlController;
   bool showPassword = false;
   bool loggingIn = false;
+  bool registrationLoading = false;
+  bool registrationSending = false;
+  String? registrationError;
   String? loginError;
+  String? registrationNotice;
+  Map<String, dynamic>? registrationStructure;
+  final registrationFormKey = GlobalKey<FormState>();
+  final registrationControllers = List.generate(
+    8,
+    (_) => TextEditingController(),
+  );
+  int? registrationDepartmentId;
+  int? registrationProgramId;
+  int? registrationSpecialtyId;
+  int? registrationYearId;
+  int? registrationClassId;
+
+  bool get _needsNativeApiAddress =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+  String get _apiBaseUrl {
+    final value = apiBaseUrlController.text.trim();
+    if (value.isNotEmpty) return value;
+    if (_compiledApiBaseUrl.isNotEmpty) return _compiledApiBaseUrl;
+    return _needsNativeApiAddress
+        ? 'http://10.0.2.2:8000/api/v1'
+        : 'http://127.0.0.1:8000/api/v1';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    apiBaseUrlController = TextEditingController(
+      text: _needsNativeApiAddress
+          ? 'http://10.0.2.2:8000/api/v1'
+          : _compiledApiBaseUrl,
+    );
+  }
 
   @override
   void dispose() {
     loginController.dispose();
     passwordController.dispose();
+    apiBaseUrlController.dispose();
+    for (final controller in registrationControllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
   Future<void> _submitLogin() async {
+    if (loggingIn) return;
     setState(() {
       loggingIn = true;
       loginError = null;
+      registrationNotice = null;
     });
     try {
       await widget.onRoleLogin(
         selectedRole,
         loginController.text,
         passwordController.text,
+        _apiBaseUrl,
       );
     } catch (error) {
       if (mounted) setState(() => loginError = error.toString());
@@ -248,27 +300,840 @@ class _WelcomePageState extends State<WelcomePage> {
     }
   }
 
-  void _openLocalTestAccountPortal() {
-    final uri = Uri.tryParse(_compiledApiBaseUrl.trim());
-    final portalHost = uri == null ? null : _localTestPortalHost(uri, Uri.base);
-    if (uri == null || portalHost == null) {
+  Future<void> _requestAccount() async {
+    final api = StudentApiClient(
+      baseUrl: _apiBaseUrl,
+      expectedRole: _apiRole(selectedRole),
+    );
+    setState(() {
+      registrationLoading = true;
+      registrationError = null;
+      registrationNotice = null;
+    });
+    try {
+      final structure = await api.accountRequestStructure();
+      final departments = (structure['departements'] as List? ?? [])
+          .cast<Map<String, dynamic>>();
+      final programs = (structure['filieres'] as List? ?? [])
+          .cast<Map<String, dynamic>>();
+      final specialities = (structure['specialites'] as List? ?? [])
+          .cast<Map<String, dynamic>>();
+      final years = (structure['annees'] as List? ?? [])
+          .cast<Map<String, dynamic>>();
+      final classes = (structure['classes'] as List? ?? [])
+          .cast<Map<String, dynamic>>();
+      if (!mounted) return;
+      if (departments.isEmpty) {
+        setState(
+          () => loginError =
+              'Aucun département n’est disponible pour créer un compte.',
+        );
+        return;
+      }
+      final departmentId =
+          registrationDepartmentId != null &&
+              departments.any((item) => item['id'] == registrationDepartmentId)
+          ? registrationDepartmentId
+          : null;
+      final programId =
+          registrationProgramId != null &&
+              programs.any(
+                (item) =>
+                    item['id'] == registrationProgramId &&
+                    item['departement_id'] == departmentId,
+              )
+          ? registrationProgramId
+          : null;
+      final specialtyId =
+          registrationSpecialtyId != null &&
+              specialities.any(
+                (item) =>
+                    item['id'] == registrationSpecialtyId &&
+                    item['filiere_id'] == programId,
+              )
+          ? registrationSpecialtyId
+          : null;
+      final yearId = registrationYearId != null &&
+              years.any((item) => item['id'] == registrationYearId)
+          ? registrationYearId
+          : null;
+      final classId = registrationClassId != null &&
+              classes.any(
+                (item) =>
+                    item['id'] == registrationClassId &&
+                    item['annee_id'] == yearId &&
+                    item['departement_id'] == departmentId,
+              )
+          ? registrationClassId
+          : null;
       setState(() {
-        loginError = 'La création de comptes de test est réservée à une installation locale ou à un réseau privé de test.';
+        registrationStructure = structure;
+        registrationDepartmentId = departmentId;
+        registrationProgramId = programId;
+        registrationSpecialtyId = specialtyId;
+        registrationYearId = yearId;
+        registrationClassId = classId;
+        loginError = null;
       });
-      return;
+    } catch (exception) {
+      if (mounted) setState(() => registrationError = exception.toString());
+    } finally {
+      api.dispose();
+      if (mounted) setState(() => registrationLoading = false);
+    }
+  }
+
+  Future<void> _submitAccountRegistration() async {
+    if (registrationStructure == null) return;
+    if (registrationError != null) {
+      setState(() => registrationError = null);
+    }
+    if (!(registrationFormKey.currentState?.validate() ?? false)) return;
+    final registrationClasses =
+        (registrationStructure!['classes'] as List? ?? [])
+            .cast<Map<String, dynamic>>();
+    final requestedClass = selectedRole == UserRole.student
+        ? registrationClasses.firstWhere(
+            (item) => item['id'] == registrationClassId,
+          )
+        : null;
+    final requestedTrackId = switch (selectedRole) {
+      UserRole.student => requestedClass?['filiere_id'],
+      UserRole.teacher => registrationProgramId,
+      UserRole.agent => null,
+    };
+    final requestedSpecialtyId = switch (selectedRole) {
+      UserRole.student => requestedClass?['specialite_id'],
+      UserRole.teacher => registrationSpecialtyId,
+      UserRole.agent => null,
+    };
+    final api = StudentApiClient(
+      baseUrl: _apiBaseUrl,
+      expectedRole: _apiRole(selectedRole),
+    );
+    setState(() {
+      registrationSending = true;
+      registrationError = null;
+    });
+    try {
+      await api.submitAccountRequest({
+        'role': _apiRole(selectedRole),
+        'nom': registrationControllers[0].text,
+        'prenom': registrationControllers[1].text,
+        'login': registrationControllers[2].text,
+        'identifiant_profil': registrationControllers[3].text,
+        'courriel': registrationControllers[4].text,
+        'departement_id': registrationDepartmentId,
+        'annee_id': selectedRole == UserRole.student
+            ? registrationYearId
+            : null,
+        'classe_id': selectedRole == UserRole.student
+            ? registrationClassId
+            : null,
+        'filiere_id': requestedTrackId,
+        'specialite_id': requestedSpecialtyId,
+        'reference_identite': registrationControllers[5].text,
+        'password': registrationControllers[6].text,
+        'password_confirmation': registrationControllers[7].text,
+      });
+      if (!mounted) return;
+      for (final controller in registrationControllers) {
+        controller.clear();
+      }
+      setState(() {
+        registrationStructure = null;
+        registrationDepartmentId = null;
+        registrationProgramId = null;
+        registrationSpecialtyId = null;
+        registrationYearId = null;
+        registrationClassId = null;
+        registrationNotice = switch (selectedRole) {
+          UserRole.student =>
+            'Votre demande et la classe choisie ont été reçues. Après approbation, votre compte et votre inscription de classe seront activés.',
+          UserRole.teacher =>
+            'Votre demande de compte enseignant a été reçue. L’administration vérifiera votre identité et votre rattachement avant activation.',
+          UserRole.agent =>
+            'Votre demande d’accès agent a été reçue. Un administrateur vérifiera votre identité et votre service avant activation.',
+        };
+        registrationError = null;
+      });
+    } catch (exception) {
+      if (mounted) setState(() => registrationError = exception.toString());
+    } finally {
+      api.dispose();
+      if (mounted) setState(() => registrationSending = false);
+    }
+  }
+
+  void _selectRegistrationRole(UserRole role) {
+    if (selectedRole == role) return;
+    setState(() {
+      selectedRole = role;
+      registrationControllers[3].clear();
+      registrationProgramId = null;
+      registrationSpecialtyId = null;
+      registrationYearId = null;
+      registrationClassId = null;
+      registrationError = null;
+      registrationNotice = null;
+    });
+  }
+
+  String? _validateRequiredField(String? value, String label, {int max = 120}) {
+    final text = (value ?? '').trim();
+    if (text.isEmpty) return 'Renseignez $label.';
+    if (text.runes.length > max)
+      return '$label ne peut pas dépasser $max caractères.';
+
+    return null;
+  }
+
+  String? _validateLogin(String? value) {
+    final text = (value ?? '').trim();
+    if (text.isEmpty) return 'Choisissez votre identifiant de connexion.';
+    if (text.runes.length > 64)
+      return 'L’identifiant est limité à 64 caractères.';
+    if (!RegExp(r'^[A-Za-z0-9._-]+$').hasMatch(text)) {
+      return 'Utilisez uniquement des lettres, chiffres, points, tirets et tirets bas.';
     }
 
-    final portal = uri.replace(
-      host: portalHost,
-      path: '/local-test-accounts',
-      query: null,
-      fragment: null,
-    );
-    if (kIsWeb) {
-      navigateToLocalPortal(portal.toString());
-    } else {
-      setState(() => loginError = 'Ouvrez le portail local : $portal');
+    return null;
+  }
+
+  String? _validateProfileIdentifier(String? value) {
+    final text = (value ?? '').trim();
+    final label = switch (selectedRole) {
+      UserRole.student => 'Le matricule',
+      UserRole.teacher => 'L’identifiant enseignant',
+      UserRole.agent => 'L’identifiant agent',
+    };
+    if (text.isEmpty) return 'Renseignez ${label.toLowerCase()}.';
+    if (text.runes.length > 59)
+      return '$label ne peut pas dépasser 59 caractères.';
+    if (!RegExp(r'^[A-Za-z0-9-]+$').hasMatch(text)) {
+      return 'Utilisez uniquement des lettres, chiffres et tirets.';
     }
+
+    return null;
+  }
+
+  String? _validateEmail(String? value) {
+    final text = (value ?? '').trim();
+    if (text.isEmpty) return null;
+    if (text.runes.length > 254 ||
+        !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(text)) {
+      return 'Saisissez une adresse courriel valide, ou laissez le champ vide.';
+    }
+
+    return null;
+  }
+
+  String? _validateIdentityReference(String? value) {
+    final text = (value ?? '').trim();
+    if (text.isEmpty) return 'Saisissez le numéro ou la référence de la pièce.';
+    if (text.runes.length < 4)
+      return 'La référence doit contenir au moins 4 caractères.';
+    if (text.runes.length > 160)
+      return 'La référence est limitée à 160 caractères.';
+
+    return null;
+  }
+
+  String? _validateRegistrationPassword(String? value) {
+    final length = (value ?? '').runes.length;
+    if (length == 0)
+      return 'Saisissez un mot de passe de 12 caractères minimum.';
+    if (length < 12)
+      return 'Ajoutez encore ${12 - length} caractère(s) pour atteindre 12.';
+
+    return null;
+  }
+
+  String? _validatePasswordConfirmation(String? value) {
+    if ((value ?? '').isEmpty) return 'Retapez le même mot de passe.';
+    if (value != registrationControllers[6].text)
+      return 'Les deux mots de passe ne correspondent pas.';
+
+    return null;
+  }
+
+  Widget _registrationForm() {
+    final structure = registrationStructure;
+    if (structure == null) return const SizedBox.shrink();
+    final departments = (structure['departements'] as List? ?? [])
+        .cast<Map<String, dynamic>>();
+    final programs = (structure['filieres'] as List? ?? [])
+        .cast<Map<String, dynamic>>();
+    final specialities = (structure['specialites'] as List? ?? [])
+        .cast<Map<String, dynamic>>();
+    final years = (structure['annees'] as List? ?? [])
+        .cast<Map<String, dynamic>>();
+    final classes = (structure['classes'] as List? ?? [])
+        .cast<Map<String, dynamic>>();
+    final departmentId = registrationDepartmentId;
+    final programId = registrationProgramId;
+    final isBusy = registrationSending;
+    final requestedClasses = classes
+        .where(
+          (item) =>
+              item['annee_id'] == registrationYearId &&
+              item['departement_id'] == departmentId,
+        )
+        .toList();
+    final identityReady =
+        _validateRequiredField(registrationControllers[0].text, 'votre nom') ==
+            null &&
+        _validateRequiredField(
+              registrationControllers[1].text,
+              'votre prénom',
+            ) ==
+            null &&
+        _validateIdentityReference(registrationControllers[5].text) == null;
+    final academicReady = switch (selectedRole) {
+      UserRole.student =>
+        departmentId != null &&
+            registrationYearId != null &&
+            registrationClassId != null,
+      UserRole.teacher => departmentId != null,
+      UserRole.agent => departmentId != null,
+    };
+    final accountReady =
+        _validateLogin(registrationControllers[2].text) == null &&
+        _validateProfileIdentifier(registrationControllers[3].text) == null &&
+        _validateEmail(registrationControllers[4].text) == null &&
+        _validateRegistrationPassword(registrationControllers[6].text) ==
+            null &&
+        _validatePasswordConfirmation(registrationControllers[7].text) == null;
+    final completedSteps = [
+      identityReady,
+      academicReady,
+      accountReady,
+    ].where((ready) => ready).length;
+    final referenceLength = registrationControllers[5].text.trim().runes.length;
+    final passwordLength = registrationControllers[6].text.runes.length;
+    final showsAcademicPath = selectedRole == UserRole.teacher;
+    final academicPathAvailable =
+        showsAcademicPath &&
+        programs.any((item) => item['departement_id'] == departmentId);
+    final roleTitle = switch (selectedRole) {
+      UserRole.student => 'Demande de compte étudiant',
+      UserRole.teacher => 'Demande de compte enseignant',
+      UserRole.agent => 'Demande d’accès agent',
+    };
+    final roleDescription = switch (selectedRole) {
+      UserRole.student =>
+        'Choisissez le département, l’année académique et la classe demandés. L’inscription à cette classe sera créée après approbation administrative.',
+      UserRole.teacher =>
+        'Indiquez votre département et, si vous le connaissez, votre domaine d’enseignement. Vos UE et classes seront attribuées par l’administration après validation.',
+      UserRole.agent =>
+        'Indiquez le département où vous exercez. Les droits d’administration système sont attribués séparément par un administrateur.',
+    };
+    final affiliationTitle = switch (selectedRole) {
+      UserRole.student => '2 · Année et classe demandées',
+      UserRole.teacher => '2 · Votre rattachement enseignant',
+      UserRole.agent => '2 · Votre service administratif',
+    };
+    const programLabel = 'Filière / domaine d’enseignement (facultatif)';
+    const specialtyLabel = 'Spécialité d’enseignement (facultative)';
+    final roleGuidance = switch (selectedRole) {
+      UserRole.student =>
+        'Après vérification, l’approbation de la demande créera aussi votre inscription à cette classe.',
+      UserRole.teacher =>
+        'Ce choix aide à orienter votre demande; il ne crée pas d’affectation pédagogique.',
+      UserRole.agent =>
+        'Le département sélectionné détermine votre rattachement initial; il ne donne pas automatiquement les droits de publication.',
+    };
+    final profileLabel = switch (selectedRole) {
+      UserRole.student => 'Matricule étudiant',
+      UserRole.teacher => 'Identifiant enseignant',
+      UserRole.agent => 'Identifiant professionnel',
+    };
+    final profileHint = switch (selectedRole) {
+      UserRole.student => 'Saisissez le matricule communiqué par l’établissement.',
+      UserRole.teacher => 'Saisissez votre matricule ou identifiant enseignant officiel.',
+      UserRole.agent => 'Saisissez votre matricule ou identifiant professionnel.',
+    };
+    final accountSectionTitle = switch (selectedRole) {
+      UserRole.student => '3 · Création de votre compte étudiant',
+      UserRole.teacher => '3 · Création de votre compte enseignant',
+      UserRole.agent => '3 · Création de votre compte agent',
+    };
+    final submitLabel = switch (selectedRole) {
+      UserRole.student => 'Envoyer ma demande d’inscription',
+      UserRole.teacher => 'Envoyer ma demande enseignant',
+      UserRole.agent => 'Envoyer ma demande d’accès',
+    };
+    final affiliationPrompt = switch (selectedRole) {
+      UserRole.student => departmentId == null
+          ? 'Choisissez votre département.'
+          : registrationYearId == null
+          ? 'Choisissez l’année académique demandée.'
+          : registrationClassId == null
+          ? 'Choisissez la classe dans laquelle vous demandez l’inscription.'
+          : 'Votre rattachement est renseigné.',
+      UserRole.teacher => 'Choisissez votre département de rattachement.',
+      UserRole.agent => 'Choisissez votre département de rattachement.',
+    };
+    InputDecoration field(String label, IconData icon) =>
+        InputDecoration(labelText: label, prefixIcon: Icon(icon));
+    Widget sectionTitle(String title) => Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.titleSmall
+            ?.copyWith(fontWeight: FontWeight.w700),
+      ),
+    );
+    Widget stepBadge(String label, bool complete) => Chip(
+      avatar: Icon(
+        complete ? Icons.check_circle : Icons.circle_outlined,
+        size: 17,
+        color: complete ? Theme.of(context).colorScheme.primary : null,
+      ),
+      label: Text(label),
+      visualDensity: VisualDensity.compact,
+    );
+    return Card(
+      margin: const EdgeInsets.only(top: 18),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: registrationFormKey,
+          autovalidateMode: AutovalidateMode.disabled,
+          onChanged: () => setState(() => registrationError = null),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                roleTitle,
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                roleDescription,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.secondaryContainer
+                      .withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text('Progression de votre demande'),
+                        ),
+                        Text('$completedSteps / 3'),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    LinearProgressIndicator(value: completedSteps / 3),
+                    const SizedBox(height: 8),
+                    Text(
+                      completedSteps == 3
+                          ? 'Tout est prêt. Vous pouvez envoyer votre demande.'
+                          : !identityReady
+                          ? 'Complétez vos nom, prénom et référence de pièce d’identité.'
+                          : !academicReady
+                          ? affiliationPrompt
+                          : 'Complétez vos identifiants et sécurisez votre compte.',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 0,
+                      children: [
+                        stepBadge('Identité', identityReady),
+                        stepBadge('Rattachement', academicReady),
+                        stepBadge('Compte', accountReady),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 22),
+              sectionTitle('1 · Votre identité'),
+              TextFormField(
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                controller: registrationControllers[0],
+                textCapitalization: TextCapitalization.words,
+                decoration: field('Nom', Icons.badge_outlined),
+                validator: (value) =>
+                    _validateRequiredField(value, 'votre nom'),
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                controller: registrationControllers[1],
+                textCapitalization: TextCapitalization.words,
+                decoration: field('Prénom(s)', Icons.person_outline),
+                validator: (value) =>
+                    _validateRequiredField(value, 'votre prénom'),
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                controller: registrationControllers[5],
+                autocorrect: false,
+                decoration:
+                    field(
+                      'Numéro ou référence de la pièce d’identité',
+                      Icons.verified_user_outlined,
+                    ).copyWith(
+                      helperText: referenceLength < 4
+                          ? 'Saisissez le numéro du document ($referenceLength/4 caractères minimum).'
+                          : 'Référence renseignée. Elle sera vérifiée par l’administration.',
+                    ),
+                validator: _validateIdentityReference,
+              ),
+              sectionTitle(affiliationTitle),
+              DropdownButtonFormField<int>(
+                isExpanded: true,
+                initialValue: departmentId,
+                decoration: field('Département', Icons.account_tree_outlined),
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                validator: (value) =>
+                    value == null ? 'Choisissez votre département.' : null,
+                items: departments
+                    .map(
+                      (item) => DropdownMenuItem<int>(
+                        value: item['id'] as int,
+                        child: Text(
+                          '${item['nom_fac']} · ${item['nom_depart']}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: isBusy
+                    ? null
+                    : (value) => setState(() {
+                        registrationDepartmentId = value;
+                        registrationProgramId = null;
+                        registrationSpecialtyId = null;
+                        registrationClassId = null;
+                      }),
+              ),
+              if (selectedRole == UserRole.student) ...[
+                const SizedBox(height: 10),
+                if (years.isEmpty)
+                  Text(
+                    'Aucune année académique avec classe disponible. Contactez la scolarité.',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  )
+                else
+                  DropdownButtonFormField<int>(
+                    isExpanded: true,
+                    initialValue: registrationYearId,
+                    decoration: field(
+                      'Année académique',
+                      Icons.calendar_month_outlined,
+                    ),
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    validator: (value) => value == null
+                        ? 'Choisissez l’année académique.'
+                        : null,
+                    items: years
+                        .map(
+                          (item) => DropdownMenuItem<int>(
+                            value: item['id'] as int,
+                            child: Text('${item['libelle']}'),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: isBusy
+                        ? null
+                        : (value) => setState(() {
+                            registrationYearId = value;
+                            registrationClassId = null;
+                          }),
+                  ),
+                if (registrationYearId != null && departmentId != null) ...[
+                  const SizedBox(height: 10),
+                  if (requestedClasses.isEmpty)
+                    Text(
+                      'Aucune classe n’est disponible dans ce département pour cette année. Contactez la scolarité.',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    )
+                  else
+                    DropdownButtonFormField<int>(
+                      isExpanded: true,
+                      initialValue: registrationClassId,
+                      decoration: field(
+                        'Classe / salle',
+                        Icons.groups_outlined,
+                      ).copyWith(
+                        helperText:
+                            'La classe détermine le niveau, la filière et l’année de votre inscription.',
+                      ),
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      validator: (value) => value == null
+                          ? 'Choisissez la classe demandée.'
+                          : null,
+                      items: requestedClasses.map((item) {
+                        final level =
+                            item['libelle_niv'] ?? item['code_niv'] ?? 'Niveau';
+                        final program = item['nom_f'] ?? item['code_f'] ?? '';
+                        final specialty = item['libelle_specialite'];
+                        final details = [
+                          level,
+                          program,
+                          if (specialty != null) specialty,
+                        ].where((value) => '$value'.trim().isNotEmpty).join(' · ');
+
+                        return DropdownMenuItem<int>(
+                          value: item['id'] as int,
+                          child: Text(
+                            '${item['code_classe']} · $details',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: isBusy
+                          ? null
+                          : (value) =>
+                                setState(() => registrationClassId = value),
+                    ),
+                ],
+              ],
+              if (academicPathAvailable) ...[
+                const SizedBox(height: 10),
+                DropdownButtonFormField<int>(
+                  isExpanded: true,
+                  initialValue: programId,
+                  decoration:
+                      field(
+                        programLabel,
+                        Icons.school_outlined,
+                      ).copyWith(
+                        helperText: selectedRole == UserRole.teacher
+                            ? 'Choisissez votre principal domaine d’enseignement, si vous le connaissez.'
+                            : 'Choisissez votre principal domaine d’enseignement, si vous le connaissez.',
+                      ),
+                  items: programs
+                      .where((item) => item['departement_id'] == departmentId)
+                      .map(
+                        (item) => DropdownMenuItem<int>(
+                          value: item['id'] as int,
+                          child: Text(
+                            '${item['nom_f']}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: isBusy
+                      ? null
+                      : (value) => setState(() {
+                          registrationProgramId = value;
+                          registrationSpecialtyId = null;
+                        }),
+                ),
+              ],
+              if (programId != null &&
+                  specialities.any(
+                    (item) => item['filiere_id'] == programId,
+                  )) ...[
+                const SizedBox(height: 10),
+                DropdownButtonFormField<int>(
+                  isExpanded: true,
+                  initialValue: registrationSpecialtyId,
+                  decoration:
+                      field(
+                        specialtyLabel,
+                        Icons.account_tree_outlined,
+                      ).copyWith(
+                        helperText: selectedRole == UserRole.teacher
+                            ? 'Précisez votre domaine de spécialité si nécessaire.'
+                            : 'Précisez votre domaine de spécialité si nécessaire.',
+                      ),
+                  items: specialities
+                      .where((item) => item['filiere_id'] == programId)
+                      .map(
+                        (item) => DropdownMenuItem<int>(
+                          value: item['id'] as int,
+                          child: Text(
+                            '${item['libelle_specialite']}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: isBusy
+                      ? null
+                      : (value) =>
+                            setState(() => registrationSpecialtyId = value),
+                ),
+              ],
+              if (departmentId != null &&
+                  showsAcademicPath &&
+                  !academicPathAvailable)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Aucune filière n’est proposée pour ce département. Vérifiez votre choix ou contactez l’administration.',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              if (departmentId != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    roleGuidance,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              sectionTitle(accountSectionTitle),
+              TextFormField(
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                controller: registrationControllers[2],
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration:
+                    field(
+                      'Identifiant de connexion souhaité',
+                      Icons.alternate_email,
+                    ).copyWith(
+                      helperText:
+                          'Lettres, chiffres, point, tiret ou tiret bas.',
+                    ),
+                validator: _validateLogin,
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                controller: registrationControllers[3],
+                autocorrect: false,
+                decoration: field(
+                  profileLabel,
+                  Icons.numbers_outlined,
+                ).copyWith(helperText: profileHint),
+                validator: _validateProfileIdentifier,
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                controller: registrationControllers[4],
+                keyboardType: TextInputType.emailAddress,
+                decoration: field(
+                  selectedRole == UserRole.student
+                      ? 'Adresse courriel personnelle (facultative)'
+                      : 'Adresse courriel professionnelle (facultative)',
+                  Icons.email_outlined,
+                ),
+                validator: _validateEmail,
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                controller: registrationControllers[6],
+                obscureText: true,
+                decoration: field('Mot de passe', Icons.lock_outline).copyWith(
+                  helperText: '$passwordLength / 12 caractères minimum',
+                  suffixIcon: passwordLength >= 12
+                      ? const Icon(Icons.check_circle_outline)
+                      : null,
+                ),
+                validator: _validateRegistrationPassword,
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                controller: registrationControllers[7],
+                obscureText: true,
+                decoration:
+                    field(
+                      'Confirmer le mot de passe',
+                      Icons.lock_reset_outlined,
+                    ).copyWith(
+                      helperText: registrationControllers[7].text.isEmpty
+                          ? 'Retapez exactement le même mot de passe.'
+                          : registrationControllers[7].text ==
+                                registrationControllers[6].text
+                          ? 'Les mots de passe correspondent.'
+                          : 'La confirmation diffère du mot de passe.',
+                      suffixIcon:
+                          registrationControllers[7].text.isNotEmpty &&
+                              registrationControllers[7].text ==
+                                  registrationControllers[6].text
+                          ? const Icon(Icons.check_circle_outline)
+                          : null,
+                    ),
+                validator: _validatePasswordConfirmation,
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(13),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.secondaryContainer
+                      .withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  switch (selectedRole) {
+                    UserRole.student =>
+        'Votre demande sera enregistrée dans GNU. Après approbation, votre compte et votre inscription à la classe demandée seront activés.',
+                    UserRole.teacher =>
+                      'Votre demande sera enregistrée dans GNU. L’administration vérifiera votre identité et votre rattachement avant activation.',
+                    UserRole.agent =>
+                      'Votre demande sera enregistrée dans GNU. Un administrateur vérifiera votre identité et votre service avant activation.',
+                  },
+                  style: TextStyle(height: 1.45, fontSize: 12),
+                ),
+              ),
+              if (registrationError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(
+                    registrationError!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: isBusy ? null : _submitAccountRegistration,
+                icon: const Icon(Icons.person_add_alt_1_outlined),
+                label: Text(
+                  isBusy ? 'Enregistrement…' : submitLabel,
+                ),
+              ),
+              TextButton(
+                onPressed: isBusy
+                    ? null
+                    : () => setState(() => registrationStructure = null),
+                child: const Text('Annuler'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -415,13 +1280,29 @@ class _WelcomePageState extends State<WelcomePage> {
                         ),
                       ],
                       selected: {selectedRole},
-                      onSelectionChanged: loggingIn
+                      onSelectionChanged:
+                          loggingIn || registrationLoading || registrationSending
                           ? null
                           : (selection) =>
-                                setState(() => selectedRole = selection.first),
+                                _selectRegistrationRole(selection.first),
                     ),
                   ),
                   const SizedBox(height: 22),
+                  if (_needsNativeApiAddress) ...[
+                    TextField(
+                      controller: apiBaseUrlController,
+                      keyboardType: TextInputType.url,
+                      autocorrect: false,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'Adresse du serveur GNU',
+                        hintText: 'http://192.168.1.10:8000/api/v1',
+                        helperText: 'Sur téléphone, remplacez 10.0.2.2 par l’adresse IP du PC.',
+                        prefixIcon: Icon(Icons.dns_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   TextField(
                     controller: loginController,
                     textInputAction: TextInputAction.next,
@@ -442,9 +1323,8 @@ class _WelcomePageState extends State<WelcomePage> {
                         tooltip: showPassword
                             ? 'Masquer le mot de passe'
                             : 'Afficher le mot de passe',
-                        onPressed: () => setState(
-                          () => showPassword = !showPassword,
-                        ),
+                        onPressed: () =>
+                            setState(() => showPassword = !showPassword),
                         icon: Icon(
                           showPassword
                               ? Icons.visibility_off_outlined
@@ -463,6 +1343,17 @@ class _WelcomePageState extends State<WelcomePage> {
                         ),
                       ),
                     ),
+                  if (registrationNotice != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Text(
+                        registrationNotice!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          height: 1.45,
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
@@ -474,19 +1365,22 @@ class _WelcomePageState extends State<WelcomePage> {
                   ),
                   const SizedBox(height: 14),
                   const Text(
-                    'Vous n’avez pas encore de compte ?',
+                    'Vous découvrez GNU ?',
                     style: TextStyle(color: muted, fontSize: 12, height: 1.6),
                   ),
                   TextButton.icon(
-                    onPressed: _openLocalTestAccountPortal,
+                    onPressed: registrationLoading ? null : _requestAccount,
                     icon: const Icon(Icons.person_add_alt_1_outlined),
-                    label: const Text('Créer un compte de test'),
+                    label: Text(
+                      registrationLoading ? 'Chargement…' : 'S’inscrire',
+                    ),
                   ),
                   const Text(
-                    'Ce portail est réservé aux essais sur votre ordinateur. En production, les comptes sont créés par le service compétent.',
+                    'Inscrivez-vous en quelques étapes. Votre accès sera activé après vérification par l’administration.',
                     style: TextStyle(color: muted, fontSize: 12, height: 1.6),
                   ),
                   const SizedBox(height: 24),
+                  _registrationForm(),
                 ],
               ),
             ),
@@ -551,21 +1445,13 @@ List<Destination> destinations(UserRole role) => [
         label: 'Notes & validations',
         icon: Icons.fact_check_outlined,
       ),
-      (
-        id: 'requests',
-        label: 'Requêtes & UE',
-        icon: Icons.forum_outlined,
-      ),
+      (id: 'requests', label: 'Requêtes & UE', icon: Icons.forum_outlined),
       (
         id: 'notifications',
         label: 'Notifications',
         icon: Icons.notifications_outlined,
       ),
-      (
-        id: 'profile',
-        label: 'Mon compte',
-        icon: Icons.account_circle_outlined,
-      ),
+      (id: 'profile', label: 'Mon compte', icon: Icons.account_circle_outlined),
     ],
     UserRole.agent => [
       (
@@ -590,8 +1476,13 @@ List<Destination> destinations(UserRole role) => [
       ),
       (
         id: 'grade-transmissions',
-        label: 'Numérisation des notes',
+        label: 'Traitement des PV',
         icon: Icons.fact_check_outlined,
+      ),
+      (
+        id: 'notifications',
+        label: 'Notifications',
+        icon: Icons.notifications_outlined,
       ),
       (
         id: 'normal-sessions',

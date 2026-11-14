@@ -35,6 +35,11 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
+            $databaseDetail = $e->errorInfo[2] ?? '';
+            $publicationBlock = preg_match('/Publication bloquée : [^\\r\\n]+/u', $databaseDetail, $matches) === 1
+                ? $matches[0]
+                : null;
+
             return match ($e->errorInfo[0] ?? $e->getCode()) {
                 '23505' => response()->json([
                     'message' => str_contains($e->errorInfo[2] ?? '', 'uq_affectation_active')
@@ -42,9 +47,10 @@ return Application::configure(basePath: dirname(__DIR__))
                         : 'Un identifiant unique existe déjà. Vérifiez qu’il n’y a pas de doublon puis réessayez.',
                 ], 409),
                 '23514' => response()->json([
-                    'message' => str_contains($e->errorInfo[2] ?? '', 'Évaluation non réalisée')
+                    'message' => $publicationBlock
+                        ?? (str_contains($databaseDetail, 'Évaluation non réalisée')
                         ? 'La base doit être mise à jour pour permettre la saisie préparatoire des notes. Appliquez les migrations GNU puis réessayez.'
-                        : 'Les données ne respectent pas les règles du dossier.',
+                        : 'Les données ne respectent pas les règles du dossier.'),
                 ], 422),
                 '23503' => response()->json(['message' => 'Les données ne respectent pas les règles du dossier.'], 422),
                 '23502' => response()->json(['message' => 'Une donnée obligatoire manque dans cet enregistrement. Vérifiez les champs requis et les migrations de la base.'], 422),

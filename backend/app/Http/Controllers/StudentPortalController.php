@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Services\AcademicRules;
+use App\Services\BulletinReference;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class StudentPortalController extends Controller
 {
@@ -119,7 +121,6 @@ class StudentPortalController extends Controller
             ->where('numero_semestre', $semester)->first();
         $units = DB::table('gnu.ue as u')
             ->where('u.niveau_id', $context->niveau_id)
-            ->where('u.version_programme', $context->version_programme)
             ->where('u.numero_semestre', $semester)
             ->where('u.statut_catalogue', 'ACTIF')
             ->orderBy('u.code_ue')
@@ -257,7 +258,6 @@ class StudentPortalController extends Controller
         abort_unless($semesterState === null || in_array($semesterState, ['BROUILLON', 'SOUMISE', 'REFUSEE'], true), 409, 'Les choix de ce semestre ont déjà été validés.');
         $available = DB::table('gnu.ue')
             ->where('niveau_id', $context->niveau_id)
-            ->where('version_programme', $context->version_programme)
             ->where('numero_semestre', $semester)
             ->where('statut_catalogue', 'ACTIF')
             ->get(['id', 'code_ue']);
@@ -365,12 +365,10 @@ class StudentPortalController extends Controller
             ->where('iu.inscription_classe_id', $context->inscription_classe_id)
             ->where('iu.statut_inscription', '!=', 'ANNULEE')
             ->where('u.niveau_id', $context->niveau_id)
-            ->where('u.version_programme', $context->version_programme)
             ->where('u.numero_semestre', $semester)
             ->count();
         $availableCount = DB::table('gnu.ue')
             ->where('niveau_id', $context->niveau_id)
-            ->where('version_programme', $context->version_programme)
             ->where('numero_semestre', $semester)
             ->where('statut_catalogue', 'ACTIF')
             ->count();
@@ -382,7 +380,6 @@ class StudentPortalController extends Controller
                 ->where('iu.statut_inscription', '!=', 'ANNULEE')
                 ->where('iu.type_inscription', 'REPRISE')
                 ->where('u.niveau_id', $context->niveau_id)
-                ->where('u.version_programme', $context->version_programme)
                 ->where('u.numero_semestre', $semester)
                 ->count();
             abort_if($repeatCount === 0, 422, 'Sélectionnez au moins une UE non acquise à reprendre avant de soumettre.');
@@ -411,6 +408,7 @@ class StudentPortalController extends Controller
         abort_if($period !== null && ! in_array($period, ['S1', 'S2', 'ANNUELLE'], true), 422, 'Période invalide.');
         $query = DB::table('gnu.bulletin as b')
             ->join('gnu.publication as p', 'p.id', '=', 'b.publication_id')
+            ->leftJoin('gnu.document_bulletin as db', 'db.bulletin_id', '=', 'b.id')
             ->where('b.inscription_classe_id', $context->inscription_classe_id)
             ->where('b.courant', true)
             ->orderBy('b.periode');
@@ -418,8 +416,9 @@ class StudentPortalController extends Controller
             $query->where('b.periode', $period);
         }
         $data = $query->get([
-            'b.id', 'b.periode', 'b.version_bulletin', 'b.mgp_s1', 'b.mgp_s2', 'b.mgp_total',
+            'b.id', 'b.publication_id', 'b.periode', 'b.version_bulletin', 'b.mgp_s1', 'b.mgp_s2', 'b.mgp_total',
             'b.total_credits', 'b.decision_admission', 'b.contenu_fige', 'p.date_publication',
+            'db.id as document_archive_id',
         ])->map(function (object $bulletin) use ($context): array {
             $snapshot = is_string($bulletin->contenu_fige) ? json_decode($bulletin->contenu_fige, true) : (array) $bulletin->contenu_fige;
             $snapshot = $this->annotateEvaluationTypes($snapshot);
@@ -435,6 +434,7 @@ class StudentPortalController extends Controller
 
             return [
                 'id' => (int) $bulletin->id,
+                'reference_officielle' => $this->bulletinReference($context, $bulletin),
                 'periode' => $bulletin->periode,
                 'version' => (int) $bulletin->version_bulletin,
                 'mgp_s1' => $bulletin->mgp_s1,
@@ -443,6 +443,7 @@ class StudentPortalController extends Controller
                 'credits' => $bulletin->total_credits,
                 'decision' => $bulletin->decision_admission,
                 'publie_le' => $bulletin->date_publication,
+                'document_archive_id' => $bulletin->document_archive_id === null ? null : (int) $bulletin->document_archive_id,
                 'contenu' => $snapshot,
                 'structure' => [
                     'universite' => $context->nom_univ,
@@ -460,12 +461,104 @@ class StudentPortalController extends Controller
         return response()->json(['data' => $data]);
     }
 
+    public function archiveBulletinPdf(Request $request, int $bulletin): JsonResponse
+    {
+        $request->validate(['fichier' => ['required', 'file', 'mimes:pdf', 'max:15360']]);
+        $context = $this->studentContext($request);
+        $record = DB::table('gnu.bulletin as b')
+            ->join('gnu.publication as p', 'p.id', '=', 'b.publication_id')
+            ->join('gnu.inscription_classe as ic', 'ic.id', '=', 'b.inscription_classe_id')
+            ->join('gnu.etudiant as e', 'e.id', '=', 'ic.etudiant_id')
+            ->join('gnu.classe as c', 'c.id', '=', 'ic.classe_id')
+            ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('b.id', $bulletin)
+            ->where('b.inscription_classe_id', $context->inscription_classe_id)
+            ->where('b.courant', true)
+            ->first(['b.id', 'b.publication_id', 'b.periode', 'b.version_bulletin', 'e.matricule', 'c.code_classe', 'an.libelle as annee']);
+        abort_unless($record !== null, 404, 'Bulletin publié introuvable.');
+
+        $reference = $this->bulletinReference($context, $record);
+        $file = $request->file('fichier');
+        $hash = hash_file('sha256', $file->getRealPath());
+        abort_unless(is_string($hash), 500, 'Le PDF transmis n’a pas pu être vérifié.');
+        $existing = DB::table('gnu.document_bulletin')->where('bulletin_id', $bulletin)->first();
+        if ($existing !== null) {
+            abort_unless(hash_equals(trim($existing->empreinte_sha256), $hash), 409, 'Un PDF différent est déjà archivé pour cette version du bulletin.');
+            if (! Storage::disk('local')->exists($existing->chemin_fichier)) {
+                Storage::disk('local')->putFileAs(dirname($existing->chemin_fichier), $file, basename($existing->chemin_fichier));
+            }
+
+            return response()->json(['data' => [
+                'reference' => $existing->reference_officielle,
+                'empreinte_sha256' => trim($existing->empreinte_sha256),
+                'date_emission' => $existing->date_emission,
+                'archive' => true,
+            ]]);
+        }
+
+        $path = 'bulletins/'.$bulletin.'/'.$reference.'.pdf';
+        $disk = Storage::disk('local');
+        abort_unless($disk->putFileAs(dirname($path), $file, basename($path)), 500, 'Le PDF officiel n’a pas pu être archivé.');
+        try {
+            DB::transaction(function () use ($request, $bulletin, $reference, $path, $hash): void {
+                DB::select("SELECT set_config('gnu.acteur_id', ?, true), set_config('gnu.motif', ?, true)", [(string) $request->user()->id, 'Archivage du bulletin étudiant '.$reference]);
+                DB::table('gnu.document_bulletin')->insert([
+                    'bulletin_id' => $bulletin,
+                    'reference_officielle' => $reference,
+                    'chemin_fichier' => $path,
+                    'empreinte_sha256' => $hash,
+                    'genere_par' => $request->user()->id,
+                    'date_emission' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            });
+        } catch (Throwable $exception) {
+            $disk->delete($path);
+            throw $exception;
+        }
+
+        return response()->json(['data' => [
+            'reference' => $reference,
+            'empreinte_sha256' => $hash,
+            'date_emission' => now()->toIso8601String(),
+            'archive' => true,
+        ]], 201);
+    }
+
+    public function downloadBulletinPdf(Request $request, int $bulletin): mixed
+    {
+        $context = $this->studentContext($request);
+        $document = DB::table('gnu.document_bulletin as d')
+            ->join('gnu.bulletin as b', 'b.id', '=', 'd.bulletin_id')
+            ->where('b.id', $bulletin)
+            ->where('b.inscription_classe_id', $context->inscription_classe_id)
+            ->where('b.courant', true)
+            ->first(['d.chemin_fichier', 'd.reference_officielle']);
+        abort_unless($document !== null && Storage::disk('local')->exists($document->chemin_fichier), 404, 'Aucun PDF officiel n’est archivé pour ce bulletin.');
+
+        return Storage::disk('local')->download($document->chemin_fichier, $document->reference_officielle.'.pdf', [
+            'Content-Type' => 'application/pdf',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
     public function provisionalResults(Request $request): JsonResponse
     {
         $context = $this->studentContext($request);
         abort_unless($context->statut_inscription === 'VALIDEE', 403, 'Votre inscription de classe doit être validée pour consulter le bulletin provisoire.');
         $period = $request->query('periode', 'S1');
         abort_unless(in_array($period, ['S1', 'S2', 'ANNUELLE'], true), 422, 'Période invalide.');
+        $notesAwaitingCellPublication = DB::table('gnu.note as no')
+            ->join('gnu.inscription_ue as iu', 'iu.id', '=', 'no.inscription_ue_id')
+            ->join('gnu.ue as ue', 'ue.id', '=', 'iu.ue_id')
+            ->join('gnu.transmission_note as tn', 'tn.evaluation_id', '=', 'no.evaluation_id')
+            ->join('gnu.proces_verbal_note as pv', 'pv.transmission_id', '=', 'tn.id')
+            ->where('iu.inscription_classe_id', $context->inscription_classe_id)
+            ->where('tn.statut', 'VERIFIEE')->whereNull('pv.publie_le')
+            ->when($period !== 'ANNUELLE', fn ($query) => $query->where('ue.numero_semestre', (int) substr($period, 1)))
+            ->exists();
+        abort_unless(! $notesAwaitingCellPublication, 409, 'Des notes de cette période attendent encore leur publication par la cellule informatique. Vous recevrez une notification dès leur mise à disposition.');
         $result = DB::selectOne('SELECT gnu.previsualiser_bulletin(?, ?) AS contenu', [$context->inscription_classe_id, $period]);
         $content = is_string($result->contenu) ? json_decode($result->contenu, true, flags: JSON_THROW_ON_ERROR) : (array) $result->contenu;
         $content = $this->annotateEvaluationTypes($content);
@@ -476,6 +569,66 @@ class StudentPortalController extends Controller
             'calcule_le' => now()->toIso8601String(),
             'contenu' => $content,
         ]]);
+    }
+
+    /** Return only the authenticated student's published evaluation rows. */
+    public function evaluationMinutes(Request $request): JsonResponse
+    {
+        $context = $this->studentContext($request);
+        abort_unless($context->statut_inscription === 'VALIDEE', 403, 'Votre inscription doit être validée pour consulter les procès-verbaux.');
+        $rows = DB::table('gnu.note as no')
+            ->join('gnu.evaluation as ev', 'ev.id', '=', 'no.evaluation_id')
+            ->join('gnu.transmission_note as tn', 'tn.evaluation_id', '=', 'ev.id')
+            ->join('gnu.proces_verbal_note as pv', 'pv.transmission_id', '=', 'tn.id')
+            ->join('gnu.inscription_ue as iu', 'iu.id', '=', 'no.inscription_ue_id')
+            ->join('gnu.ue as ue', 'ue.id', '=', 'iu.ue_id')
+            ->join('gnu.affectation as a', 'a.id', '=', 'ev.affectation_id')
+            ->join('gnu.matiere as m', 'm.id', '=', 'a.matiere_id')
+            ->join('gnu.enseignant as ens', 'ens.id', '=', 'a.enseignant_id')
+            ->join('gnu.utilisateur as teacher', 'teacher.id', '=', 'ens.utilisateur_id')
+            ->leftJoin('gnu.utilisateur as agent', 'agent.id', '=', 'pv.genere_par')
+            ->where('iu.inscription_classe_id', $context->inscription_classe_id)
+            ->where('a.classe_id', $context->classe_id)
+            ->where('no.statut_note', 'VALIDEE')
+            ->where('tn.statut', 'VERIFIEE')
+            ->whereRaw('tn.version = (SELECT MAX(tn2.version) FROM gnu.transmission_note tn2 WHERE tn2.evaluation_id = tn.evaluation_id)')
+            ->whereNotNull('pv.publie_le')
+            ->orderBy('ue.numero_semestre')->orderBy('ue.code_ue')->orderBy('ev.type_eval')
+            ->get([
+                'tn.id as transmission_id', 'tn.version', 'ev.id as evaluation_id', 'ev.type_eval', 'ev.date_evaluation',
+                'ue.code_ue', 'ue.intitule_ue', 'ue.numero_semestre', 'm.code_m', 'm.intitule_matiere',
+                'no.valeur_note', 'no.situation', 'teacher.nom as enseignant_nom', 'teacher.prenom as enseignant_prenom',
+                'agent.nom as agent_nom', 'agent.prenom as agent_prenom', 'tn.transmis_le', 'pv.created_at as traite_le', 'pv.publie_le',
+            ]);
+
+        return response()->json(['data' => $rows->map(fn (object $row): array => [
+            'transmission_id' => (int) $row->transmission_id,
+            'evaluation_id' => (int) $row->evaluation_id,
+            'version' => (int) $row->version,
+            'type' => $row->type_eval,
+            'date_evaluation' => $row->date_evaluation,
+            'code_ue' => $row->code_ue,
+            'intitule_ue' => $row->intitule_ue,
+            'semestre' => (int) $row->numero_semestre,
+            'code_ec' => $row->code_m,
+            'intitule_ec' => $row->intitule_matiere,
+            'note' => $row->situation === 'ABSENTE' ? null : $row->valeur_note,
+            'situation' => $row->situation,
+            'enseignant' => trim($row->enseignant_prenom.' '.$row->enseignant_nom),
+            'transmis_le' => $row->transmis_le,
+            'agent' => trim(($row->agent_prenom ?? '').' '.($row->agent_nom ?? '')),
+            'traite_le' => $row->traite_le,
+            'publie_le' => $row->publie_le,
+            'structure' => [
+                'universite' => $context->nom_univ,
+                'faculte' => $context->nom_fac,
+                'departement' => $context->nom_depart,
+                'filiere' => $context->nom_filiere,
+                'niveau' => $context->libelle_niv,
+                'annee' => $context->annee,
+                'logo' => $this->studentStructureLogo($context),
+            ],
+        ])]);
     }
 
     public function requests(Request $request): JsonResponse
@@ -702,7 +855,7 @@ class StudentPortalController extends Controller
 
                 return (int) $id;
             });
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             if ($storedPath !== null) {
                 Storage::disk('local')->delete($storedPath);
             }
@@ -1042,8 +1195,9 @@ class StudentPortalController extends Controller
             ->orderByDesc('an.date_debut')->orderByDesc('ic.id');
         $context = $query->first([
             'e.id as etudiant_id', 'ic.id as inscription_classe_id', 'ic.statut_inscription', 'ic.statut_redoublant',
-            'c.id as classe_id', 'c.code_classe', 'c.annee_id', 'c.version_programme', 'n.id as niveau_id', 'n.code_niv',
-            'an.libelle as annee', 'an.date_debut as annee_debut',
+            'c.id as classe_id', 'c.code_classe', 'c.annee_id', 'n.id as niveau_id', 'n.code_niv',
+            'an.libelle as annee', 'an.date_debut as annee_debut', 'e.matricule',
+            'e.date_naissance', 'e.lieu_naissance',
             'un.id as universite_id', 'fac.id as faculte_id', 'd.id as departement_id',
             'un.nom_univ', 'fac.nom_fac', 'd.nom_depart', 'fi.nom_f as nom_filiere',
             'n.libelle_niv', 'sp.libelle_specialite',
@@ -1051,6 +1205,18 @@ class StudentPortalController extends Controller
         abort_unless($context !== null, 404, 'Aucune inscription de classe active n’est rattachée à votre compte.');
 
         return $context;
+    }
+
+    /** @param object{id: int, periode: string, version_bulletin: int} $bulletin */
+    private function bulletinReference(object $context, object $bulletin): string
+    {
+        return app(BulletinReference::class)->make(
+            (string) $context->annee,
+            (string) $context->code_classe,
+            (string) $context->matricule,
+            (string) $bulletin->periode,
+            (int) $bulletin->version_bulletin,
+        );
     }
 
     private function studentStructureLogo(object $context): ?array

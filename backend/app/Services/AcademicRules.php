@@ -37,6 +37,9 @@ class AcademicRules
             if (! in_array($type, ['CC', 'TP', 'TPE', 'SN'], true)) {
                 throw new DomainException('Le type d’évaluation doit être CC, TP, TPE ou SN.');
             }
+            if (array_key_exists($type, $totals)) {
+                throw new DomainException('Une seule évaluation de chaque type (CC, TP, TPE, SN) est autorisée par UE.');
+            }
             $totals[$type] = ($totals[$type] ?? 0.0) + (float) $evaluation['poids'];
         }
 

@@ -50,6 +50,11 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
 
+dependency_overrides:
+  # Keep the Android platform implementation on its stable platform-channel
+  # backend; 2.3.0+ adds a JNI native build that requires downloading the full NDK.
+  path_provider_android: 2.2.23
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -62,6 +67,8 @@ flutter:
   uses-material-design: true
   assets:
     - assets/uy1_crest.png
+    - assets/fonts/DejaVuSans.ttf
+    - assets/fonts/DejaVuSans-Bold.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

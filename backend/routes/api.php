@@ -1,15 +1,19 @@
 <?php
 
 use App\Http\Controllers\AcademicReferenceController;
+use App\Http\Controllers\AccountRequestController;
 use App\Http\Controllers\AgentPortalController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StudentPortalController;
+use App\Http\Controllers\SystemAdministratorController;
 use App\Http\Controllers\TeacherPortalController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('api.v1.')->group(function (): void {
     Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:login')->name('login');
+    Route::get('auth/demandes-compte/departements', [AccountRequestController::class, 'departments'])->name('account-requests.departments');
+    Route::post('auth/demandes-compte', [AccountRequestController::class, 'submit'])->middleware('throttle:login')->name('account-requests.submit');
     Route::middleware(['auth:sanctum', 'account.active', 'throttle:api'])->group(function (): void {
         Route::get('auth/me', [ProfileController::class, 'show'])->name('me');
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('logout');
@@ -41,7 +45,10 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
             Route::get('fiche-academique/fichier', [StudentPortalController::class, 'downloadAcademicSheet'])->name('fiche-academique.download');
             Route::get('inscriptions/{inscriptionClasse}/fiche-academique', [StudentPortalController::class, 'sharedAcademicSheet'])->name('inscriptions.fiche-academique');
             Route::get('resultats', [StudentPortalController::class, 'results'])->name('resultats');
+            Route::post('resultats/{bulletin}/document', [StudentPortalController::class, 'archiveBulletinPdf'])->name('resultats.document.archive');
+            Route::get('resultats/{bulletin}/document', [StudentPortalController::class, 'downloadBulletinPdf'])->name('resultats.document.download');
             Route::get('resultats/provisoires', [StudentPortalController::class, 'provisionalResults'])->name('resultats.provisoires');
+            Route::get('proces-verbaux-evaluations', [StudentPortalController::class, 'evaluationMinutes'])->name('proces-verbaux-evaluations');
             Route::get('evaluations-manquantes', [StudentPortalController::class, 'missingEvaluations'])->name('evaluations.missing');
             Route::get('requetes', [StudentPortalController::class, 'requests'])->name('requetes.index');
             Route::post('requetes', [StudentPortalController::class, 'createRequest'])->name('requetes.store');
@@ -54,6 +61,8 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
 
         Route::middleware('role:AGENT')->prefix('agent')->name('agent.')->group(function (): void {
             Route::get('dashboard', [AgentPortalController::class, 'dashboard'])->name('dashboard');
+            Route::get('notifications', [AgentPortalController::class, 'notifications'])->name('notifications.index');
+            Route::patch('notifications/{notification}/lue', [AgentPortalController::class, 'markNotificationRead'])->name('notifications.read');
             Route::get('classes', [AgentPortalController::class, 'classes'])->name('classes.index');
             Route::post('classes', [AgentPortalController::class, 'storeClass'])->name('classes.store');
             Route::get('niveaux', [AgentPortalController::class, 'levels'])->name('niveaux.index');
@@ -80,21 +89,34 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
             Route::get('comptes', [AgentPortalController::class, 'accounts'])->name('comptes.index');
             Route::patch('comptes/{utilisateur}', [AgentPortalController::class, 'updateAccount'])->name('comptes.update');
             Route::patch('comptes/{utilisateur}/statut', [AgentPortalController::class, 'setAccountStatus'])->name('comptes.status');
+            Route::delete('comptes/{utilisateur}', [AgentPortalController::class, 'deleteAccount'])->name('comptes.delete');
+            Route::get('administrateurs-systeme', [SystemAdministratorController::class, 'index'])->name('administrateurs-systeme.index');
+            Route::put('administrateurs-systeme/{utilisateur}', [SystemAdministratorController::class, 'grant'])->name('administrateurs-systeme.grant');
+            Route::delete('administrateurs-systeme/{utilisateur}', [SystemAdministratorController::class, 'revoke'])->name('administrateurs-systeme.revoke');
+            Route::get('demandes-comptes', [AgentPortalController::class, 'accountRequests'])->name('account-requests.index');
+            Route::patch('demandes-comptes/{demande}', [AgentPortalController::class, 'decideAccountRequest'])->name('account-requests.decide');
             Route::get('affectations/propositions', [AgentPortalController::class, 'assignmentProposals'])->name('affectations.propositions');
             Route::patch('affectations/propositions/{proposition}', [AgentPortalController::class, 'decideAssignmentProposal'])->name('affectations.propositions.decide');
             Route::post('affectations', [AgentPortalController::class, 'storeAssignment'])->name('affectations.store');
             Route::get('affectations', [AgentPortalController::class, 'assignments'])->name('affectations.index');
             Route::patch('affectations/{affectation}', [AgentPortalController::class, 'setAssignmentStatus'])->name('affectations.status');
+            Route::patch('affectations/{affectation}/responsable-notes', [AgentPortalController::class, 'setGradeManager'])->name('affectations.grade-manager');
             Route::get('inscriptions', [AgentPortalController::class, 'enrollments'])->name('inscriptions.index');
             Route::patch('inscriptions/{inscriptionSemestre}', [AgentPortalController::class, 'reviewEnrollment'])->name('inscriptions.review');
             Route::get('inscriptions/{inscriptionClasse}/fiche-academique', [AgentPortalController::class, 'downloadAcademicSheet'])->name('inscriptions.fiche-academique');
             Route::get('requetes', [AgentPortalController::class, 'requests'])->name('requetes.index');
             Route::patch('requetes/{requete}/affectation', [AgentPortalController::class, 'routeRequestToTeacher'])->name('requetes.route');
             Route::get('classes/{classe}/bulletins/export-xlsx', [AgentPortalController::class, 'exportBulletins'])->name('bulletins.export');
+            Route::get('classes/{classe}/publications', [AgentPortalController::class, 'publicationHistory'])->name('publications.history');
+            Route::get('classes/{classe}/publications/{periode}/bulletins', [AgentPortalController::class, 'publishedBulletins'])->name('bulletins.published');
             Route::get('notes/transmissions', [AgentPortalController::class, 'gradeTransmissions'])->name('notes.transmissions');
             Route::put('notes/transmissions/{transmission}/numerisation', [AgentPortalController::class, 'digitizeGradeTransmission'])->name('notes.transmissions.digitize');
-            Route::patch('notes/transmissions/{transmission}/retour', [AgentPortalController::class, 'returnGradeTransmission'])->name('notes.transmissions.return');
+            Route::post('notes/transmissions/{transmission}/retour', [AgentPortalController::class, 'returnGradeTransmission'])->name('notes.transmissions.return');
+            Route::get('notes/transmissions/{transmission}/proces-verbal', [AgentPortalController::class, 'downloadGradeTransmissionMinutes'])->name('notes.transmissions.minutes');
+            Route::post('notes/transmissions/{transmission}/publier', [AgentPortalController::class, 'publishGradeTransmission'])->name('notes.transmissions.publish');
             Route::get('classes/{classe}/apercu-bulletins', [AgentPortalController::class, 'bulletinPreview'])->name('bulletins.preview');
+            Route::get('classes/{classe}/proces-verbaux-ue', [AgentPortalController::class, 'unitMinutes'])->name('bulletins.unit-minutes');
+            Route::get('classes/{classe}/proces-verbal-requetes', [AgentPortalController::class, 'requestMinutes'])->name('requetes.minutes');
             Route::post('classes/{classe}/publications', [AgentPortalController::class, 'publish'])->name('publications.store');
             Route::get('publication/regles', [AgentPortalController::class, 'publicationRules'])->name('publication.rules');
             Route::get('audit', [AgentPortalController::class, 'audit'])->name('audit.index');
@@ -126,7 +148,10 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
             Route::put('affectations/{affectation}/notes-etudiant', [TeacherPortalController::class, 'saveStudentGrades'])->name('affectations.notes.student.save');
             Route::post('affectations/{affectation}/evaluations/{evaluation}/notes/transmettre', [TeacherPortalController::class, 'transmitGrades'])->name('affectations.notes.transmettre');
             Route::patch('transmissions-notes/{transmission}', [TeacherPortalController::class, 'decideTransmission'])->name('transmissions-notes.decide');
+            Route::get('transmissions-notes/{transmission}/proces-verbal', [TeacherPortalController::class, 'downloadGradeTransmissionMinutes'])->name('transmissions-notes.minutes');
             Route::post('affectations/{affectation}/evaluations/{evaluation}/notes/importer', [TeacherPortalController::class, 'importGrades'])->name('affectations.notes.importer');
+            Route::get('affectations/{affectation}/evaluations/{evaluation}/notes/modele', [TeacherPortalController::class, 'exportEvaluationGradeTemplate'])->name('affectations.notes.modele-evaluation');
+            Route::post('affectations/{affectation}/evaluations/{evaluation}/notes/apercu-import', [TeacherPortalController::class, 'previewEvaluationGradeImport'])->name('affectations.notes.apercu-import');
             Route::post('affectations/{affectation}/notes/importer-classe', [TeacherPortalController::class, 'previewGradebookImport'])->name('affectations.notes.importer-classe');
             Route::post('affectations/{affectation}/profil-evaluation/proposition', [TeacherPortalController::class, 'proposeEvaluationProfile'])->name('affectations.evaluation-profile.propose');
             Route::patch('affectations/{affectation}/notes/{note}/retrait', [TeacherPortalController::class, 'removeGrade'])->name('affectations.notes.retrait');

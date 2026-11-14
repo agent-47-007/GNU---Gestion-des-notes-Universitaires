@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -52,6 +53,22 @@ class StudentApiClient {
   Future<void> Function()? onUnauthorized;
   bool get isAuthenticated => token != null;
 
+  Future<Map<String, dynamic>> accountRequestStructure() async =>
+      _map((await _send(
+        'GET',
+        '/auth/demandes-compte/departements',
+        authenticated: false,
+      ))['data']) ?? {};
+
+  Future<void> submitAccountRequest(Map<String, dynamic> data) async {
+    await _send(
+      'POST',
+      '/auth/demandes-compte',
+      body: data,
+      authenticated: false,
+    );
+  }
+
   Future<Map<String, dynamic>> login(String login, String password) async {
     final response = await _send(
       'POST',
@@ -59,7 +76,8 @@ class StudentApiClient {
       body: {
         'login': login.trim(),
         'password': password,
-        'device_name': 'GNU Web · $_roleKey',
+        'device_name':
+            'GNU ${kIsWeb ? 'Web' : defaultTargetPlatform.name} · $_roleKey',
       },
       authenticated: false,
     );
@@ -95,8 +113,10 @@ class StudentApiClient {
       user = profile;
       return true;
     } on ApiFailure catch (error) {
-      await clearSession();
-      if (error.statusCode == 401 || error.statusCode == 403) return false;
+      if (error.statusCode == 401 || error.statusCode == 403) {
+        await clearSession();
+        return false;
+      }
       rethrow;
     }
   }
@@ -227,6 +247,36 @@ class StudentApiClient {
         'Impossible de générer le modèle Excel du carnet.',
       );
 
+  Future<Uint8List> teacherExportEvaluationTemplate(
+    int assignmentId,
+    int evaluationId,
+  ) async => _downloadBytes(
+    '/enseignant/affectations/$assignmentId/evaluations/$evaluationId/notes/modele',
+    'Impossible de télécharger le modèle de notes.',
+  );
+
+  Future<Map<String, dynamic>> teacherPreviewEvaluationImport(
+    int assignmentId,
+    int evaluationId, {
+    required String filename,
+    required Uint8List file,
+  }) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse(
+        '$baseUrl/enseignant/affectations/$assignmentId/evaluations/$evaluationId/notes/apercu-import',
+      ),
+    );
+    request.headers.addAll(_headers());
+    request.files.add(
+      http.MultipartFile.fromBytes('fichier', file, filename: filename),
+    );
+    return _decodeAuthenticated(
+      await http.Response.fromStream(await _client.send(request)),
+      true,
+    );
+  }
+
   Future<Map<String, dynamic>> teacherSaveEvaluationPlan(
     int assignmentId, {
     required List<Map<String, dynamic>> evaluations,
@@ -261,6 +311,13 @@ class StudentApiClient {
       body: {'decision': decision, 'motif': reason},
     );
   }
+
+  Future<Uint8List> teacherDownloadGradeTransmissionMinutes(
+    int transmissionId,
+  ) async => _downloadBytes(
+    '/enseignant/transmissions-notes/$transmissionId/proces-verbal',
+    'Impossible de télécharger le procès-verbal retourné par la cellule.',
+  );
 
   Future<List<Map<String, dynamic>>> teacherProvisionalBulletins(
     int assignmentId, {
@@ -397,6 +454,13 @@ class StudentApiClient {
   Future<List<Map<String, dynamic>>> teacherNotifications() async =>
       _list((await _send('GET', '/enseignant/notifications'))['data']);
 
+  Future<List<Map<String, dynamic>>> agentNotifications() async =>
+      _list((await _send('GET', '/agent/notifications'))['data']);
+
+  Future<void> agentMarkNotificationRead(int id) async {
+    await _send('PATCH', '/agent/notifications/$id/lue');
+  }
+
   Future<void> teacherMarkNotificationRead(int id) async {
     await _send('PATCH', '/enseignant/notifications/$id/lue');
   }
@@ -457,11 +521,14 @@ class StudentApiClient {
   Future<Map<String, dynamic>> agentDashboard() async =>
       _map((await _send('GET', '/agent/dashboard'))['data']) ?? {};
 
-  Future<List<Map<String, dynamic>>> agentClasses({bool allYears = false}) async =>
-      _list((await _send(
-        'GET',
-        '/agent/classes${allYears ? '?toutes_annees=1' : ''}',
-      ))['data']);
+  Future<List<Map<String, dynamic>>> agentClasses({
+    bool allYears = false,
+  }) async => _list(
+    (await _send(
+      'GET',
+      '/agent/classes${allYears ? '?toutes_annees=1' : ''}',
+    ))['data'],
+  );
 
   Future<List<Map<String, dynamic>>> academicYears() async =>
       _list((await _send('GET', '/referentiels/annees-academiques'))['data']);
@@ -565,6 +632,21 @@ class StudentApiClient {
   Future<List<Map<String, dynamic>>> agentAccounts() async =>
       _list((await _send('GET', '/agent/comptes'))['data']);
 
+  Future<List<Map<String, dynamic>>> agentAccountRequests() async =>
+      _list((await _send('GET', '/agent/demandes-comptes'))['data']);
+
+  Future<Map<String, dynamic>> agentDecideAccountRequest(
+    int requestId, {
+    required String decision,
+    required String reason,
+  }) async {
+    return _send(
+      'PATCH',
+      '/agent/demandes-comptes/$requestId',
+      body: {'decision': decision, 'motif': reason},
+    );
+  }
+
   Future<void> agentSetAccountStatus(
     int userId, {
     required bool active,
@@ -574,6 +656,14 @@ class StudentApiClient {
       'PATCH',
       '/agent/comptes/$userId/statut',
       body: {'actif': active, 'motif': reason},
+    );
+  }
+
+  Future<void> agentDeleteAccount(int userId, {required String reason}) async {
+    await _send(
+      'DELETE',
+      '/agent/comptes/$userId',
+      body: {'motif': reason},
     );
   }
 
@@ -607,8 +697,16 @@ class StudentApiClient {
     await _send('PATCH', '/agent/affectations/$id', body: {'actif': active});
   }
 
+  Future<void> agentSetGradeManager(int assignmentId, int teacherId) async {
+    await _send(
+      'PATCH',
+      '/agent/affectations/$assignmentId/responsable-notes',
+      body: {'enseignant_id': teacherId},
+    );
+  }
+
   Future<List<Map<String, dynamic>>> agentEnrollments() async =>
-      _list((await _send('GET', '/agent/inscriptions?statut=SOUMISE'))['data']);
+      _list((await _send('GET', '/agent/inscriptions'))['data']);
 
   Future<void> agentReviewEnrollment(
     int id, {
@@ -636,14 +734,39 @@ class StudentApiClient {
 
   Future<void> agentReturnGradeTransmission(
     int transmissionId, {
+    required String filename,
+    required Uint8List pdfFile,
     String reason = '',
   }) async {
-    await _send(
-      'PATCH',
-      '/agent/notes/transmissions/$transmissionId/retour',
-      body: {'motif': reason},
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/agent/notes/transmissions/$transmissionId/retour'),
+    );
+    request.headers.addAll(_headers());
+    request.fields['motif'] = reason;
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'proces_verbal',
+        pdfFile,
+        filename: filename,
+      ),
+    );
+    await _decodeAuthenticated(
+      await http.Response.fromStream(await _client.send(request)),
+      true,
     );
   }
+
+  Future<void> agentPublishGradeTransmission(int transmissionId) async {
+    await _send('POST', '/agent/notes/transmissions/$transmissionId/publier');
+  }
+
+  Future<Uint8List> agentDownloadGradeTransmissionMinutes(
+    int transmissionId,
+  ) async => _downloadBytes(
+    '/agent/notes/transmissions/$transmissionId/proces-verbal',
+    'Impossible de télécharger le procès-verbal.',
+  );
 
   Future<void> agentDigitizeGradeTransmission(
     int transmissionId, {
@@ -681,14 +804,61 @@ class StudentApiClient {
       ) ??
       {};
 
+  Future<Map<String, dynamic>> agentUnitMinutes(
+    int classId,
+    String period,
+  ) async =>
+      _map(
+        (await _send(
+          'GET',
+          '/agent/classes/$classId/proces-verbaux-ue?periode=$period',
+        ))['data'],
+      ) ??
+      {};
+
+  Future<Map<String, dynamic>> agentRequestMinutes(
+    int classId,
+    String period,
+  ) async =>
+      _map(
+        (await _send(
+          'GET',
+          '/agent/classes/$classId/proces-verbal-requetes?periode=$period',
+        ))['data'],
+      ) ??
+      {};
+
   Future<Uint8List> agentExportBulletins(
     int classId,
     String period, {
     bool published = false,
+    int? version,
   }) async => _downloadBytes(
-    '/agent/classes/$classId/bulletins/export-xlsx?periode=$period&source=${published ? 'PUBLIE' : 'APERCU'}',
+    '/agent/classes/$classId/bulletins/export-xlsx?periode=$period&source=${published ? 'PUBLIE' : 'APERCU'}${version == null ? '' : '&version=$version'}',
     'Impossible d’exporter les bulletins Excel.',
   );
+
+  Future<Map<String, dynamic>> agentPublicationHistory(int classId) async =>
+      _map(
+        (await _send(
+          'GET',
+          '/agent/classes/$classId/publications',
+        ))['data'],
+      ) ??
+      {};
+
+  Future<Map<String, dynamic>> agentPublishedBulletins(
+    int classId,
+    String period, {
+    int? version,
+  }) async =>
+      _map(
+        (await _send(
+          'GET',
+          '/agent/classes/$classId/publications/$period/bulletins${version == null ? '' : '?version=$version'}',
+        ))['data'],
+      ) ??
+      {};
 
   Future<void> agentPublish(
     int classId,
@@ -711,8 +881,9 @@ class StudentApiClient {
   Future<List<Map<String, dynamic>>> agentRetakeSessions() async =>
       _list((await _send('GET', '/agent/rattrapages/sessions'))['data']);
 
-  Future<List<Map<String, dynamic>>> agentNormalExamSessions() async =>
-      _list((await _send('GET', '/agent/evaluations/sessions-normales'))['data']);
+  Future<List<Map<String, dynamic>>> agentNormalExamSessions() async => _list(
+    (await _send('GET', '/agent/evaluations/sessions-normales'))['data'],
+  );
 
   Future<void> agentScheduleNormalExam(
     int evaluationId, {
@@ -857,6 +1028,30 @@ class StudentApiClient {
     ))['data'],
   );
 
+  Future<void> archiveBulletinPdf(
+    int bulletinId, {
+    required String filename,
+    required Uint8List file,
+  }) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/etudiant/resultats/$bulletinId/document'),
+    );
+    request.headers.addAll(_headers());
+    request.files.add(
+      http.MultipartFile.fromBytes('fichier', file, filename: filename),
+    );
+    await _decodeAuthenticated(
+      await http.Response.fromStream(await _client.send(request)),
+      true,
+    );
+  }
+
+  Future<Uint8List> studentBulletinPdf(int bulletinId) async => _downloadBytes(
+    '/etudiant/resultats/$bulletinId/document',
+    'Impossible de télécharger le bulletin PDF archivé.',
+  );
+
   Future<Map<String, dynamic>> provisionalResults({
     String period = 'S1',
   }) async =>
@@ -867,6 +1062,10 @@ class StudentApiClient {
         ))['data'],
       ) ??
       {};
+
+  Future<List<Map<String, dynamic>>> studentEvaluationMinutes() async => _list(
+    (await _send('GET', '/etudiant/proces-verbaux-evaluations'))['data'],
+  );
 
   Future<List<Map<String, dynamic>>> requests() async =>
       _list((await _send('GET', '/etudiant/requetes'))['data']);
@@ -967,17 +1166,31 @@ class StudentApiClient {
         },
       );
     }
-    final request = http.Request(method, uri)
+    final abort = Completer<void>();
+    final request = http.AbortableRequest(
+      method,
+      uri,
+      abortTrigger: abort.future,
+    )
       ..headers.addAll(_headers(authenticated: authenticated));
     if (body != null) {
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode(body);
     }
-    final streamed = await _client.send(request);
-    return _decodeAuthenticated(
-      await http.Response.fromStream(streamed),
-      authenticated,
-    );
+    try {
+      final streamed = await _client
+          .send(request)
+          .timeout(const Duration(seconds: 30));
+      final response = await http.Response.fromStream(
+        streamed,
+      ).timeout(const Duration(seconds: 30));
+      return _decodeAuthenticated(response, authenticated);
+    } on TimeoutException {
+      if (!abort.isCompleted) abort.complete();
+      throw const ApiFailure(
+        'Le serveur GNU ne répond pas. Vérifiez votre connexion puis réessayez.',
+      );
+    }
   }
 
   Future<Map<String, dynamic>> _decodeAuthenticated(
@@ -1049,6 +1262,10 @@ String _resolveApiBaseUrl(String? override) {
       throw const ApiFailure(
         'GNU_API_BASE_URL doit être définie pour une version de production.',
       );
+    }
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      // Android emulators reach the development host through this alias.
+      return 'http://10.0.2.2:8000/api/v1';
     }
     return 'http://127.0.0.1:8000/api/v1';
   }

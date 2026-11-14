@@ -1214,7 +1214,7 @@ class _FeaturePageState extends State<FeaturePage> {
             Text('        ↳ Licence 2'),
             SizedBox(height: 24),
             Text(
-              'La création détaillée des facultés, EC et versions de programmes sera raccordée au catalogue serveur.',
+              'La création détaillée des facultés, UE et EC sera raccordée au catalogue serveur.',
               style: TextStyle(color: palette(context, muted), fontSize: 12),
             ),
           ],

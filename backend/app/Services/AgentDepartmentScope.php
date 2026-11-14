@@ -69,10 +69,21 @@ class AgentDepartmentScope
             ->join('gnu.filiere as f', 'f.id', '=', 'n.filiere_id')
             ->whereIn('f.departement_id', $departmentIds)
             ->pluck('e.utilisateur_id');
+        // Keep accounts visible after approval even before their first
+        // class registration or pedagogical assignment.
+        $approvedAccountIds = DB::table('gnu.demande_compte as dc')
+            ->join('gnu.utilisateur as u', 'u.id', '=', 'dc.utilisateur_cree_id')
+            ->whereIn('dc.role', ['ETUDIANT', 'ENSEIGNANT'])
+            ->where('dc.statut', 'APPROUVEE')
+            ->whereNotNull('dc.utilisateur_cree_id')
+            ->whereColumn('u.role', 'dc.role')
+            ->whereIn('dc.departement_id', $departmentIds)
+            ->pluck('dc.utilisateur_cree_id');
         $agentIds = DB::table('gnu.agent_departement')
             ->whereIn('departement_id', $departmentIds)
             ->pluck('agent_id');
 
-        return $studentIds->concat($teacherIds)->concat($agentIds)->unique()->map(static fn (mixed $id): int => (int) $id)->values()->all();
+        return $studentIds->concat($teacherIds)->concat($approvedAccountIds)->concat($agentIds)
+            ->unique()->map(static fn (mixed $id): int => (int) $id)->values()->all();
     }
 }

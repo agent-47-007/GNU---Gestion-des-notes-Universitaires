@@ -4,8 +4,8 @@ SET LOCAL search_path = gnu, public;
 
 DO $$
 DECLARE nb_etudiants integer;
-DECLARE nb_ue_actives integer;
 DECLARE nb_inscriptions integer;
+DECLARE inscriptions_mal_reparties integer;
 BEGIN
   SELECT count(*) INTO nb_etudiants
   FROM inscription_classe ic JOIN classe c ON c.id=ic.classe_id
@@ -14,20 +14,29 @@ BEGIN
     RAISE EXCEPTION 'Validation interrompue : % étudiants au lieu de 35', nb_etudiants;
   END IF;
 
-  SELECT count(*) INTO nb_ue_actives
-  FROM ue u JOIN classe c ON c.niveau_id=u.niveau_id
-  WHERE c.code_classe='INF-L3-2025-2026' AND u.statut_catalogue='ACTIF';
-  IF nb_ue_actives <> 10 THEN
-    RAISE EXCEPTION 'Validation interrompue : % UE actives au lieu de 10', nb_ue_actives;
-  END IF;
-
   SELECT count(*) INTO nb_inscriptions
   FROM inscription_ue iu
   JOIN inscription_classe ic ON ic.id=iu.inscription_classe_id
   JOIN classe c ON c.id=ic.classe_id
   WHERE c.code_classe='INF-L3-2025-2026';
-  IF nb_inscriptions <> 350 THEN
-    RAISE EXCEPTION 'Validation interrompue : % inscriptions UE au lieu de 350', nb_inscriptions;
+  IF nb_inscriptions <> 420 THEN
+    RAISE EXCEPTION 'Validation interrompue : % inscriptions UE au lieu de 420 (12 par étudiant)', nb_inscriptions;
+  END IF;
+
+  SELECT count(*) INTO inscriptions_mal_reparties
+  FROM (
+    SELECT ic.id
+    FROM inscription_classe ic
+    JOIN classe c ON c.id=ic.classe_id
+    LEFT JOIN inscription_ue iu ON iu.inscription_classe_id=ic.id
+    LEFT JOIN ue u ON u.id=iu.ue_id
+    WHERE c.code_classe='INF-L3-2025-2026'
+    GROUP BY ic.id
+    HAVING count(iu.id) FILTER (WHERE u.numero_semestre=1) <> 6
+        OR count(iu.id) FILTER (WHERE u.numero_semestre=2) <> 6
+  ) incorrect;
+  IF inscriptions_mal_reparties <> 0 THEN
+    RAISE EXCEPTION 'Validation interrompue : % étudiant(s) n’ont pas exactement 6 UE dans chaque semestre', inscriptions_mal_reparties;
   END IF;
 END $$;
 

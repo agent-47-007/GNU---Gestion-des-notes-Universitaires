@@ -1,4 +1,89 @@
-\documentclass[11pt,a4paper]{article}
+Je agent-47@007-thinkpad-x250:~/Téléchargements/GNU---Gestion-des-notes-Universitaires$ git add -A
+git status
+git commit -m "Mise à jour du projet"
+git push origin main
+Sur la branche main
+Votre branche est à jour avec 'origin/main'.
+
+rien à valider, la copie de travail est propre
+Sur la branche main
+Votre branche est à jour avec 'origin/main'.
+
+rien à valider, la copie de travail est propre
+Everything up-to-date
+agent-47@007-thinkpad-x250:~/Téléchargements/GNU---Gestion-des-notes-Universitaires$ 
+
+
+
+
+rien à valider, la copie de travail est propre
+Everything up-to-date
+agent-47@007-thinkpad-x250:~/Téléchargements/GNU---Gestion-des-notes-Universitaires$ pwd
+git status --short --branch
+/home/agent-47/Téléchargements/GNU---Gestion-des-notes-Universitaires
+## main...origin/main
+agent-47@007-thinkpad-x250:~/Téléchargements/GNU---Gestion-des-notes-Universitaires$ 
+
+
+
+ HARMONISATION_PROGRAMMES_MASTER_DEPTINFO_GRILLES-21-11-04-14H.pdf                docs
+ README.md                                                                        frontend
+'RECEUIL DES BESOINS.docx'                                                        output
+e700437 (HEAD -> main, origin/main, origin/HEAD) Mise à jour du projet
+origin  https://github.com/agent-47-007/GNU---Gestion-des-notes-Universitaires.git (fetch)
+origin  https://github.com/agent-47-007/GNU---Gestion-des-notes-Universitaires.git (push)
+agent-47@007-thinkpad-x250:~/Téléchargements/GNU---Gestion-des-notes-Universit
+aires$ git add -A
+git status
+git commit -m "Mise à jour du projet"
+git push origin main
+Sur la branche main
+Votre branche est à jour avec 'origin/main'.
+
+rien à valider, la copie de travail est propre
+Sur la branche main
+Votre branche est à jour avec 'origin/main'.
+
+rien à valider, la copie de travail est propre
+To https://github.com/agent-47-007/GNU---Gestion-des-notes-Universitaires.git
+ ! [rejected]        main -> main (fetch first)
+error: impossible de pousser des références vers 'https://github.com/agent-47-007/GNU---Gestion-des-notes-Universitaires.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. This is usually caused by another repository pushing to
+hint: the same ref. If you want to integrate the remote changes, use
+hint: 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+agent-47@007-thinkpad-x250:~/Téléchargements/GNU---Gestion-des-notes-Universit
+aires$ 
+ HARMONISATION_PROGRAMMES_MASTER_DEPTINFO_GRILLES-21-11-04-14H.pdf                docs
+ README.md                                                                        frontend
+'RECEUIL DES BESOINS.docx'                                                        output
+e700437 (HEAD -> main, origin/main, origin/HEAD) Mise à jour du projet
+origin  https://github.com/agent-47-007/GNU---Gestion-des-notes-Universitaires.git (fetch)
+origin  https://github.com/agent-47-007/GNU---Gestion-des-notes-Universitaires.git (push)
+agent-47@007-thinkpad-x250:~/Téléchargements/GNU---Gestion-des-notes-Universit
+aires$ git add -A
+git status
+git commit -m "Mise à jour du projet"
+git push origin main
+Sur la branche main
+Votre branche est à jour avec 'origin/main'.
+
+rien à valider, la copie de travail est propre
+Sur la branche main
+Votre branche est à jour avec 'origin/main'.
+
+rien à valider, la copie de travail est propre
+To https://github.com/agent-47-007/GNU---Gestion-des-notes-Universitaires.git
+ ! [rejected]        main -> main (fetch first)
+error: impossible de pousser des références vers 'https://github.com/agent-47-007/GNU---Gestion-des-notes-Universitaires.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. This is usually caused by another repository pushing to
+hint: the same ref. If you want to integrate the remote changes, use
+hint: 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+agent-47@007-thinkpad-x250:~/Téléchargements/GNU---Gestion-des-notes-Universit
+aires$ \documentclass[11pt,a4paper]{article}
 
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
@@ -143,12 +228,12 @@ Responsable de publication & Classe, période et publication autorisées & Publi
 \section{Référentiel académique et données}
 
 \subsection{Structure institutionnelle}
-La hiérarchie de référence est : Université, Faculté, Département, Filière, Spécialité lorsqu'elle s'applique, Niveau, Classe et Année académique. Une classe est l'instance annuelle d'un niveau et d'une version de programme. Le système doit conserver le rattachement historique des inscriptions et des bulletins à la classe et à l'année d'origine.
+La hiérarchie de référence est : Université, Faculté, Département, Filière, Spécialité lorsqu'elle s'applique, Niveau, Classe et Année académique. Une classe est l'instance annuelle d'un niveau. Le catalogue du niveau est unique et une mise à jour remplace ses données courantes. Le système conserve le rattachement historique des inscriptions et des bulletins à la classe et à l'année d'origine.
 
 \subsection{Catalogue pédagogique}
-Le catalogue contient les UE et leurs éléments constitutifs, appelés EC ou matières dans le recueil initial. Chaque UE précise au minimum son code, son intitulé, son niveau, son semestre, sa version de programme, sa catégorie, son nombre de crédits, son profil d'évaluation et son statut. Chaque EC précise son code, son intitulé, son rang, son nombre de crédits et l'UE parente.
+Le catalogue contient les UE et leurs éléments constitutifs, appelés EC ou matières dans le recueil initial. Il contient une UE par code dans chaque niveau. Chaque UE précise au minimum son code, son intitulé, son niveau, son semestre, sa catégorie, son nombre de crédits, son profil d'évaluation et son statut. Chaque EC précise son code, son intitulé, son rang, son nombre de crédits et l'UE parente.
 
-Les codes techniques d'EC créés par l'application ne doivent pas être présentés comme des codes réglementaires lorsque les documents académiques n'en fournissent pas. Une UE active dispose normalement d'un ou deux EC dans le catalogue GNU. L'UE INF500 (mémoire M2-S2, 60 crédits) fait exception : le syllabus la définit comme une UE sans EC. Pour les autres UE, la somme des crédits EC doit correspondre aux crédits de l'UE, sauf anomalie de programme documentée et approuvée.
+Les codes techniques d'EC créés par l'application ne doivent pas être présentés comme des codes réglementaires lorsque les documents académiques n'en fournissent pas. Une UE active doit disposer d'un ou deux EC dans le catalogue GNU. La somme des crédits EC doit correspondre aux crédits de l'UE, sauf anomalie de programme documentée et approuvée.
 
 \subsection{Entités conceptuelles}
 \begin{longtable}{L{3.3cm}L{12.0cm}}
@@ -162,7 +247,7 @@ Les codes techniques d'EC créés par l'application ne doivent pas être présen
 \endhead
 Université, faculté, département & Codes, noms, statut et liens hiérarchiques parent-enfant. Les codes sont uniques dans leur périmètre. \\
 Filière, spécialité, niveau & Code et libellé; filière de rattachement; spécialité facultative; cycle et ordre du niveau. \\
-Année académique, classe & Dates et libellé de l'année; niveau, filière/version de programme, code de classe, effectif indicatif et état d'ouverture. \\
+Année académique, classe & Dates et libellé de l'année; niveau, filière, code de classe, effectif indicatif et état d'ouverture. \\
 UE, EC & Codes, libellés, semestre, crédits, statut du catalogue, catégorie, rang d'EC et profil d'évaluation. \\
 Utilisateur et profils & Identifiant de connexion, données d'identité, rôle, état du compte et profil étudiant, enseignant ou agent. Les secrets ne sont jamais conservés en clair. \\
 Affectation & Classe, année, EC, enseignant responsable, dates de validité et état actif/inactif. \\
@@ -182,7 +267,7 @@ Notification et journal d'audit & Destinataire, type, contenu, date de lecture; 
 
 \subsection{Inscriptions pédagogiques}
 \begin{enumerate}
-  \item Une inscription pédagogique est rattachée à une inscription de classe validée, à une année académique, à une version de programme et à un semestre.
+  \item Une inscription pédagogique est rattachée à une inscription de classe validée, à une année académique, au catalogue unique du niveau et à un semestre.
   \item Hors M2, l'étudiant régulier choisit exactement six UE par semestre parmi celles proposées.
   \item En M2, seul le S2 est ouvert; le catalogue GNU contient l'UE de mémoire.
   \item Le redoublant reprend les UE non acquises de son bulletin de référence. Les UE déjà acquises sont conservées et ne sont pas recomposées. Toute reprise porte le type d'inscription \texttt{REPRISE}; toute UE conservée porte le type \texttt{CONSERVEE}.
@@ -247,8 +332,8 @@ La décision annuelle est \textbf{ADMIS} si et seulement si les conditions cumul
 
 \subsection{Rattrapage}
 \begin{itemize}
-  \item Une UE publiée avec une note de 0/20 à 9/20 ouvre droit au rattrapage, si l'étudiant n'a pas déjà consommé sa session unique. Pour une note strictement supérieure à 7,5/20 et inférieure à 10/20, le rattrapage est facultatif; à 7,5/20 ou moins, il est obligatoire.
-  \item Une note de 10/20 ou plus n'est pas admissible au rattrapage.
+  \item Une UE publiée avec une note comprise entre 5/20 inclus et 10/20 exclu peut ouvrir droit à une candidature, si l'étudiant n'a pas déjà consommé sa session unique.
+  \item Une note exactement égale à 10/20 n'est pas admissible au rattrapage. Une note inférieure à 5/20 n'y est pas admissible selon la règle fixe GNU.
   \item Le rattrapage porte sur la session normale de l'EC concerné lorsque la note SN de cet EC est strictement inférieure à 50/100. Les évaluations CC, TP ou TPE ne sont pas recréées comme session de rattrapage.
   \item L'étudiant choisit une session ouverte correspondant à sa classe et à l'UE. La cellule achemine sa candidature aux enseignants responsables; l'enseignant autorise ou refuse chaque EC avec un motif. La candidature n'est effective qu'après autorisation.
   \item Une seule session peut être consommée pour une UE et une année. L'absence à la session est enregistrée comme telle et consomme la tentative selon la règle officielle.
@@ -268,8 +353,8 @@ La décision annuelle est \textbf{ADMIS} si et seulement si les conditions cumul
 
 \subsection{Structure et catalogue}
 \req{F-01}{Administrer la structure académique}{L'administrateur système crée et modifie universités et facultés. Les agents gèrent les départements, filières, spécialités, niveaux et classes dans leur périmètre. Le système refuse les codes dupliqués et les rattachements incohérents.}
-\req{F-02}{Gérer les années et classes}{L'agent ouvre une classe pour une année, un niveau et une version de programme; il consulte et corrige ses inscriptions. Une classe déjà liée à des résultats officiels ne peut être supprimée; elle peut être clôturée.}
-\req{F-03}{Gérer les UE et EC}{L'agent crée, modifie, active ou met en brouillon les UE et leurs EC, crédits, semestre, catégorie, version de programme et profil de notation. Une UE active doit satisfaire les cardinalités et contrôles de crédits du catalogue.}
+\req{F-02}{Gérer les années et classes}{L'agent ouvre une classe pour une année et un niveau; elle utilise le catalogue unique du niveau. Il consulte et corrige ses inscriptions. Une classe déjà liée à des résultats officiels ne peut être supprimée; elle peut être clôturée.}
+\req{F-03}{Gérer les UE et EC}{L'agent crée, modifie, active ou met en brouillon les UE et leurs EC, crédits, semestre, catégorie et profil de notation. Une mise à jour remplace les données de l'UE existante dans le niveau. Une UE active doit satisfaire les cardinalités et contrôles de crédits du catalogue.}
 \req{F-04}{Affecter les enseignants}{L'agent associe un enseignant à un EC et une classe/année, précise le périmètre et active ou clôt l'affectation. Un enseignant non affecté ou dont le compte est inactif ne peut saisir, transmettre ou vérifier les notes de ce périmètre.}
 \req{F-05}{Configurer le profil d'évaluation}{L'agent confirme un des trois profils officiels. L'enseignant peut soumettre une proposition, mais ne peut pas activer lui-même un profil non approuvé.}
 
@@ -322,7 +407,7 @@ La décision annuelle est \textbf{ADMIS} si et seulement si les conditions cumul
 
 \subsection{Inscription}
 \begin{enumerate}
-  \item L'établissement ouvre l'année et les classes, active la version de programme et publie le calendrier d'inscription.
+  \item L'établissement ouvre l'année et les classes, vérifie le catalogue unique de chaque niveau et publie le calendrier d'inscription.
   \item L'étudiant consulte ses UE et crée son brouillon.
   \item Il soumet la sélection; le système contrôle les règles et bloque la modification.
   \item L'agent examine et valide ou refuse avec motif.
@@ -397,7 +482,7 @@ R-05 & Valider chacun des trois profils d'évaluation & Les profils 30/70, 20/20
 R-06 & Laisser une note manquante ou déclarer une absence & Le statut reste distinct d'une note zéro; le calcul officiel/publication est bloqué ou une décision autorisée est requise. \\
 R-07 & Vérifier le barème aux seuils 30, 35, 40, 45, 50, 55, 60, 65, 70, 75 et 80/100 & Les cotes et points correspondent exactement à la grille officielle. \\
 R-08 & Calculer l'admission avec MGP 2,00 et toutes les UE à 35/100 ou plus, sans élimination & La décision annuelle est ADMIS. À MGP 1,99, avec une UE sous 35 ou une élimination, elle est ÉCHEC. \\
-R-09 & Vérifier le rattrapage avec 0; 7,5; 7,51; 9; puis 10/20 & 0 à 9 sont admissibles si une session reste disponible; jusqu’à 7,5 le rattrapage est obligatoire, au-dessus facultatif; 10 est refusé. \\
+R-09 & Candidater au rattrapage avec 4,99; 5; 9,99; puis 10/20 & 4,99 et 10 sont refusés; 5 et 9,99 sont admissibles si une session reste disponible. \\
 R-10 & Candidater une deuxième fois à une UE déjà consommée & La demande est refusée et aucune nouvelle candidature n'est créée. \\
 R-11 & Tenter une requête pour une note non manquante ou évaluation non réalisée & La requête est refusée; une évaluation réalisée sans note peut faire l'objet d'une seule requête ouverte. \\
 R-12 & Déposer une contestation après la fenêtre de 48 heures & Le système refuse la requête et indique que le délai est dépassé. \\
@@ -425,15 +510,15 @@ Les règles ci-dessous ne sont pas inventées dans cette version. Le maître d'o
   \item \textbf{Affectations multiples :} si plusieurs enseignants interviennent sur un même EC, qui est responsable de la transmission, de la réponse aux requêtes et de la vérification finale?
 \end{enumerate}
 
-\section{Clôture des écarts connus}
+\section{Écarts connus à traiter dans l'application}
 
-Les divergences historiques ci-dessous sont résolues dans l'état fonctionnel accepté le 3 novembre 2026 :
+Cette section sépare le besoin cible de l'état du code. Elle ne change pas les règles fixes définies plus haut.
 \begin{itemize}
-  \item La borne de rattrapage est \(0 \leq \mathrm{note} < 10\); le rattrapage est obligatoire à \(\mathrm{note} \leq 7{,}5\) et facultatif au-dessus jusqu'à moins de 10.
-  \item Les tests backend couvrent les limites d'admissibilité, l'obligation à 7,5 et la limite d'une session.
-  \item Les tests Flutter ont été réalignés sur l'authentification et les parcours actuellement exposés.
+  \item La configuration actuelle accepte exactement 10/20 au rattrapage alors que la règle cible est une borne supérieure exclue. L'implémentation et son libellé de configuration doivent être alignés sur \(5 \leq \mathrm{note} < 10\).
+  \item La suite backend contient un test qui attend le refus à 10/20; il révèle actuellement cette divergence.
+  \item Les tests Flutter référencent des méthodes et libellés qui ne correspondent plus à l'API et aux écrans actuels. Ils doivent être réalignés avant de servir de preuve de recette.
+  \item La publication doit rester bloquée en environnement où aucun administrateur système n'est configuré ou où les règles n'ont pas été approuvées et leur empreinte enregistrée.
 \end{itemize}
-La publication reste volontairement impossible sans administrateur système configuré, règles approuvées et empreinte enregistrée; ces contrôles sont des conditions d'autorisation, pas des défauts à contourner.
 
 \section{Traçabilité avec le recueil initial}
 

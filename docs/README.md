@@ -7,4 +7,5 @@ Le dépôt contient le cahier des charges, les règles métier, les audits histo
 - `audit/09_validation_production.md` — fonctionnalités acceptées, vérifications locales et prérequis de livraison institutionnelle.
 - `FRONTEND_PROGRESS.md` — état du client Flutter.
 - `guide-tests-manuels.md` — démarrage et scénarios locaux.
+- `cas-utilisation-et-scenarios-tests.md` — acteurs, cas d’utilisation et scénarios de recette fonctionnelle.
 - `imports/` — scripts et données de référence du catalogue; vérifier l’environnement avant exécution.

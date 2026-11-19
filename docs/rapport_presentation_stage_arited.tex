@@ -1,0 +1,412 @@
+\documentclass[aspectratio=169,12pt]{beamer}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+\usepackage{listings}
+\usepackage{hyperref}
+
+\definecolor{GNUteal}{HTML}{0E8172}
+\definecolor{GNUdark}{HTML}{183C42}
+\definecolor{GNUink}{HTML}{20343A}
+\definecolor{GNUmist}{HTML}{EAF4F1}
+\definecolor{GNUmuted}{HTML}{647982}
+\setbeamercolor{normal text}{fg=GNUink,bg=white}
+\setbeamercolor{structure}{fg=GNUteal}
+\setbeamercolor{frametitle}{fg=GNUdark,bg=white}
+\setbeamercolor{title}{fg=white,bg=GNUdark}
+\setbeamercolor{block title}{fg=white,bg=GNUteal}
+\setbeamercolor{block body}{fg=GNUink,bg=GNUmist}
+\setbeamercolor{alerted text}{fg=GNUteal}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{itemize item}{\color{GNUteal}\small$\blacktriangleright$}
+\setbeamertemplate{itemize subitem}{\color{GNUmuted}\tiny$\bullet$}
+\setbeamerfont{title}{size=\LARGE,series=\bfseries}
+\setbeamerfont{frametitle}{size=\large,series=\bfseries}
+\setbeamerfont{normal text}{size=\normalsize}
+\setbeamertemplate{footline}{%
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=.78\paperwidth,ht=2.6ex,dp=1.1ex,leftskip=1.1em]{author in head/foot}%
+      \color{GNUmuted}\scriptsize GNU · Stage ARITED · Présentation du projet
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.22\paperwidth,ht=2.6ex,dp=1.1ex,rightskip=1.2em plus1fil]{date in head/foot}%
+      \color{GNUmuted}\scriptsize \insertframenumber/\inserttotalframenumber
+    \end{beamercolorbox}%
+  }%
+}
+\hypersetup{colorlinks=true,urlcolor=GNUteal,linkcolor=GNUteal}
+\lstset{basicstyle=\ttfamily\small,keywordstyle=\color{GNUteal},breaklines=true,frame=single,rulecolor=\color{GNUmist}}
+
+\title{GNU\\Gestion des notes universitaires}
+\subtitle{Présentation du projet, parcours métier et audit de génération des bulletins}
+\author{Stage ARITED}
+\institute{Université de Yaoundé I · Faculté des Sciences}
+\date{7 novembre 2026}
+
+\begin{document}
+
+\begin{frame}[plain]
+  \vfill
+  {\color{GNUteal}\large STAGE ARITED}\par\vspace{.7em}
+  {\color{GNUdark}\fontsize{30}{34}\selectfont\bfseries GNU}\par
+  {\color{GNUdark}\LARGE Gestion des notes universitaires}\par\vspace{1em}
+  {\color{GNUmuted}\large Présentation fonctionnelle et technique}\par
+  \vspace{1.5em}
+  \begin{tabular}{@{}ll@{}}
+    Examinateur & Dr Thomas Messi NGUE\\
+    Établissement & Université de Yaoundé I · Faculté des Sciences\\
+    Date & 7 novembre 2026
+  \end{tabular}
+  \vfill
+\end{frame}
+
+\begin{frame}{Plan de la présentation}
+  \begin{columns}[T,onlytextwidth]
+    \column{.48\textwidth}
+      \begin{enumerate}
+        \item Contexte, objectifs et utilisateurs
+        \item Parcours des pages et architecture
+        \item Modèle académique et circuit des notes
+      \end{enumerate}
+    \column{.48\textwidth}
+      \begin{enumerate}\setcounter{enumi}{3}
+        \item Calcul, publication et bulletin PDF
+        \item État actuel, limites et feuille de route
+      \end{enumerate}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Contexte et besoin}
+  \begin{block}{Constat métier}
+    Le suivi des notes relie plusieurs intervenants et plusieurs pièces : inscriptions UE, grilles d’évaluation, notes, procès-verbaux, décisions de jury et bulletins.
+  \end{block}
+  \begin{itemize}
+    \item Les informations doivent rester cohérentes entre étudiant, enseignant et cellule informatique.
+    \item La validation doit conserver qui a saisi, numérisé, vérifié et publié chaque résultat.
+    \item Les bulletins doivent refléter les UEs réellement choisies et les règles officielles de calcul.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Objectif du projet}
+  \begin{columns}[T,onlytextwidth]
+    \column{.56\textwidth}
+      \small GNU centralise les parcours académiques et les résultats dans une application web et mobile.
+      \vspace{1em}
+      \begin{itemize}
+        \item Gérer inscriptions, catalogues, affectations et évaluations.
+        \item Contrôler la saisie et la transmission des notes.
+        \item Calculer les résultats, traiter les requêtes et les rattrapages.
+        \item Publier des bulletins consultables par les étudiants.
+      \end{itemize}
+    \column{.38\textwidth}
+      \small\begin{block}{Périmètre présenté}
+        Étudiant\\[.35em]
+        Enseignant\\[.35em]
+        Agent informatique\\[.35em]
+        Administrateur système
+      \end{block}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Les trois espaces et leurs pages}
+  \begin{columns}[T,onlytextwidth]
+    \column{.32\textwidth}
+      \textbf{Étudiant}\par\smallskip
+      Profil et inscription UE\par
+      Fiche académique\par
+      Notes et bulletins\par
+      Requêtes et justificatifs\par
+      Rattrapages et notifications
+    \column{.32\textwidth}
+      \textbf{Enseignant}\par\smallskip
+      Niveaux et affectations\par
+      Grille et carnet de notes\par
+      Import et transmission\par
+      Vérification des numérisations\par
+      Requêtes et rattrapages
+    \column{.32\textwidth}
+      \textbf{Agent informatique}\par\smallskip
+      Vue d’ensemble\par
+      Structure et catalogue\par
+      Comptes, affectations et inscriptions\par
+      Numérisation des notes\par
+      Publication, requêtes et audit
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Parcours de bout en bout}
+  \centering
+  \begin{tikzpicture}[
+    node distance=.55cm,
+    stepnode/.style={draw=GNUteal,rounded corners=2pt,fill=GNUmist,text=GNUdark,align=center,minimum width=2.2cm,minimum height=1.15cm,font=\scriptsize},
+    link/.style={->,>=stealth,thick,color=GNUteal}
+  ]
+    \node[stepnode] (enr) {Inscription\\de l’étudiant};
+    \node[stepnode,right=of enr] (teach) {Saisie et\\brouillon enseignant};
+    \node[stepnode,right=of teach] (cell) {Numérisation\\par la cellule};
+    \node[stepnode,right=of cell] (verify) {Vérification\\enseignant};
+    \node[stepnode,right=of verify] (pub) {Calcul et\\publication};
+    \draw[link] (enr)--(teach);
+    \draw[link] (teach)--(cell);
+    \draw[link] (cell)--(verify);
+    \draw[link] (verify)--(pub);
+  \end{tikzpicture}
+  \vspace{1.3em}
+  \begin{block}{Résultat attendu}
+    Le bulletin publié est un instantané versionné. L’étudiant consulte ensuite le résultat officiel et peut imprimer ou télécharger son relevé PDF.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Architecture générale}
+  \centering
+  \begin{tikzpicture}[
+    node distance=.85cm,
+    layer/.style={draw=GNUteal,rounded corners=2pt,fill=GNUmist,text=GNUdark,align=center,minimum width=3.3cm,minimum height=.92cm},
+    link/.style={->,>=stealth,thick,color=GNUteal}
+  ]
+    \node[layer] (ui) {Flutter Web / Mobile\\Pages par rôle};
+    \node[layer,right=of ui] (api) {API Laravel\\REST · Sanctum};
+    \node[layer,right=of api] (db) {PostgreSQL\\schéma GNU};
+    \node[layer,below=1.05cm of api] (calc) {Fonctions métier SQL\\calcul UE, bulletin, publication};
+    \draw[link] (ui)--node[above,font=\scriptsize]{HTTPS / JSON}(api);
+    \draw[link] (api)--(db);
+    \draw[link] (db)--(calc);
+    \draw[link] (calc)--(api);
+  \end{tikzpicture}
+  \vspace{1.5em}
+  \begin{itemize}
+    \item Flutter ne se connecte jamais directement à PostgreSQL.
+    \item Laravel applique authentification, rôle, périmètre départemental et validation métier.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Structure des pages Flutter}
+  \scriptsize
+  \begin{tabularx}{\textwidth}{@{}>{\bfseries}p{.27\textwidth}X@{}}
+    Fichier & Responsabilité\\\midrule
+    \texttt{main.dart} & Démarrage, configuration API et session\\
+    \texttt{pages.dart} & Routage et sélection de l’espace selon le rôle\\
+    \texttt{student\_portal.dart} & Inscriptions, fiche académique, résultats, requêtes\\
+    \texttt{teacher\_portal.dart} & Affectations, grilles, notes et transmissions\\
+    \texttt{agent\_portal.dart} & Catalogue, comptes, numérisation, publication\\
+    \texttt{api\_client.dart} & Requêtes HTTP, jetons et erreurs API\\
+    \texttt{ui.dart} & Composants partagés de navigation et de présentation\\
+  \end{tabularx}
+\end{frame}
+
+\begin{frame}{Structure du code Laravel}
+  \begin{columns}[T,onlytextwidth]
+    \column{.47\textwidth}
+      \textbf{Entrées API}\par
+      \texttt{routes/api.php} regroupe les routes par rôle et domaine métier.\\[.7em]
+      \textbf{Contrôleurs}\par
+      Authentification, espace étudiant, enseignant, agent et profils.\\[.7em]
+      \textbf{Accès}\par
+      Middleware Sanctum, compte actif, rôle et périmètre agent.
+    \column{.47\textwidth}
+      \textbf{Services}\par
+      \texttt{AcademicRules}, \texttt{AgentDepartmentScope}, lecture et génération des classeurs.\\[.7em]
+      \textbf{Données}\par
+      PostgreSQL, fonctions de calcul, contraintes, migrations d’évolution, audit.\\[.7em]
+      \textbf{Sorties}\par
+      JSON API, classeurs Excel et PDF assemblés dans les clients.
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Modèle académique et données}
+  \begin{columns}[T,onlytextwidth]
+    \column{.55\textwidth}
+      \begin{tikzpicture}[
+        node distance=.46cm,
+        ent/.style={draw=GNUteal,rounded corners=2pt,fill=GNUmist,text=GNUdark,align=center,minimum width=2.4cm,minimum height=.58cm,font=\small},
+        rel/.style={->,>=stealth,color=GNUmuted}
+      ]
+        \node[ent] (struct) {Université · Faculté · Département};
+        \node[ent,below=of struct] (program) {Filière · Spécialité · Niveau};
+        \node[ent,below=of program] (class) {Classe · Année académique};
+        \node[ent,below=of class] (unit) {Inscription UE · UE · EC};
+        \node[ent,below=of unit] (grade) {Évaluation · Note · Transmission};
+        \node[ent,below=of grade] (result) {Bulletin · Publication};
+        \draw[rel] (struct)--(program);
+        \draw[rel] (program)--(class);
+        \draw[rel] (class)--(unit);
+        \draw[rel] (unit)--(grade);
+        \draw[rel] (grade)--(result);
+      \end{tikzpicture}
+    \column{.42\textwidth}
+      \begin{itemize}
+        \item L’inscription pédagogique rattache l’étudiant aux UEs choisies.
+        \item Chaque note porte sur une évaluation d’UE commune, selon le profil validé.
+        \item Les affectations et responsabilités limitent qui saisit les notes.
+        \item Les bulletins conservent les résultats par période et par version.
+      \end{itemize}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Gestion des évaluations et des notes}
+  \begin{itemize}
+    \item Profils d’UE pris en charge : CC/SN, CC/TP/SN ou CC/TPE/SN.
+    \item Les poids totalisent 100\% et les colonnes sont définies par le profil approuvé.
+    \item Une seule évaluation est prévue par type pour l’UE, conformément au choix de conception du projet.
+    \item Les notes se saisissent en brouillon, puis sont transmises à la cellule pour numérisation.
+    \item Au retour « à vérifier », l’enseignant peut corriger. Une modification demande ensuite un retour en correction avant le visa final.
+  \end{itemize}
+  \begin{block}{Traçabilité}
+    Transmission versionnée, comparaison avec la numérisation, motif de correction, journal d’audit et contrôle du statut avant publication.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Création et calcul du bulletin}
+  \begin{enumerate}
+    \item Le moteur sélectionne les inscriptions UE validées pour l’étudiant et la période.
+    \item Il calcule chaque UE à partir des évaluations et des EC selon les règles académiques.
+    \item Il pondère la MGP par les crédits et calcule les crédits capitalisés et la décision annuelle.
+    \item Le bulletin semestriel ou annuel est prêt si les calculs et contrôles requis aboutissent.
+  \end{enumerate}
+  \vspace{.5em}
+  \begin{block}{Fonctions SQL utilisées}
+    \texttt{calculer\_ue}, \texttt{calculer\_bulletin} et \texttt{previsualiser\_bulletin}.\\
+    La période accepte S1, S2 ou ANNUELLE.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Publication et consultation}
+  \begin{columns}[T,onlytextwidth]
+    \column{.49\textwidth}
+      \textbf{Avant publication}\par\smallskip
+      L’agent consulte l’aperçu, exporte les résultats et vérifie que les transmissions et notes sont complètes.\\[.9em]
+      \textbf{Publication}\par\smallskip
+      Une fonction métier fige les bulletins dans une publication versionnée. Une nouvelle version demande une confirmation explicite.
+    \column{.47\textwidth}
+      \textbf{Après publication}\par\smallskip
+      L’étudiant consulte son bulletin officiel dans « Notes \& bulletins », l’imprime ou télécharge le PDF.\\[.9em]
+      \textbf{Formats actuels}\par\smallskip
+      Aperçu PDF côté agent, export Excel de cohorte, bulletin PDF individuel côté étudiant.
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Audit du processus de bulletin}
+  \small
+  \begin{tabularx}{\textwidth}{@{}p{.29\textwidth}X p{.18\textwidth}@{}}
+    \toprule
+    Étape & État observé dans le code & Évaluation\\
+    \midrule
+    Calcul semestriel et annuel & Calcul et aperçu via API agent, choix de période S1/S2/annuelle & Présent\\
+    Vérification de complétude & Contrôle des inscriptions, évaluations et transmissions en attente & Présent\\
+    Publication versionnée & Instantané généré par la base, version précédente conservée & Présent\\
+    Accès étudiant & Consultation des bulletins publiés et création locale du PDF & Présent\\
+    Document institutionnel & Certaines informations du modèle joint ne sont pas stockées & À compléter\\
+    PDF officiel conservé côté serveur & Les PDF sont assemblés côté client, le serveur conserve les snapshots de résultats & À améliorer\\
+  \end{tabularx}
+\end{frame}
+
+\begin{frame}{Modèle joint et maquette Canva}
+  \begin{columns}[T,onlytextwidth]
+    \column{.55\textwidth}
+      Le modèle fourni comporte :
+      \begin{itemize}
+        \item en-tête bilingue et identité de l’étudiant ;
+        \item tableau UE, crédits, note sur 100, grade, semestre, année et décision ;
+        \item crédits capitalisés, MGP sur 4 et décision finale ;
+        \item barème, signatures, cachet, date et mention de l’exemplaire.
+      \end{itemize}
+    \column{.41\textwidth}
+      \begin{block}{Maquette Canva}
+        Modèle A4 portrait, en-tête institutionnel, grille de notes et espaces de visa.\\[.7em]
+        \href{https://canva.link/x55lnt6muotlst4}{Ouvrir la maquette Canva}
+      \end{block}
+      \small Le style est repris dans un générateur PDF partagé entre l’aperçu de l’agent et le bulletin étudiant.
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Écarts entre l’exemplaire et les données actuelles}
+  \begin{itemize}
+    \item Le schéma utilisateur expose le matricule, mais pas la date ou le lieu de naissance.
+    \item Le parcours de bulletin ne fournit pas de numéro institutionnel de relevé ni les coordonnées de la faculté.
+    \item La structure d’aperçu n’expose pas toujours le domaine de formation.
+    \item Les signatures et le cachet restent à apposer sur l’exemplaire officiel imprimé.
+    \item Le PDF est généré localement : GNU ne conserve pas encore l’artefact PDF final signé.
+  \end{itemize}
+  \begin{alertblock}{Principe retenu}
+    Les données absentes ne sont pas inventées. Les lignes date et lieu de naissance n’apparaissent que si les données sont disponibles.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Sécurité et gouvernance}
+  \begin{itemize}
+    \item Laravel Sanctum protège les routes API ; les permissions sont regroupées par rôle.
+    \item Les agents sont limités aux départements de leur périmètre.
+    \item L’enseignant saisit les notes des affectations dont il est responsable pour l’UE.
+    \item La cellule contrôle les transmissions ; l’agent habilité déclenche la publication.
+    \item PostgreSQL applique contraintes, fonctions métier et journalisation des actions.
+    \item Les secrets de connexion restent dans le fichier local \texttt{backend/.env}.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{État actuel du projet}
+  \begin{columns}[T,onlytextwidth]
+    \column{.48\textwidth}
+      \textbf{Fonctions présentes}\par\smallskip
+      Inscriptions et validation, catalogue, affectations, grilles, saisie et import des notes, circuit de numérisation, requêtes, rattrapages, calculs, publication et bulletins.
+    \column{.48\textwidth}
+      \textbf{Travail de cette étape}\par\smallskip
+      Modèle PDF commun construit autour de l’exemplaire joint, générateur partagé par les espaces Agent et Étudiant, inclusion de la référence de publication et des zones de visa.
+  \end{columns}
+  \vspace{1em}
+  \begin{block}{Portée de la vérification}
+    Audit statique du code et rendu de la pièce jointe. Les migrations et les tests applicatifs n’ont pas été exécutés pendant cette intervention.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Améliorations futures proposées}
+  \begin{enumerate}
+    \item Ajouter, avec validation institutionnelle, les champs d’identité et le numéro officiel du relevé.
+    \item Générer et archiver le PDF officiel à partir du snapshot publié, avec contrôle de version et empreinte.
+    \item Ajouter une signature électronique ou une validation documentaire, puis tracer le cachet et l’autorité signataire.
+    \item Permettre l’impression en lot et l’export PDF officiel de la cohorte côté Agent.
+    \item Tester le rendu sur plusieurs niveaux, longues listes d’UE, deux semestres et diverses imprimantes.
+    \item Renforcer sauvegarde/restauration, observabilité, tests de sécurité et déploiement HTTPS institutionnel.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{Démonstration proposée}
+  \begin{enumerate}
+    \item Ouvrir une classe et vérifier les inscriptions UE validées.
+    \item Examiner une grille d’évaluation et le statut de chaque transmission.
+    \item Afficher l’aperçu de bulletin annuel et vérifier les UEs choisies.
+    \item Publier la période depuis l’espace Agent.
+    \item Se connecter comme étudiant, ouvrir le bulletin officiel, puis télécharger et imprimer le PDF.
+  \end{enumerate}
+  \vspace{.7em}
+  \small Cette séquence montre le lien entre données de notes, calcul, publication et document final.
+\end{frame}
+
+\begin{frame}{Conclusion}
+  \Large Le projet couvre le parcours central des notes jusqu’au bulletin publié.\\[.9em]
+  \normalsize
+  Le moteur de calcul et le cycle de publication existent. Le travail réalisé rapproche les PDFs du modèle institutionnel et partage le même générateur entre l’aperçu de l’agent et le document de l’étudiant.\\[.9em]
+  Les prochaines étapes concernent les champs institutionnels manquants, l’archivage des PDFs officiels et la vérification visuelle sur les environnements de recette.
+\end{frame}
+
+\begin{frame}{Références du projet}
+  \begin{itemize}
+    \item Modèle institutionnel fourni : \texttt{CamScanner 08-07-2026 08.06.pdf}.
+    \item API : \texttt{backend/routes/api.php}.
+    \item Calculs et publication : \texttt{AgentPortalController}, \texttt{StudentPortalController} et fonctions SQL GNU.
+    \item Interfaces : \texttt{student\_portal.dart}, \texttt{teacher\_portal.dart}, \texttt{agent\_portal.dart}.
+    \item PDF partagé : \texttt{frontend/lib/academic\_bulletin\_pdf.dart}.
+    \item Documentation : \texttt{README.md} et guides du dépôt GNU.
+  \end{itemize}
+  \vfill
+  \centering\color{GNUteal}\large Merci
+\end{frame}
+
+\end{document}

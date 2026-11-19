@@ -19,14 +19,14 @@ Les 73 codes ci-dessous sont ceux des grilles harmonisées. Le catalogue stocke 
 | M2 | 9 (S1) | INF511, INF521, INF531, INF541, INF551, INF561, INF571, INF581 |
 | M2 | 10 (S2) | INF500 |
 
-`ue_catalogue.csv` contains these 73 codes exactly once with their level, semester and UE credits. The Master grid is the authority for EC titles and credits where its descriptive section differs. `ec_catalogue.csv` contains two ECs for each of the 72 taught UEs (144 rows); INF500 is the 60-credit research-thesis UE and has no EC in the syllabus.
+`ue_catalogue.csv` contains these 73 codes exactly once with their level, semester and UE credits. The Master grid is the authority for EC titles and credits where its descriptive section differs. `ec_catalogue.csv` contains two ECs for each of the 72 taught UEs (144 rows); INF500 is the 60-credit research-thesis UE and has no EC in the syllabus. GNU stores one UE row per level and code. An import updates that row and its ECs in place; it does not create a programme version.
 
 ## Importer le syllabus complet dans GNU
 
-Les UE et EC actifs sont protégés contre la modification par les règles d’intégrité PostgreSQL. Ne pas relancer les imports `002_import_ue_catalogue.sql` et `006_import_ec_catalogue.sql` sur ces lignes actives. Pour charger le syllabus complet et les dix UE dont les EC manquaient (`INF351`, `INF352`, `INF361`, `INF362`, `INF371`, `INF372`, `INF381`, `INF382`, `INF421`, `INF422`), exécuter depuis la racine du dépôt, avec un rôle autorisé à créer des UE et EC dans le schéma `gnu` :
+Les migrations GNU imposent une seule ligne par couple niveau/code UE et autorisent la mise à jour en place du catalogue actif. Pour charger ou actualiser le syllabus complet, exécuter depuis la racine du dépôt, avec un rôle autorisé à créer et modifier des UE et EC dans le schéma `gnu` :
 
 ```bash
-psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5435 -U postgres -d gnu_notes -f docs/imports/011_creer_version_2_programme_informatique.sql
+psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5435 -U postgres -d gnu_notes -f docs/imports/011_importer_catalogue_informatique.sql
 ```
 
 Le mot de passe PostgreSQL est demandé par `psql`. Cet import crée les 73 UE et 144 EC d’après les CSV et vérifie leurs rattachements et crédits. INF500 est activée comme UE sans EC, conformément au syllabus. Si le catalogue complet existe déjà, activer INF500 dans les catalogues chargés avec :
@@ -35,11 +35,11 @@ Le mot de passe PostgreSQL est demandé par `psql`. Cet import crée les 73 UE e
 psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5435 -U postgres -d gnu_notes -f docs/imports/012_activer_ue_memoire_inf500.sql
 ```
 
-Ces opérations ne modifient pas les classes, inscriptions ou notes déjà enregistrées. Dans l’application, la classe reste identifiée par son niveau et son année; le numéro technique du catalogue n’est pas affiché.
+Les EC existants sont mis à jour par rang afin de conserver leurs identifiants et les données académiques qui y sont rattachées. Un EC retiré ne peut être supprimé s’il est encore utilisé par une affectation, une note ou une requête. Les classes sont identifiées par leur niveau et leur année.
 
 ## Décisions fonctionnelles
 
-**Classes annuelles** : une classe est créée pour un niveau et une année académique. Le numéro de version reste un détail technique interne pour conserver les inscriptions historiques; il n’est pas présenté aux agents. Une nouvelle classe utilise automatiquement le catalogue actif le plus récent de son niveau. Les affectations d’enseignants sont propres à la classe de l’année.
+**Classes annuelles** : une classe est créée pour un niveau et une année académique. Elle utilise le catalogue unique du niveau. Les affectations d’enseignants sont propres à la classe de l’année.
 1. **Crédits et coefficients** : la base stocke les crédits (`credit_ue`, `credit_matiere`). Les crédits ne sont pas des coefficients de calcul distincts.
 2. **Filière et spécialités** : la filière canonique est `INF — Informatique`. `GL`, `SR`, `SECU` et `DATA` sont des spécialités. Une UE de type `Fond` ou `Comp` reste une UE tronc commun et ne reçoit pas de spécialité.
 3. **Catégories** : le type imprimé dans le syllabus (`Fond`, `Opt`, `Comp`, `SIGL`, `SR`, `SDD`, `Sécu`) et la catégorie d’inscription applicative (`FONDAMENTALE`, `OPTIONNELLE`) sont deux notions distinctes. La catégorie ne détermine jamais le niveau ni le semestre d’une UE. Les sources officielles et leur type doivent être consultés avant toute reclassification.
@@ -70,7 +70,7 @@ Le rapprochement avec les rubriques imprimées sur les fiches a aussi corrigé l
 
 ## Contrôles à conserver
 
-- unicité `(niveau, version_programme, code_ue)` ;
+- unicité `(niveau, code_ue)` ;
 - unicité `(ue_id, rang_ec)` et `(ue_id, code_m)` ;
 - vérification des crédits EC : somme des crédits EC = crédits UE, sauf anomalie explicitement documentée ;
 - vérification des niveaux et semestres avant création des classes annuelles.

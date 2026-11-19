@@ -11,14 +11,6 @@ DECLARE
   nb integer;
 BEGIN
   IF TG_TABLE_NAME = 'ue' THEN
-    IF TG_OP = 'UPDATE' AND OLD.statut_catalogue <> 'BROUILLON' THEN
-      PERFORM exiger(
-        (to_jsonb(NEW) - 'statut_catalogue' - 'updated_at') = (to_jsonb(OLD) - 'statut_catalogue' - 'updated_at'),
-        'Créer une version de programme au lieu de modifier cette UE'
-      );
-      PERFORM exiger(NEW.statut_catalogue <> 'BROUILLON', 'Catalogue archivé non réouvrable');
-    END IF;
-
     IF NEW.statut_catalogue = 'ACTIF' THEN
       SELECT count(*) INTO nb FROM matiere WHERE ue_id = NEW.id;
       PERFORM exiger(
@@ -42,7 +34,6 @@ BEGIN
     SELECT * INTO u FROM ue
     WHERE id = CASE WHEN TG_OP = 'DELETE' THEN OLD.ue_id ELSE NEW.ue_id END
     FOR UPDATE;
-    PERFORM exiger(u.statut_catalogue = 'BROUILLON', 'Les EC d’une UE activée sont immuables');
     IF TG_OP <> 'DELETE' THEN
       PERFORM id FROM niveau WHERE id = u.niveau_id FOR UPDATE;
       PERFORM exiger(
@@ -50,11 +41,10 @@ BEGIN
           SELECT 1 FROM matiere mm
           JOIN ue uu ON uu.id = mm.ue_id
           WHERE uu.niveau_id = u.niveau_id
-            AND uu.version_programme = u.version_programme
             AND mm.code_m = NEW.code_m
             AND mm.id <> NEW.id
         ),
-        'Code EC déjà utilisé dans cette version du niveau'
+        'Code EC déjà utilisé dans le catalogue de ce niveau'
       );
     END IF;
   END IF;

@@ -147,7 +147,7 @@ Menu **Structure & catalogue**. Inspecter la liste des niveaux, UE, éléments c
 
 - [ ] Vérifier que le département Informatique, ses filières et niveaux attendus sont visibles.
 - [ ] Vérifier les codes de filière et niveaux, semestres, crédits, états de catalogue et années.
-- [ ] Ouvrir une classe et relever son code, son niveau, son année académique et la version du programme.
+- [ ] Ouvrir une classe et relever son code, son niveau, son année académique et le catalogue actif du niveau.
 - [ ] Créer une classe de test seulement si nécessaire, avec un code distinct (par exemple `TEST-INF-L3-2026`), un niveau et une année existants. Vérifier qu’elle apparaît ensuite dans la liste.
 - [ ] Créer une UE de test en brouillon ; y ajouter un ou deux EC ; l’activer seulement après vérification du code, du semestre et des crédits.
 - [ ] Archiver l’UE de test après le parcours, si aucune inscription/affectation ne la référence.
@@ -158,6 +158,9 @@ La gestion affichée est circonscrite au périmètre départemental et au catalo
 
 Menu **Comptes & affectations**.
 
+- [ ] Envoyer une demande de compte étudiant Informatique depuis le formulaire public, puis vérifier qu’un Agent rattaché au département Informatique la voit dans **Demandes de comptes à valider**.
+- [ ] Vérifier qu’un Agent d’un autre département ne voit pas cette demande et ne peut pas la traiter.
+- [ ] Examiner puis approuver la demande avec l’Agent du bon département; vérifier que le nouveau profil apparaît dans les comptes du département.
 - [ ] Vérifier les étudiants inscrits dans les classes du département et les enseignants ayant des affectations.
 - [ ] Confirmer que le compte Agent lui-même n’est pas suspendable depuis cet écran.
 - [ ] Créer une affectation de test en sélectionnant un enseignant, un EC et une classe compatibles.
@@ -217,6 +220,11 @@ Menu **Bulletins & publications**.
 - [ ] Vérifier qu’un étudiant dont la MGP est inférieure à 2 apparaît en échec tout en ayant un bulletin produit.
 - [ ] Vérifier l’aperçu du même bulletin dans les portails Étudiant et Enseignant.
 - [ ] **Publication officielle :** ne faire ce test que sur une base et une classe dédiées aux essais, une fois l’aperçu validé et l’habilitation distincte attribuée. Une publication peut créer une version historique officielle.
+- [ ] Depuis l’espace Étudiant, vérifier la consultation des bulletins semestriels et annuel disponibles; comparer la période, la décision et les notes aux résultats Agent.
+- [ ] Après au moins deux publications de test pour une même période, sélectionner chaque version dans l’historique Agent et vérifier la date et le nombre de bulletins.
+- [ ] Télécharger le PDF d’une version historique, puis l’imprimer; contrôler que le contenu est celui de la version sélectionnée et non celui de la publication courante.
+- [ ] Exporter le classeur Excel de cette même version et vérifier les onglets Résultats, Notes par UE et Notes par EC.
+- [ ] Recommencer pour S1, S2 et ANNUELLE lorsque ces périodes ont été publiées; l’historique doit rester séparé par période.
 
 ### I. Audit et comptes
 
@@ -248,6 +256,7 @@ Après connexion dans l’interface, les principales routes exposées pour l’A
 | Inscriptions et requêtes | `GET /api/v1/agent/inscriptions`, `GET /api/v1/agent/requetes` |
 | Aperçu et audit | `GET /api/v1/agent/classes/{id}/apercu-bulletins`, `GET /api/v1/agent/audit` |
 | Rattrapages | `GET /api/v1/agent/rattrapages/sessions` |
+| Historique et bulletins publiés par lot | `GET /api/v1/agent/classes/{id}/publications`, `GET /api/v1/agent/classes/{id}/publications/{periode}/bulletins?version={n}`, `GET /api/v1/agent/classes/{id}/bulletins/export-xlsx?periode={periode}&source=PUBLIE&version={n}` |
 
 Les écritures correspondantes sont protégées par authentification, rôle Agent, règles de validation et contrôle du périmètre. Utiliser d’abord les écrans pour les essais ; ne pas envoyer directement une requête `POST` de publication à une classe réelle.
 

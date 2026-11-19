@@ -44,7 +44,7 @@ BEGIN
     END IF;
     IF EXISTS (SELECT 1 FROM ue u WHERE u.niveau_id = old_niveau.id
       AND EXISTS (SELECT 1 FROM ue u2 WHERE u2.niveau_id = target_id
-        AND u2.version_programme = u.version_programme AND u2.code_ue = u.code_ue)) THEN
+        AND u2.code_ue = u.code_ue)) THEN
       RAISE EXCEPTION 'Conflit d''UE détecté pour le niveau %; fusion annulée.', old_niveau.code_niv;
     END IF;
 

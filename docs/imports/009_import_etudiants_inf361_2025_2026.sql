@@ -44,7 +44,12 @@ INSERT INTO inscription_ue (inscription_classe_id, ue_id, type_inscription, stat
 SELECT ic.id, u.id, 'NORMALE', 'BROUILLON'
 FROM inscription_classe ic
 JOIN classe c ON c.id = ic.classe_id AND c.code_classe = 'INF-L3-2025-2026'
-JOIN ue u ON u.niveau_id = c.niveau_id AND u.statut_catalogue = 'ACTIF'
+JOIN ue u ON u.niveau_id = c.niveau_id
+  AND u.statut_catalogue = 'ACTIF'
+  AND u.code_ue IN (
+    'INF311', 'INF321', 'INF331', 'INF341', 'INF361', 'FBL311',
+    'INF312', 'INF322', 'INF332', 'INF342', 'INF362', 'PPE312'
+  )
 ON CONFLICT (inscription_classe_id, ue_id) DO NOTHING;
 
 COMMIT;

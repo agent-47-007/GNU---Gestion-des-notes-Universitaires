@@ -1028,25 +1028,6 @@ class StudentApiClient {
     ))['data'],
   );
 
-  Future<void> archiveBulletinPdf(
-    int bulletinId, {
-    required String filename,
-    required Uint8List file,
-  }) async {
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse('$baseUrl/etudiant/resultats/$bulletinId/document'),
-    );
-    request.headers.addAll(_headers());
-    request.files.add(
-      http.MultipartFile.fromBytes('fichier', file, filename: filename),
-    );
-    await _decodeAuthenticated(
-      await http.Response.fromStream(await _client.send(request)),
-      true,
-    );
-  }
-
   Future<Uint8List> studentBulletinPdf(int bulletinId) async => _downloadBytes(
     '/etudiant/resultats/$bulletinId/document',
     'Impossible de télécharger le bulletin PDF archivé.',

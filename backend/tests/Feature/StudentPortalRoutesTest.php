@@ -15,7 +15,6 @@ class StudentPortalRoutesTest extends TestCase
             ['putJson', '/api/v1/etudiant/inscriptions'],
             ['postJson', '/api/v1/etudiant/inscriptions/soumettre'],
             ['getJson', '/api/v1/etudiant/resultats'],
-            ['postJson', '/api/v1/etudiant/resultats/1/document'],
             ['getJson', '/api/v1/etudiant/resultats/1/document'],
             ['getJson', '/api/v1/etudiant/requetes'],
             ['postJson', '/api/v1/etudiant/requetes'],

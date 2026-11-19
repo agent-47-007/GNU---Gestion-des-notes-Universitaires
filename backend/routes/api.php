@@ -45,8 +45,7 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
             Route::get('fiche-academique/fichier', [StudentPortalController::class, 'downloadAcademicSheet'])->name('fiche-academique.download');
             Route::get('inscriptions/{inscriptionClasse}/fiche-academique', [StudentPortalController::class, 'sharedAcademicSheet'])->name('inscriptions.fiche-academique');
             Route::get('resultats', [StudentPortalController::class, 'results'])->name('resultats');
-            Route::post('resultats/{bulletin}/document', [StudentPortalController::class, 'archiveBulletinPdf'])->name('resultats.document.archive');
-            Route::get('resultats/{bulletin}/document', [StudentPortalController::class, 'downloadBulletinPdf'])->name('resultats.document.download');
+            Route::get('resultats/{bulletin}/document', [StudentPortalController::class, 'downloadBulletinPdf'])->whereNumber('bulletin')->name('resultats.document.download');
             Route::get('resultats/provisoires', [StudentPortalController::class, 'provisionalResults'])->name('resultats.provisoires');
             Route::get('proces-verbaux-evaluations', [StudentPortalController::class, 'evaluationMinutes'])->name('proces-verbaux-evaluations');
             Route::get('evaluations-manquantes', [StudentPortalController::class, 'missingEvaluations'])->name('evaluations.missing');

@@ -66,6 +66,9 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
+    - assets/pv_sn_header.jpg
+    - assets/pv_uy1_header.png
+    - assets/fiche_inscription_vierge.png
     - assets/uy1_crest.png
     - assets/fonts/DejaVuSans.ttf
     - assets/fonts/DejaVuSans-Bold.ttf

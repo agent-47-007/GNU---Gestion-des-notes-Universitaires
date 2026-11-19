@@ -122,3 +122,13 @@ flutter run -d web-server --web-hostname 127.0.0.1 --web-port 8780 --dart-define
 ```
 
 Les trois comptes créés pourront ouvrir leurs espaces connectés. Le guide pas à pas avec les parcours de chaque acteur est dans [`../docs/guide-tests-manuels.md`](../docs/guide-tests-manuels.md).
+
+### Génération du relevé PDF publié
+
+Depuis la racine du dépôt, après `composer install` dans `backend` et `flutter pub get` dans `frontend`, compiler le générateur sur le système cible :
+
+```sh
+dart compile exe frontend/tool/render_transcript.dart --packages=frontend/.dart_tool/package_config.json -o backend/vendor/bin/gnu-transcript
+```
+
+Le serveur PHP a besoin de cet exécutable et des polices et logos dans `frontend/assets`. Recompiler après une modification du gabarit du relevé. Le premier GET authentifié sur `/api/v1/etudiant/resultats/{bulletin}/document` génère le PDF à partir des notes figées à la publication. Les demandes suivantes réutilisent le fichier privé après vérification de son empreinte. Une archive créée par l’ancien client est remplacée à la première lecture par le document généré côté serveur.

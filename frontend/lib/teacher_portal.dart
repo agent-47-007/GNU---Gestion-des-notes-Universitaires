@@ -11,6 +11,7 @@ import 'package:printing/printing.dart';
 import 'api_client.dart';
 import 'file_download.dart';
 import 'gnu_pv_template.dart';
+import 'session_normale_pdf.dart';
 import 'pdf_theme.dart';
 import 'ui.dart';
 
@@ -2206,6 +2207,7 @@ class _GradebookDialogState extends State<_GradebookDialog> {
               (component) => <String, dynamic>{
                 ...Map<String, dynamic>.from(component),
                 'affectation_id': id,
+                'credit_ec': data['credit_ec'],
                 'code_m': null,
                 'intitule_matiere': null,
               },
@@ -3468,14 +3470,44 @@ class _GradebookDialogState extends State<_GradebookDialog> {
       );
       return;
     }
+    if (snMinutes) {
+      try {
+        final document = pw.Document(theme: await gnuPdfTheme());
+        final asset = await rootBundle.load('assets/pv_sn_header.jpg');
+        addSessionNormale(document, pw.MemoryImage(asset.buffer.asUint8List(asset.offsetInBytes, asset.lengthInBytes)),
+            source, selected, currentStudents);
+        final bytes = await document.save();
+        await Printing.layoutPdf(onLayout: (_) async => bytes,
+            name: "PV-SN-${source['code_ue']}-${source['code_classe']}.pdf");
+      } catch (error) {
+        if (mounted) toast(context, 'Impression du PV de SN impossible : $error');
+      }
+      return;
+    }
+    if (types.length == 1 && const {'CC', 'TP', 'TPE'}.contains(types.single)) {
+      try {
+        final document = pw.Document(theme: await gnuPdfTheme());
+        final header = await rootBundle.load('assets/pv_uy1_header.png');
+        final image = pw.MemoryImage(header.buffer.asUint8List(header.offsetInBytes, header.lengthInBytes));
+        for (final evaluation in selected) {
+          addEvaluationMinutes(document, image, source, evaluation, currentStudents,
+              distinguishEvaluation: selected.length > 1);
+        }
+        final bytes = await document.save();
+        final name = "PV-${types.single}-${source['code_ue']}-${source['code_classe']}.pdf";
+        await Printing.layoutPdf(onLayout: (_) async => bytes, name: name);
+      } catch (error) {
+        if (mounted) toast(context, 'Impression du PV impossible : $error');
+      }
+      return;
+    }
     final combined = selected.length > 1;
-    final includeFinalResult = combined || snMinutes;
+    final includeFinalResult = combined;
 
     final cells = <String>[
       'N°',
       'MATRICULE',
       'NOMS ET PRÉNOMS',
-      if (snMinutes) 'NIVEAU',
       ...selected.map(
         (evaluation) =>
             '${evaluation['type_eval']} (${evaluation['poids_evaluation'] ?? '—'}%) · ${evaluation['date_evaluation'] ?? 'date à fixer'}',
@@ -3535,7 +3567,6 @@ class _GradebookDialogState extends State<_GradebookDialog> {
         [student['prenom'], student['nom']]
             .where((part) => part != null && '$part'.trim().isNotEmpty)
             .join(' '),
-        if (snMinutes) '${source['niveau'] ?? '—'}',
         ...values,
         if (includeFinalResult) finalMark,
         if (includeFinalResult) officialGrade,
@@ -3568,9 +3599,7 @@ class _GradebookDialogState extends State<_GradebookDialog> {
     final selectedTypes = selected.map((e) => '${e['type_eval']}').toSet();
     String fileSegment(Object? value) =>
         '${value ?? ''}'.trim().replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '_');
-    final title = snMinutes
-        ? 'PROCÈS-VERBAL DE L’UNITÉ D’ENSEIGNEMENT · SESSION NORMALE'
-        : combined
+    final title = combined
         ? 'PROCÈS-VERBAL RÉCAPITULATIF DES NOTES · UE $unitCode'
         : 'PROCÈS-VERBAL DE ${selected.first['type_eval']}';
     final typeSlug = selectedTypes.toList()..sort();
@@ -3585,7 +3614,7 @@ class _GradebookDialogState extends State<_GradebookDialog> {
       if (assignmentSegment.isNotEmpty) 'A$assignmentSegment',
     ].map(fileSegment).where((segment) => segment.isNotEmpty).join('-');
     final filename = combined
-        ? 'PV-${snMinutes ? 'SN' : typeSlug.join('-')}-$identity.pdf'
+        ? 'PV-${typeSlug.join('-')}-$identity.pdf'
         : 'PV-${selected.first['type_eval']}-$identity.pdf';
     document.addPage(
       pw.MultiPage(
@@ -3605,7 +3634,7 @@ class _GradebookDialogState extends State<_GradebookDialog> {
               '${source['niveau'] ?? '—'} · $room · Semestre ${source['numero_semestre'] ?? '—'} · Année académique $year',
         ),
         footer: (context) => gnuPvFooter(
-          'GNU · ${snMinutes ? 'Copie de travail enseignant · Résultats à contrôler par la cellule' : 'Copie enseignant · Notes à contrôler par la cellule informatique'} · $year',
+          'GNU · Copie enseignant · Notes à contrôler par la cellule informatique · $year',
           context,
         ),
         build: (_) => [

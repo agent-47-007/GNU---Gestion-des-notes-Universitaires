@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Services\AcademicRules;
 use App\Services\BulletinReference;
+use App\Services\BulletinUnits;
+use App\Services\PublishedTranscript;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -223,6 +225,10 @@ class StudentPortalController extends Controller
             'inscription_classe_id' => (int) $context->inscription_classe_id,
             'classe' => $context->code_classe,
             'annee_academique' => $context->annee,
+            'filiere' => $context->nom_filiere,
+            'matricule' => $context->matricule,
+            'date_naissance' => $context->date_naissance,
+            'lieu_naissance' => $context->lieu_naissance,
             'redoublant' => (bool) $context->statut_redoublant,
             'niveau' => $context->code_niv,
             'semestres_disponibles' => $availableSemesters,
@@ -406,11 +412,19 @@ class StudentPortalController extends Controller
         abort_unless($context->statut_inscription === 'VALIDEE', 403, 'Votre inscription de classe doit être validée pour consulter vos bulletins.');
         $period = $request->query('periode');
         abort_if($period !== null && ! in_array($period, ['S1', 'S2', 'ANNUELLE'], true), 422, 'Période invalide.');
+        return response()->json(['data' => $this->publishedRows($context, $period)]);
+    }
+
+    private function publishedRows(object $context, ?string $period, ?int $bulletinId = null): array
+    {
         $query = DB::table('gnu.bulletin as b')
             ->join('gnu.publication as p', 'p.id', '=', 'b.publication_id')
             ->leftJoin('gnu.document_bulletin as db', 'db.bulletin_id', '=', 'b.id')
             ->where('b.inscription_classe_id', $context->inscription_classe_id)
             ->where('b.courant', true)
+            ->where('p.classe_id', $context->classe_id)
+            ->whereColumn('p.periode', 'b.periode')
+            ->when($bulletinId !== null, fn ($q) => $q->where('b.id', $bulletinId))
             ->orderBy('b.periode');
         if ($period !== null) {
             $query->where('b.periode', $period);
@@ -421,6 +435,7 @@ class StudentPortalController extends Controller
             'db.id as document_archive_id',
         ])->map(function (object $bulletin) use ($context): array {
             $snapshot = is_string($bulletin->contenu_fige) ? json_decode($bulletin->contenu_fige, true) : (array) $bulletin->contenu_fige;
+            abort_if(isset($snapshot['inscription_classe_id']) && (int) $snapshot['inscription_classe_id'] !== (int) $context->inscription_classe_id, 409, 'Inscription incohérente dans le bulletin publié.');
             $snapshot = $this->annotateEvaluationTypes($snapshot);
             if (is_array($snapshot['ues'] ?? null)) {
                 $unitIds = collect($snapshot['ues'])->pluck('ue_id')->filter()->unique()->all();
@@ -434,8 +449,13 @@ class StudentPortalController extends Controller
 
             return [
                 'id' => (int) $bulletin->id,
+                'matricule' => $snapshot['identite']['matricule'] ?? $context->matricule,
+                'nom' => $snapshot['identite']['nom'] ?? request()->user()->nom,
+                'prenom' => $snapshot['identite']['prenom'] ?? request()->user()->prenom,
                 'reference_officielle' => $this->bulletinReference($context, $bulletin),
                 'periode' => $bulletin->periode,
+                'date_naissance' => $context->date_naissance,
+                'lieu_naissance' => $context->lieu_naissance,
                 'version' => (int) $bulletin->version_bulletin,
                 'mgp_s1' => $bulletin->mgp_s1,
                 'mgp_s2' => $bulletin->mgp_s2,
@@ -458,87 +478,29 @@ class StudentPortalController extends Controller
             ];
         })->values();
 
-        return response()->json(['data' => $data]);
+        return BulletinUnits::withSourceYears($data->all());
     }
 
-    public function archiveBulletinPdf(Request $request, int $bulletin): JsonResponse
-    {
-        $request->validate(['fichier' => ['required', 'file', 'mimes:pdf', 'max:15360']]);
-        $context = $this->studentContext($request);
-        $record = DB::table('gnu.bulletin as b')
-            ->join('gnu.publication as p', 'p.id', '=', 'b.publication_id')
-            ->join('gnu.inscription_classe as ic', 'ic.id', '=', 'b.inscription_classe_id')
-            ->join('gnu.etudiant as e', 'e.id', '=', 'ic.etudiant_id')
-            ->join('gnu.classe as c', 'c.id', '=', 'ic.classe_id')
-            ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
-            ->where('b.id', $bulletin)
-            ->where('b.inscription_classe_id', $context->inscription_classe_id)
-            ->where('b.courant', true)
-            ->first(['b.id', 'b.publication_id', 'b.periode', 'b.version_bulletin', 'e.matricule', 'c.code_classe', 'an.libelle as annee']);
-        abort_unless($record !== null, 404, 'Bulletin publié introuvable.');
-
-        $reference = $this->bulletinReference($context, $record);
-        $file = $request->file('fichier');
-        $hash = hash_file('sha256', $file->getRealPath());
-        abort_unless(is_string($hash), 500, 'Le PDF transmis n’a pas pu être vérifié.');
-        $existing = DB::table('gnu.document_bulletin')->where('bulletin_id', $bulletin)->first();
-        if ($existing !== null) {
-            abort_unless(hash_equals(trim($existing->empreinte_sha256), $hash), 409, 'Un PDF différent est déjà archivé pour cette version du bulletin.');
-            if (! Storage::disk('local')->exists($existing->chemin_fichier)) {
-                Storage::disk('local')->putFileAs(dirname($existing->chemin_fichier), $file, basename($existing->chemin_fichier));
-            }
-
-            return response()->json(['data' => [
-                'reference' => $existing->reference_officielle,
-                'empreinte_sha256' => trim($existing->empreinte_sha256),
-                'date_emission' => $existing->date_emission,
-                'archive' => true,
-            ]]);
-        }
-
-        $path = 'bulletins/'.$bulletin.'/'.$reference.'.pdf';
-        $disk = Storage::disk('local');
-        abort_unless($disk->putFileAs(dirname($path), $file, basename($path)), 500, 'Le PDF officiel n’a pas pu être archivé.');
-        try {
-            DB::transaction(function () use ($request, $bulletin, $reference, $path, $hash): void {
-                DB::select("SELECT set_config('gnu.acteur_id', ?, true), set_config('gnu.motif', ?, true)", [(string) $request->user()->id, 'Archivage du bulletin étudiant '.$reference]);
-                DB::table('gnu.document_bulletin')->insert([
-                    'bulletin_id' => $bulletin,
-                    'reference_officielle' => $reference,
-                    'chemin_fichier' => $path,
-                    'empreinte_sha256' => $hash,
-                    'genere_par' => $request->user()->id,
-                    'date_emission' => now(),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            });
-        } catch (Throwable $exception) {
-            $disk->delete($path);
-            throw $exception;
-        }
-
-        return response()->json(['data' => [
-            'reference' => $reference,
-            'empreinte_sha256' => $hash,
-            'date_emission' => now()->toIso8601String(),
-            'archive' => true,
-        ]], 201);
-    }
-
-    public function downloadBulletinPdf(Request $request, int $bulletin): mixed
+    public function downloadBulletinPdf(Request $request, int $bulletin, PublishedTranscript $transcripts): mixed
     {
         $context = $this->studentContext($request);
-        $document = DB::table('gnu.document_bulletin as d')
-            ->join('gnu.bulletin as b', 'b.id', '=', 'd.bulletin_id')
-            ->where('b.id', $bulletin)
-            ->where('b.inscription_classe_id', $context->inscription_classe_id)
-            ->where('b.courant', true)
-            ->first(['d.chemin_fichier', 'd.reference_officielle']);
-        abort_unless($document !== null && Storage::disk('local')->exists($document->chemin_fichier), 404, 'Aucun PDF officiel n’est archivé pour ce bulletin.');
+        abort_unless($context->statut_inscription === 'VALIDEE', 403);
+        $document = DB::transaction(function () use ($request, $context, $bulletin, $transcripts) {
+            $owned = DB::table('gnu.bulletin as b')
+                ->join('gnu.publication as p', 'p.id', '=', 'b.publication_id')
+                ->where('b.id', $bulletin)->where('b.inscription_classe_id', $context->inscription_classe_id)
+                ->where('b.courant', true)->where('p.classe_id', $context->classe_id)
+                ->whereColumn('b.periode', 'p.periode')->exists();
+            abort_unless($owned, 404, 'Bulletin publié introuvable.');
+            DB::select('SELECT pg_advisory_xact_lock(?)', [$bulletin]);
+            return $transcripts->archive($bulletin, (int) $request->user()->id,
+                fn () => $this->publishedRows($context, null, $bulletin)[0] ?? abort(404));
+        });
 
-        return Storage::disk('local')->download($document->chemin_fichier, $document->reference_officielle.'.pdf', [
+        return response($document['bytes'], 200, [
             'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$document['reference'].'.pdf"',
+            'Cache-Control' => 'private, no-store',
             'X-Content-Type-Options' => 'nosniff',
         ]);
     }

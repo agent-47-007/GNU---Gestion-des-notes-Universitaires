@@ -11,7 +11,7 @@ import 'package:printing/printing.dart';
 import 'api_client.dart';
 import 'academic_bulletin_pdf.dart';
 import 'file_download.dart';
-import 'gnu_pv_template.dart';
+import 'cohort_minutes_pdf.dart';
 import 'pdf_theme.dart';
 import 'ui.dart';
 
@@ -4242,7 +4242,7 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                               ? () => _exportCohortMinutesPdf(preview)
                               : null,
                           icon: const Icon(Icons.table_chart_outlined),
-                          label: const Text('Produire le PV récapitulatif'),
+                          label: const Text('PV récapitulatif de classe · aperçu'),
                         ),
                         OutlinedButton.icon(
                           onPressed: selectedClass == null
@@ -4787,6 +4787,11 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
                 runSpacing: 8,
                 children: [
                   OutlinedButton.icon(
+                    onPressed: () => _exportCohortMinutesPdf(preview, version: version),
+                    icon: const Icon(Icons.table_chart_outlined),
+                    label: Text('PV récapitulatif de classe · V$version'),
+                  ),
+                  OutlinedButton.icon(
                     onPressed: () => _printPublishedBulletinsPdf(preview, version),
                     icon: const Icon(Icons.print_outlined),
                     label: Text('Imprimer les bulletins · V$version'),
@@ -4838,189 +4843,26 @@ class _AgentPortalPageState extends State<AgentPortalPage> {
     }
   }
 
-  Future<void> _exportCohortMinutesPdf(Map<String, dynamic> preview) async {
-    final students = _maps(preview['etudiants']);
-    if (students.isEmpty || students.any((row) => row['pret'] != true)) {
-      toast(
-        context,
-        'Les bulletins de toute la classe doivent être calculables avant de produire le PV récapitulatif.',
-      );
-      return;
-    }
-    final structure = Map<String, dynamic>.from(
-      preview['structure'] as Map? ?? {},
-    );
-    final logoData = Map<String, dynamic>.from(structure['logo'] as Map? ?? {});
-    Uint8List? logoBytes = logoData['base64'] is String
-        ? base64Decode(logoData['base64'] as String)
-        : null;
-    if (logoBytes == null) {
-      try {
-        logoBytes = (await rootBundle.load('assets/uy1_crest.png')).buffer
-            .asUint8List();
-      } catch (_) {}
-    }
-    final logo = logoBytes == null ? null : pw.MemoryImage(logoBytes);
-    final unitsByCode = <String, Map<String, dynamic>>{};
-    for (final student in students) {
-      final content = Map<String, dynamic>.from(
-        student['contenu'] as Map? ?? {},
-      );
-      for (final unit in _maps(content['ues'])) {
-        final code = '${unit['code_ue'] ?? ''}';
-        if (code.isNotEmpty) unitsByCode.putIfAbsent(code, () => unit);
-      }
-    }
-    final units = unitsByCode.values.toList()
-      ..sort((left, right) {
-        final leftSemester = '${left['semestre'] ?? ''}';
-        final rightSemester = '${right['semestre'] ?? ''}';
-        final semesterOrder = leftSemester.compareTo(rightSemester);
-        return semesterOrder != 0
-            ? semesterOrder
-            : '${left['code_ue']}'.compareTo('${right['code_ue']}');
-      });
-    final periodLabel = switch (preview['periode']) {
-      'S1' => 'SEMESTRE 1',
-      'S2' => 'SEMESTRE 2',
-      _ => 'ANNÉE ACADÉMIQUE',
-    };
-    final document = pw.Document(theme: await gnuPdfTheme());
-    document.addPage(
-      pw.MultiPage(
-        pageFormat: pdf.PdfPageFormat.a4.landscape,
-        margin: const pw.EdgeInsets.fromLTRB(22, 20, 22, 26),
-        header: (_) => gnuPvHeader(
-          crest: logo,
-          university: '${structure['universite'] ?? 'UNIVERSITÉ DE YAOUNDÉ I'}',
-          faculty: '${structure['faculte'] ?? 'FACULTÉ'}',
-          department: '${structure['departement'] ?? 'DÉPARTEMENT'}',
-          title: 'PROCÈS-VERBAL DE SYNTHÈSE DES RÉSULTATS',
-          subtitle:
-              '${structure['filiere'] ?? ''} · ${structure['specialite'] ?? ''}',
-          details:
-              '${structure['niveau'] ?? preview['niveau'] ?? ''} · ${preview['code_classe'] ?? ''} · $periodLabel · ${preview['annee_academique'] ?? ''}',
-          status: (preview['version_courante'] as num?) == null
-              ? 'APERÇU · NON OFFICIEL'
-              : 'VERSION PUBLIÉE ${preview['version_courante']}',
-        ),
-        footer: (context) => gnuPvFooter(
-          'GNU · ${preview['code_classe'] ?? ''} · ${preview['annee_academique'] ?? ''}',
-          context,
-        ),
-        build: (_) => [
-          pw.TableHelper.fromTextArray(
-            headers: [
-              'N°',
-              'NOMS ET PRÉNOMS',
-              'MATRICULE',
-              'NIVEAU',
-              ...units.map(
-                (unit) => '${unit['code_ue']}\n${unit['credit'] ?? 0} cr.',
-              ),
-              'CRÉDITS ACQUIS',
-              'MGP',
-              'DÉCISION',
-            ],
-            data: [
-              for (var index = 0; index < students.length; index++)
-                (() {
-                  final student = students[index];
-                  final content = Map<String, dynamic>.from(
-                    student['contenu'] as Map? ?? {},
-                  );
-                  final studentUnits = {
-                    for (final unit in _maps(content['ues']))
-                      '${unit['code_ue']}': unit,
-                  };
-                  final mgpKey = preview['periode'] == 'ANNUELLE'
-                      ? 'mgp_total'
-                      : 'mgp_${preview['periode']}'.toLowerCase();
-                  final acquired = _maps(content['ues']).fold<double>(
-                    0,
-                    (sum, unit) =>
-                        sum +
-                        (((unit['arrondi'] as num?) ?? 0) >= 35
-                            ? ((unit['credit'] as num?)?.toDouble() ?? 0)
-                            : 0),
-                  );
-                  final registered =
-                      (content['total_credits'] as num?)?.toDouble() ?? 0;
-                  return [
-                    '${index + 1}',
-                    '${student['nom'] ?? ''} ${student['prenom'] ?? ''}',
-                    '${student['matricule'] ?? ''}',
-                    '${structure['niveau'] ?? preview['niveau'] ?? ''}',
-                    ...units.map((unit) {
-                      final result = studentUnits['${unit['code_ue']}'];
-                      return result == null
-                          ? '—'
-                          : result['arrondi'] == null
-                          ? 'EL'
-                          : '${result['arrondi']}\n${result['grade'] ?? ''}';
-                    }),
-                    '${acquired.toStringAsFixed(0)}/${registered.toStringAsFixed(0)}',
-                    '${content[mgpKey] ?? '—'}',
-                    '${content['decision_admission'] ?? '—'}',
-                  ];
-                })(),
-            ],
-            headerStyle: pw.TextStyle(
-              fontSize: 6.2,
-              fontWeight: pw.FontWeight.bold,
-            ),
-            cellStyle: const pw.TextStyle(fontSize: 6.1),
-            cellAlignment: pw.Alignment.center,
-            cellAlignments: {1: pw.Alignment.centerLeft},
-            headerDecoration: const pw.BoxDecoration(
-              color: pdf.PdfColor(.86, .91, .89),
-            ),
-            border: pw.TableBorder.all(
-              color: pdf.PdfColors.blueGrey800,
-              width: .45,
-            ),
-            cellPadding: const pw.EdgeInsets.symmetric(
-              horizontal: 3,
-              vertical: 3,
-            ),
-          ),
-          pw.SizedBox(height: 12),
-          pw.Text(
-            'Effectif : ${students.length} · Crédit acquis : total de cohorte ${students.fold<double>(0, (sum, row) {
-              final content = Map<String, dynamic>.from(row['contenu'] as Map? ?? {});
-              return sum + _maps(content['ues']).fold<double>(0, (credits, unit) => credits + (((unit['arrondi'] as num?) ?? 0) >= 35 ? ((unit['credit'] as num?)?.toDouble() ?? 0) : 0));
-            }).toStringAsFixed(0)}',
-            style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold),
-          ),
-          pw.SizedBox(height: 16),
-          pw.Row(
-            children: [
-              pw.Expanded(
-                child: _transcriptSignature(
-                  'Le Président du Jury / President of the Jury',
-                ),
-              ),
-              pw.SizedBox(width: 30),
-              pw.Expanded(
-                child: _transcriptSignature(
-                  'Le Chef de Département / Head of Department',
-                ),
-              ),
-            ],
-          ),
-          pw.Center(
-            child: pw.Text(
-              'Les signatures et le cachet seront apposés après validation officielle.',
-              style: const pw.TextStyle(fontSize: 7),
-            ),
-          ),
-        ],
-      ),
-    );
+  Future<void> _exportCohortMinutesPdf(Map<String, dynamic> preview, {int? version}) async {
     try {
-      final name =
-          'PV-recapitulatif-${preview['code_classe'] ?? 'classe'}-${preview['periode']}-${preview['annee_academique'] ?? ''}.pdf';
-      await downloadFile(name, await document.save());
+      final data = version == null ? preview : await widget.api.agentPublishedBulletins(
+        (preview['classe_id'] as num).toInt(), preview['periode'].toString(), version: version,
+      );
+      final students = _maps(data['etudiants']);
+      if (students.isEmpty || students.any((row) => row['pret'] != true)) {
+        throw const FormatException('Les bulletins de la classe doivent être calculables pour produire ce PV.');
+      }
+      final structure = data['structure'] as Map? ?? {};
+      final logoData = structure['logo'] as Map?;
+      final logo = logoData?['base64'] is String
+          ? base64Decode(logoData!['base64'] as String)
+          : (await rootBundle.load('assets/uy1_crest.png')).buffer.asUint8List();
+      final document = pw.Document(theme: await gnuPdfTheme());
+      addCohortMinutes(document, pw.MemoryImage(logo), data);
+      await downloadFile(
+        "PV-classe-${data['code_classe']}-${data['periode']}-${data['annee_academique']}-${version == null ? 'apercu' : 'V$version'}.pdf",
+        await document.save(),
+      );
     } catch (error) {
       if (mounted) toast(context, _error(error));
     }

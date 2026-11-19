@@ -962,6 +962,11 @@ class TeacherPortalController extends Controller
             'departement' => $assignment->nom_depart,
             'universite' => $assignment->nom_univ,
             'logo_structure' => $logoStructure,
+            'code_niveau' => $assignment->code_niv,
+            'credit_ec' => $assignment->credit_matiere,
+            'code_filiere' => $assignment->code_f,
+            'filiere' => $assignment->nom_f,
+            'specialite' => $assignment->libelle_specialite,
             'plan' => $plan,
             'etudiants' => $students->map(function (object $student) use ($evaluations, $notes, $digitizedNotes, $authorizedCorrections, $assignment, $sheetPaths): array {
                 $studentNotes = [];
@@ -999,6 +1004,7 @@ class TeacherPortalController extends Controller
                     'inscription_ue_id' => (int) $student->inscription_ue_id,
                     'matricule' => $student->matricule,
                     'nom' => trim($student->prenom.' '.$student->nom),
+                    'nom_complet_pv' => trim($student->nom.' '.$student->prenom),
                     'inscription_classe_id' => (int) $student->inscription_classe_id,
                     'fiche_academique_disponible' => $sheetPaths[(int) $student->inscription_classe_id] ?? false,
                     'notes' => $studentNotes,
@@ -2365,6 +2371,7 @@ class TeacherPortalController extends Controller
             ->join('gnu.classe as c', 'c.id', '=', 'a.classe_id')
             ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
             ->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
+            ->leftJoin('gnu.specialite as sp', 'sp.id', '=', 'n.specialite_id')
             ->join('gnu.filiere as f', 'f.id', '=', 'n.filiere_id')
             ->join('gnu.departement as d', 'd.id', '=', 'f.departement_id')
             ->join('gnu.faculte as fac', 'fac.id', '=', 'd.faculte_id')
@@ -2380,8 +2387,8 @@ class TeacherPortalController extends Controller
             ->first([
                 'a.id', 'a.classe_id', 'a.matiere_id', 'a.enseignant_id', 'a.actif',
                 'u.id as ue_id', 'u.code_ue', 'u.intitule_ue', 'u.numero_semestre',
-                'm.code_m', 'm.intitule_matiere', 'c.code_classe', 'an.libelle as annee_academique',
-                'n.libelle_niv', 'fac.nom_fac', 'd.nom_depart', 'un.nom_univ',
+                'm.code_m', 'm.credit_matiere', 'm.intitule_matiere', 'c.code_classe', 'an.libelle as annee_academique',
+                'n.libelle_niv', 'n.code_niv', 'f.code_f', 'f.nom_f', 'sp.libelle_specialite', 'fac.nom_fac', 'd.nom_depart', 'un.nom_univ',
                 'd.id as departement_id',
                 'profil.code_profil as profil_evaluation',
             ]);
@@ -2524,54 +2531,39 @@ class TeacherPortalController extends Controller
 
                 return;
             }
-            $digitized = DB::table('gnu.note_numerisee')->where('transmission_id', $row->id)->lockForUpdate()->get();
-            $externalDigitized = DB::table('gnu.note_numerisee_hors_compte as nnh')
-                ->join('gnu.note_hors_compte as nh', 'nh.id', '=', 'nnh.note_hors_compte_id')
-                ->where('nnh.transmission_id', $row->id)->lock('FOR UPDATE OF nnh')->get(['nnh.*', 'nh.version_note as current_version']);
-            $gradeCount = DB::table('gnu.note')->where('evaluation_id', $row->evaluation_id)->count();
-            $externalCount = DB::table('gnu.transmission_note_hors_compte')->where('transmission_id', $row->id)->count();
-            abort_unless(($gradeCount + $externalCount) > 0 && $digitized->count() === $gradeCount && $externalDigitized->count() === $externalCount, 409, 'La grille n’a pas été entièrement numérisée par la cellule.');
-            $editedAfterReturn = DB::table('gnu.note')
-                ->where('evaluation_id', $row->evaluation_id)
-                ->where('updated_at', '>', $locked->traite_le)
-                ->exists();
-            abort_if(
-                $editedAfterReturn,
-                409,
-                'Des notes ont été modifiées après le retour du PV. Demandez une correction pour renvoyer la grille à la cellule avant le visa final.',
-            );
-            foreach ($digitized as $digitizedGrade) {
-                $note = DB::table('gnu.note')->where('evaluation_id', $row->evaluation_id)
-                    ->where('inscription_ue_id', $digitizedGrade->inscription_ue_id)->lockForUpdate()->first();
-                abort_unless($note !== null && (int) $note->version_note === (int) $digitizedGrade->version_note_source, 409, 'Une note a changé depuis sa numérisation. Demandez à la cellule de recharger la grille.');
-                DB::select("SELECT set_config('gnu.origine', ?, true), set_config('gnu.decision_id', '', true)", ['CORRECTION']);
-                DB::table('gnu.note')->where('id', $note->id)->update([
-                    'valeur_note' => $digitizedGrade->situation === 'NUMERIQUE' ? $digitizedGrade->valeur_note : null,
-                    'situation' => $digitizedGrade->situation,
-                    'statut_note' => 'BROUILLON',
-                    'validateur_id' => null,
-                    'date_validation' => null,
-                    'version_note' => $note->version_note,
-                    'updated_at' => now(),
-                ]);
+            $grades = DB::table('gnu.note')->where('evaluation_id', $row->evaluation_id)
+                ->lockForUpdate()->get()->keyBy('inscription_ue_id');
+            $digitized = DB::table('gnu.note_numerisee')->where('transmission_id', $row->id)
+                ->where('evaluation_id', $row->evaluation_id)->get()->keyBy('inscription_ue_id');
+            $external = DB::table('gnu.transmission_note_hors_compte as t')
+                ->join('gnu.note_hors_compte as n', 'n.id', '=', 't.note_hors_compte_id')
+                ->where('t.transmission_id', $row->id)->where('n.evaluation_id', $row->evaluation_id)
+                ->lock('FOR UPDATE OF n')->get(['n.*'])->keyBy('id');
+            $externalDigitized = DB::table('gnu.note_numerisee_hors_compte')->where('transmission_id', $row->id)
+                ->get()->keyBy('note_hors_compte_id');
+            abort_unless($grades->count() + $external->count() > 0, 409, 'Aucune note à vérifier.');
+            abort_unless($grades->count() === $digitized->count() && $external->count() === $externalDigitized->count(),
+                409, 'La grille numérisée doit couvrir exactement les lignes du carnet enseignant.');
+            $editedAfterReturn = DB::table('gnu.note')->where('evaluation_id', $row->evaluation_id)
+                ->where('updated_at', '>', $locked->traite_le)->exists();
+            abort_if($editedAfterReturn, 409, 'Des notes ont été modifiées après le retour du PV. Demandez une correction avant le visa final.');
+
+            foreach ($grades as $registration => $grade) {
+                $this->verifyTeacherMark($grade, $digitized->get($registration), 'inscription UE '.$registration);
             }
-            foreach ($externalDigitized as $digitizedGrade) {
-                abort_unless((int) $digitizedGrade->current_version === (int) $digitizedGrade->version_note_source, 409, 'Une note hors compte a changé depuis sa numérisation. Demandez à la cellule de recharger la grille.');
-                DB::select("SELECT set_config('gnu.origine', ?, true), set_config('gnu.decision_id', '', true)", ['CORRECTION']);
-                DB::table('gnu.note_hors_compte')->where('id', $digitizedGrade->note_hors_compte_id)->update([
-                    'valeur_note' => $digitizedGrade->situation === 'NUMERIQUE' ? $digitizedGrade->valeur_note : null,
-                    'situation' => $digitizedGrade->situation,
-                    'statut_note' => 'VALIDEE',
-                    'version_note' => $digitizedGrade->version_note_source,
-                    'updated_at' => now(),
-                ]);
+            foreach ($external as $id => $grade) {
+                $this->verifyTeacherMark($grade, $externalDigitized->get($id), 'matricule '.$grade->matricule);
             }
-            // The audit constraint accepts the shared VALIDATION origin.
+
             DB::select("SELECT set_config('gnu.origine', ?, true), set_config('gnu.decision_id', '', true)", ['VALIDATION']);
             DB::table('gnu.note')->where('evaluation_id', $row->evaluation_id)->where('statut_note', 'BROUILLON')
                 ->whereIn('situation', ['NUMERIQUE', 'ABSENTE'])->update([
                     'statut_note' => 'VALIDEE', 'validateur_id' => $request->user()->id, 'date_validation' => now(), 'updated_at' => now(),
                 ]);
+            if ($external->isNotEmpty()) {
+                DB::table('gnu.note_hors_compte')->whereIn('id', $external->keys()->all())
+                    ->update(['statut_note' => 'VALIDEE', 'updated_at' => now()]);
+            }
             DB::table('gnu.transmission_note')->where('id', $row->id)->update([
                 'statut' => 'VERIFIEE', 'motif' => trim($data['motif']), 'verifie_par' => $request->user()->id,
                 'verifie_le' => now(), 'updated_at' => now(),
@@ -2626,6 +2618,20 @@ class TeacherPortalController extends Controller
         });
 
         return response()->json(['message' => $data['decision'] === 'VERIFIER' ? 'Notes vérifiées et intégrées aux résultats provisoires.' : 'La transmission a été retournée pour correction.']);
+    }
+
+    private function verifyTeacherMark(object $grade, ?object $digitized, string $label): void
+    {
+        abort_unless($digitized && (int) $grade->version_note === (int) $digitized->version_note_source,
+            409, "Numérisation absente ou périmée ($label). Demandez une correction.");
+        $matches = $grade->situation === $digitized->situation
+            && match ($grade->situation) {
+                'NUMERIQUE' => is_numeric($grade->valeur_note) && is_numeric($digitized->valeur_note)
+                    && (float) $grade->valeur_note === (float) $digitized->valeur_note,
+                'ABSENTE' => $grade->valeur_note === null && $digitized->valeur_note === null,
+                default => false,
+            };
+        abort_unless($matches, 409, "La numérisation diffère du carnet enseignant ($label). Demandez une correction puis vérifiez à nouveau.");
     }
 
     public function downloadGradeTransmissionMinutes(Request $request, int $transmission): mixed

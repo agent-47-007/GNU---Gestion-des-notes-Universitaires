@@ -1,0 +1,33 @@
+ALTER TABLE gnu.ue ADD COLUMN code_ue text, ADD COLUMN numero_semestre int;
+UPDATE gnu.ue SET code_ue='INF200', numero_semestre=2;
+ALTER TABLE gnu.filiere ADD COLUMN code_f text;
+CREATE TABLE gnu.utilisateur (id int, nom text, prenom text, actif boolean);
+CREATE TABLE gnu.enseignant (id int, utilisateur_id int);
+CREATE TABLE gnu.matiere (id int, ue_id int, code_m text, intitule_matiere text, credit_matiere numeric, rang_ec int);
+CREATE TABLE gnu.affectation (id int, matiere_id int, classe_id int, enseignant_id int, actif boolean);
+CREATE TABLE gnu.profil_evaluation_ue (ue_id int, code_profil text);
+CREATE TABLE gnu.responsable_note_ue (ue_id int, classe_id int, enseignant_id int);
+CREATE TABLE gnu.inscription_ue (id int, ue_id int, inscription_classe_id int, statut_inscription text);
+CREATE TABLE gnu.evaluation (id int, affectation_id int, mode_evaluation text, statut_evaluation text, type_eval text);
+CREATE TABLE gnu.plan_evaluation (id int, affectation_id int, portee text, statut_plan text);
+CREATE TABLE gnu.ligne_plan (evaluation_id int, plan_id int, retenue boolean);
+CREATE TABLE gnu.note (id serial, evaluation_id int, inscription_ue_id int, situation text, valeur_note numeric,
+    version_note int, statut_note text, validateur_id int, date_validation timestamp, created_at timestamp, updated_at timestamp);
+CREATE TABLE gnu.transmission_note (id int, evaluation_id int, affectation_id int, enseignant_id int, statut text, version int,
+    traite_le timestamp, verifie_par int, verifie_le timestamp, motif text, updated_at timestamp);
+CREATE TABLE gnu.note_numerisee (transmission_id int, evaluation_id int, inscription_ue_id int, valeur_note numeric, situation text, version_note_source int);
+CREATE TABLE gnu.note_hors_compte (id int, evaluation_id int);
+CREATE TABLE gnu.transmission_note_hors_compte (note_hors_compte_id int, transmission_id int);
+CREATE TABLE gnu.note_numerisee_hors_compte (note_hors_compte_id int, transmission_id int);
+CREATE TABLE gnu.agent_departement (agent_id int, departement_id int);
+CREATE TABLE gnu.requete (id int, evaluation_id int, inscription_ue_id int, type_requete text, statut_requete text);
+CREATE TABLE gnu.decision_requete (id int, requete_id int, courante boolean, action_decision text);
+INSERT INTO gnu.enseignant VALUES (1,3);
+INSERT INTO gnu.matiere VALUES (1,1,'EC1','Informatique',6,1);
+INSERT INTO gnu.affectation VALUES (1,1,1,1,true);
+INSERT INTO gnu.profil_evaluation_ue VALUES (1,'CC_SN');
+INSERT INTO gnu.responsable_note_ue VALUES (1,1,1);
+INSERT INTO gnu.inscription_ue VALUES (21,1,1,'VALIDEE'),(22,1,2,'VALIDEE');
+INSERT INTO gnu.evaluation VALUES (55,1,'NORMALE','REALISEE','CC');
+INSERT INTO gnu.plan_evaluation VALUES (1,1,'CLASSE','ACTIF');
+INSERT INTO gnu.ligne_plan VALUES (55,1,true);

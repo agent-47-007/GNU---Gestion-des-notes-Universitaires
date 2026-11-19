@@ -6,6 +6,7 @@ use App\Models\Utilisateur;
 use App\Services\AcademicRules;
 use App\Services\AgentDepartmentScope;
 use App\Services\BulletinReference;
+use App\Services\BulletinUnits;
 use App\Services\GradeWorkbookWriter;
 use App\Services\SystemAdministratorAccess;
 use Illuminate\Database\Query\Builder;
@@ -1575,7 +1576,7 @@ class AgentPortalController extends Controller
             ->join('gnu.etudiant as e', 'e.id', '=', 'ic.etudiant_id')
             ->join('gnu.utilisateur as u', 'u.id', '=', 'e.utilisateur_id')
             ->where('ic.classe_id', $classe)->where('ic.statut_inscription', 'VALIDEE')
-            ->orderBy('e.matricule')->get(['ic.id', 'e.matricule', 'u.nom', 'u.prenom']);
+            ->orderBy('e.matricule')->get(['ic.id', 'e.matricule', 'e.date_naissance', 'e.lieu_naissance', 'u.nom', 'u.prenom']);
         $class = DB::table('gnu.classe as c')->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
             ->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
             ->join('gnu.filiere as f', 'f.id', '=', 'n.filiere_id')
@@ -1610,6 +1611,8 @@ class AgentPortalController extends Controller
                     'matricule' => $registration->matricule,
                     'nom' => $registration->nom,
                     'prenom' => $registration->prenom,
+                    'date_naissance' => $registration->date_naissance,
+                    'lieu_naissance' => $registration->lieu_naissance,
                     'pret' => $ready,
                     'message' => $ready ? null : 'Notes, inscriptions ou validations incomplètes.',
                     'contenu' => $content,
@@ -1618,7 +1621,7 @@ class AgentPortalController extends Controller
                 $rows[] = ['inscription_classe_id' => (int) $registration->id, 'matricule' => $registration->matricule, 'nom' => $registration->nom, 'prenom' => $registration->prenom, 'pret' => false, 'message' => 'Notes, inscriptions ou validations incomplètes.'];
             }
         }
-        $rows = $this->rankBulletinRows($rows, $period);
+        $rows = $this->rankBulletinRows(BulletinUnits::withSourceYears($rows), $period);
 
         return response()->json(['data' => [
             'classe_id' => $classe,
@@ -2067,7 +2070,7 @@ class AgentPortalController extends Controller
             ->join('gnu.universite as un', 'un.id', '=', 'fac.universite_id')
             ->leftJoin('gnu.specialite as sp', 'sp.id', '=', 'n.specialite_id')
             ->where('c.id', $classe)->first([
-                'c.code_classe', 'an.libelle as annee_academique', 'n.libelle_niv', 'f.nom_f as nom_filiere',
+                'c.code_classe', 'an.libelle as annee_academique', 'n.code_niv', 'n.libelle_niv', 'f.nom_f as nom_filiere',
                 'd.nom_depart', 'fac.nom_fac', 'un.nom_univ', 'sp.libelle_specialite',
                 'd.id as departement_id', 'fac.id as faculte_id', 'un.id as universite_id',
             ]);
@@ -2078,12 +2081,14 @@ class AgentPortalController extends Controller
             ->join('gnu.etudiant as e', 'e.id', '=', 'ic.etudiant_id')
             ->join('gnu.utilisateur as u', 'u.id', '=', 'e.utilisateur_id')
             ->where('b.publication_id', $publication->id)
+            ->where('ic.classe_id', $classe)->where('b.periode', $periode)
             ->orderBy('e.matricule')->get([
-                'b.id', 'b.version_bulletin', 'b.periode', 'b.contenu_fige', 'b.mgp_s1', 'b.mgp_s2', 'b.mgp_total',
+                'b.id', 'b.inscription_classe_id', 'b.version_bulletin', 'b.periode', 'b.contenu_fige', 'b.mgp_s1', 'b.mgp_s2', 'b.mgp_total',
                 'b.total_credits', 'b.decision_admission', 'e.matricule', 'e.date_naissance', 'e.lieu_naissance',
                 'u.nom', 'u.prenom',
             ])->map(function (object $row) use ($class, $publication, $titles): array {
                 $content = is_string($row->contenu_fige) ? json_decode($row->contenu_fige, true, flags: JSON_THROW_ON_ERROR) : (array) $row->contenu_fige;
+                abort_if(isset($content['inscription_classe_id']) && (int) $content['inscription_classe_id'] !== (int) $row->inscription_classe_id, 409, 'Inscription incohérente dans le bulletin publié.');
                 $content['ues'] = array_map(static function (array $unit) use ($titles): array {
                     $unit['intitule_ue'] = $titles[$unit['ue_id'] ?? 0] ?? '';
 
@@ -2092,9 +2097,9 @@ class AgentPortalController extends Controller
 
                 return [
                     'id' => (int) $row->id,
-                    'matricule' => $row->matricule,
-                    'nom' => $row->nom,
-                    'prenom' => $row->prenom,
+                    'matricule' => $content['identite']['matricule'] ?? $row->matricule,
+                    'nom' => $content['identite']['nom'] ?? $row->nom,
+                    'prenom' => $content['identite']['prenom'] ?? $row->prenom,
                     'date_naissance' => $row->date_naissance,
                     'lieu_naissance' => $row->lieu_naissance,
                     'periode' => $row->periode,
@@ -2121,6 +2126,7 @@ class AgentPortalController extends Controller
         return response()->json(['data' => [
             'classe_id' => $classe,
             'code_classe' => $class->code_classe,
+            'code_niveau' => $class->code_niv,
             'annee_academique' => $class->annee_academique,
             'periode' => $periode,
             'version' => (int) $publication->version_publication,
@@ -2136,7 +2142,7 @@ class AgentPortalController extends Controller
                     ?? $this->structureLogo('faculte_id', (int) $class->faculte_id)
                     ?? $this->structureLogo('universite_id', (int) $class->universite_id),
             ],
-            'etudiants' => $students,
+            'etudiants' => BulletinUnits::withSourceYears($students),
         ]]);
     }
 

@@ -45,6 +45,43 @@ void main() {
     expect(expired, 1);
   });
 
+  testWidgets('le relevé de S2 demande le PDF du bulletin affiché', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final documents = <String>[];
+    final api = _api((request) {
+      final path = request.url.path;
+      if (path.endsWith('/document')) {
+        documents.add('${request.method} $path');
+        return http.Response('{"message":"Indisponible"}', 503);
+      }
+      if (path.endsWith('/resultats')) {
+        final second = request.url.queryParameters['periode'] == 'S2';
+        return _json({'data': [{
+          'id': second ? 102 : 101, 'periode': second ? 'S2' : 'S1',
+          'mgp_s1': 1.5, 'mgp_s2': 3.2, 'contenu': {'ues': [
+            {'code_ue': 'INF200', 'credit': 6, 'arrondi': second ? 86.5 : 44.25}
+          ]}
+        }]});
+      }
+      return _json({'data': []});
+    });
+    addTearDown(api.dispose);
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: LiveStudentPage(page: 'results', api: api))));
+    await tester.pumpAndSettle();
+    expect(find.text('44.25 /100'), findsOneWidget);
+    await tester.tap(find.text('Semestre 2'));
+    await tester.pumpAndSettle();
+    expect(find.text('44.25 /100'), findsNothing);
+    expect(find.text('86.5 /100'), findsOneWidget);
+    expect(find.text('6 crédits'), findsOneWidget);
+    expect(find.text('MGP : 3.2 / 4'), findsOneWidget);
+    await tester.ensureVisible(find.text('Télécharger le PDF'));
+    await tester.tap(find.text('Télécharger le PDF'));
+    await tester.pumpAndSettle();
+    expect(documents, ['GET /api/v1/etudiant/resultats/102/document']);
+  });
+
   testWidgets('profil étudiant enregistre le courriel via l’API', (
     tester,
   ) async {

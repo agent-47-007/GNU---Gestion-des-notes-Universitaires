@@ -9,7 +9,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import 'api_client.dart';
-import 'academic_bulletin_pdf.dart';
+import 'academic_registration_pdf.dart';
 import 'file_download.dart';
 import 'pdf_theme.dart';
 import 'ui.dart';
@@ -1187,8 +1187,7 @@ class LiveStudentPageState extends State<LiveStudentPage> {
               .where((value) => value != targetSemester)
               .toList()
         : <int>[];
-    final otherSemester = otherSemesters.isEmpty ? null : otherSemesters.first;
-    if (otherSemester != null) {
+    for (final otherSemester in otherSemesters) {
       final otherEnrollment = await widget.api.enrollment(otherSemester);
       final otherUnits = (otherEnrollment['unites'] as List? ?? [])
           .whereType<Map>()
@@ -1217,408 +1216,14 @@ class LiveStudentPageState extends State<LiveStudentPage> {
       );
       return;
     }
-    final mandatory = chosen
-        .where((unit) => unit['obligatoire'] == true)
-        .toList();
-    final optional = chosen
-        .where((unit) => unit['obligatoire'] != true)
-        .toList();
-    final totalCredits = chosen.fold<int>(
-      0,
-      (sum, unit) => sum + ((unit['credits'] as num?)?.toInt() ?? 0),
-    );
-    final year = '${enrollment['annee_academique'] ?? ''}';
-    final titleStyle = pw.TextStyle(
-      fontSize: 10,
-      fontWeight: pw.FontWeight.bold,
-      color: pdf.PdfColor.fromHex('#1B2942'),
-    );
-    final labelStyle = pw.TextStyle(
-      fontSize: 7,
-      color: pdf.PdfColor.fromHex('#5B5F66'),
-    );
-    final valueStyle = pw.TextStyle(
-      fontSize: 9,
-      fontWeight: pw.FontWeight.bold,
-    );
-    final crest = pw.MemoryImage(
-      (await rootBundle.load('assets/uy1_crest.png')).buffer.asUint8List(),
-    );
-    final document = pw.Document(
-      theme: await gnuPdfTheme(),
-      title: 'Fiche académique - ${profile['matricule'] ?? ''}',
-      author: 'GNU - Campus numérique',
-    );
-    pw.Widget field(String label, String value) => pw.Padding(
-      padding: const pw.EdgeInsets.only(bottom: 6),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          pw.Text(label, style: labelStyle),
-          pw.Container(
-            width: double.infinity,
-            padding: const pw.EdgeInsets.only(top: 2, bottom: 3),
-            decoration: const pw.BoxDecoration(
-              border: pw.Border(
-                bottom: pw.BorderSide(color: pdf.PdfColors.grey, width: .5),
-              ),
-            ),
-            child: pw.Text(value.isEmpty ? ' ' : value, style: valueStyle),
-          ),
-        ],
-      ),
-    );
-    pw.Widget sectionTable(String title, List<Map<String, dynamic>> rows) =>
-        pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-          children: [
-            pw.Container(
-              padding: const pw.EdgeInsets.symmetric(
-                horizontal: 6,
-                vertical: 5,
-              ),
-              color: pdf.PdfColor.fromHex('#F1EEE2'),
-              child: pw.Text(title, style: titleStyle),
-            ),
-            if (rows.isEmpty)
-              pw.Padding(
-                padding: const pw.EdgeInsets.all(7),
-                child: pw.Text(
-                  'Aucune UE sélectionnée dans cette catégorie.',
-                  style: const pw.TextStyle(fontSize: 8),
-                ),
-              )
-            else
-              pw.TableHelper.fromTextArray(
-                headers: ['N°', 'CODE UE', 'INTITULÉ', 'SEMESTRE', 'CRÉDITS'],
-                data: [
-                  for (var i = 0; i < rows.length; i++)
-                    [
-                      '${i + 1}',
-                      '${rows[i]['code'] ?? ''}',
-                      '${rows[i]['intitule'] ?? ''}',
-                      'SEM${rows[i]['_semestre']}',
-                      '${rows[i]['credits'] ?? 0}',
-                    ],
-                ],
-                headerStyle: pw.TextStyle(
-                  fontSize: 7,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-                cellStyle: const pw.TextStyle(fontSize: 7),
-                headerDecoration: const pw.BoxDecoration(
-                  color: pdf.PdfColors.white,
-                ),
-                border: pw.TableBorder.all(
-                  color: pdf.PdfColor.fromHex('#DEDACB'),
-                  width: .45,
-                ),
-                cellPadding: const pw.EdgeInsets.symmetric(
-                  horizontal: 5,
-                  vertical: 5,
-                ),
-                columnWidths: {
-                  0: const pw.FixedColumnWidth(28),
-                  1: const pw.FixedColumnWidth(62),
-                  2: const pw.FlexColumnWidth(1),
-                  3: const pw.FixedColumnWidth(58),
-                  4: const pw.FixedColumnWidth(48),
-                },
-              ),
-          ],
-        );
-    document.addPage(
-      pw.MultiPage(
-        pageFormat: pdf.PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.fromLTRB(30, 24, 30, 24),
-        footer: (context) => pw.Container(
-          alignment: pw.Alignment.center,
-          padding: const pw.EdgeInsets.only(top: 8),
-          child: pw.Text(
-            'GNU · Campus numérique  |  ${submitted ? 'Fiche soumise à validation' : 'Document préparatoire'} · Page ${context.pageNumber}/${context.pagesCount}',
-            style: const pw.TextStyle(fontSize: 7, color: pdf.PdfColors.grey),
-          ),
-        ),
-        build: (context) => [
-          pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Expanded(
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text('REPUBLIQUE DU CAMEROUN', style: titleStyle),
-                    pw.Text(
-                      'Paix - Travail - Patrie',
-                      style: const pw.TextStyle(fontSize: 8),
-                    ),
-                    pw.SizedBox(height: 4),
-                    pw.Text('UNIVERSITÉ DE YAOUNDÉ I', style: titleStyle),
-                    pw.Text(
-                      'Faculté des Sciences · Service de la Scolarité',
-                      style: labelStyle,
-                    ),
-                    pw.Text(
-                      'BP 812 Yaoundé · Tél/Fax : 222 23 44 96',
-                      style: labelStyle,
-                    ),
-                    pw.Text(
-                      'Inscription pédagogique',
-                      style: const pw.TextStyle(fontSize: 8),
-                    ),
-                    pw.Text('Fiche académique', style: labelStyle),
-                  ],
-                ),
-              ),
-              pw.Container(
-                width: 50,
-                height: 62,
-                margin: const pw.EdgeInsets.symmetric(horizontal: 8),
-                child: pw.Image(crest, fit: pw.BoxFit.contain),
-              ),
-              pw.Expanded(
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.end,
-                  children: [
-                    pw.Text('REPUBLIC OF CAMEROON', style: titleStyle),
-                    pw.Text(
-                      'Peace - Work - Fatherland',
-                      style: const pw.TextStyle(fontSize: 8),
-                    ),
-                    pw.SizedBox(height: 4),
-                    pw.Text('THE UNIVERSITY OF YAOUNDE I', style: titleStyle),
-                    pw.Text(
-                      'Faculty of Science · Schooling Office',
-                      style: labelStyle,
-                    ),
-                    pw.Text(
-                      'P.O. Box 812 Yaounde · Tel/Fax: 222 23 44 96',
-                      style: labelStyle,
-                    ),
-                    pw.Text(
-                      'Academic Registration',
-                      style: const pw.TextStyle(fontSize: 8),
-                    ),
-                    pw.Text('MINESUP · LMD', style: labelStyle),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          pw.SizedBox(height: 12),
-          pw.Divider(color: pdf.PdfColor.fromHex('#8C2F2F'), thickness: 1.2),
-          pw.SizedBox(height: 5),
-          pw.Center(
-            child: pw.Column(
-              children: [
-                pw.Text(
-                  'FICHE D’INSCRIPTION ACADÉMIQUE ET QUITUS',
-                  style: pw.TextStyle(
-                    fontSize: 14,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-                pw.Text(
-                  'ACADEMIC REGISTRATION FORM',
-                  style: pw.TextStyle(
-                    fontSize: 9,
-                    fontStyle: pw.FontStyle.italic,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          pw.SizedBox(height: 12),
-          pw.Container(
-            width: double.infinity,
-            padding: const pw.EdgeInsets.all(7),
-            decoration: pw.BoxDecoration(
-              color: pdf.PdfColor.fromHex('#EAF4F0'),
-              border: pw.Border.all(color: pdf.PdfColor.fromHex('#B9D6CB')),
-            ),
-            child: pw.Text(
-              'Vous avez actuellement le quitus pour payer vos droits universitaires dans les organismes de paiements associés à UY1 et contre reçu de paiement.\nYou are currently cleared to pay your university fees through UY1 partner payment agencies against receipt.',
-              style: const pw.TextStyle(fontSize: 7.5),
-            ),
-          ),
-          pw.SizedBox(height: 8),
-          pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Expanded(
-                child: pw.Column(
-                  children: [
-                    field(
-                      'Filière / Discipline · Programme / Discipline',
-                      '${profile['filiere'] ?? enrollment['classe'] ?? ''}',
-                    ),
-                    field(
-                      'Noms et prénoms · Surname and name',
-                      '${student['nom'] ?? ''} ${student['prenom'] ?? ''}'
-                          .trim(),
-                    ),
-                    pw.Row(
-                      children: [
-                        pw.Expanded(
-                          child: field(
-                            'Date de naissance · Date of birth',
-                            '${profile['date_naissance'] ?? ''}',
-                          ),
-                        ),
-                        pw.SizedBox(width: 12),
-                        pw.Expanded(
-                          child: field(
-                            'Lieu de naissance · Place of birth',
-                            '${profile['lieu_naissance'] ?? ''}',
-                          ),
-                        ),
-                      ],
-                    ),
-                    pw.Row(
-                      children: [
-                        pw.Expanded(
-                          child: field(
-                            'Région d’origine · Region of origin',
-                            '${profile['region_origine'] ?? ''}',
-                          ),
-                        ),
-                        pw.SizedBox(width: 12),
-                        pw.Expanded(
-                          child: field(
-                            'Nationalité · Nationality',
-                            '${profile['nationalite'] ?? ''}',
-                          ),
-                        ),
-                      ],
-                    ),
-                    pw.Row(
-                      children: [
-                        pw.Expanded(
-                          child: field(
-                            'Matricule · Registration number',
-                            '${profile['matricule'] ?? student['login'] ?? ''}',
-                          ),
-                        ),
-                        pw.SizedBox(width: 12),
-                        pw.Expanded(
-                          child: field(
-                            'Année académique · Academic year',
-                            year,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              pw.SizedBox(width: 14),
-              pw.Container(
-                width: 92,
-                height: 112,
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(color: pdf.PdfColors.grey, width: .7),
-                ),
-                alignment: pw.Alignment.center,
-                child: pw.Text('PHOTO', style: labelStyle),
-              ),
-            ],
-          ),
-          pw.SizedBox(height: 7),
-          pw.Text(
-            'Numéros des reçus de paiement des droits universitaires / Receipt numbers of payment of university dues',
-            style: titleStyle,
-          ),
-          pw.SizedBox(height: 3),
-          pw.Row(
-            children: [
-              pw.Expanded(child: field('1ère tranche · 1st installment', '')),
-              pw.SizedBox(width: 10),
-              pw.Expanded(child: field('2ème tranche · 2nd installment', '')),
-              pw.SizedBox(width: 10),
-              pw.Expanded(child: field('Totalité · Total', '')),
-            ],
-          ),
-          pw.SizedBox(height: 7),
-          pw.Container(
-            width: double.infinity,
-            padding: const pw.EdgeInsets.all(7),
-            color: pdf.PdfColor.fromHex('#F1EEE2'),
-            child: pw.Text(
-              'Inscription pédagogique annuelle · Année $year   |   ${submitted ? 'SOUMISE À VALIDATION' : enrollment['statut'] ?? 'BROUILLON'}',
-              style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
-            ),
-          ),
-          pw.SizedBox(height: 10),
-          pw.Center(
-            child: pw.Text(
-              'Nature des enseignements / Type of courses',
-              style: titleStyle,
-            ),
-          ),
-          pw.SizedBox(height: 5),
-          sectionTable('UE FONDAMENTALES / CORE COURSES', mandatory),
-          pw.SizedBox(height: 8),
-          sectionTable('UE OPTIONNELLES / ELECTIVE COURSES', optional),
-          pw.SizedBox(height: 8),
-          pw.Text(
-            'Nombre total des UE : ${chosen.length}                         Total des crédits : $totalCredits',
-            style: titleStyle,
-          ),
-          pw.SizedBox(height: 20),
-          pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.end,
-            children: [
-              pw.Expanded(
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'Date et signature du responsable de la scolarité',
-                      style: const pw.TextStyle(fontSize: 8),
-                    ),
-                    pw.Text(
-                      'Date and signature of the admission officer',
-                      style: const pw.TextStyle(
-                        fontSize: 7,
-                        fontStyle: pw.FontStyle.italic,
-                      ),
-                    ),
-                    pw.SizedBox(height: 28),
-                    pw.Container(height: .5, color: pdf.PdfColors.grey),
-                  ],
-                ),
-              ),
-              pw.SizedBox(width: 24),
-              pw.Expanded(
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'Signature et téléphone de l’étudiant',
-                      style: const pw.TextStyle(fontSize: 8),
-                    ),
-                    pw.Text(
-                      'Student’s signature and phone number',
-                      style: const pw.TextStyle(
-                        fontSize: 7,
-                        fontStyle: pw.FontStyle.italic,
-                      ),
-                    ),
-                    pw.SizedBox(height: 28),
-                    pw.Container(height: .5, color: pdf.PdfColors.grey),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          pw.SizedBox(height: 8),
-          pw.Text(
-            'Ce document présente les choix en cours et ne constitue pas une validation de la scolarité.',
-            style: const pw.TextStyle(fontSize: 7, color: pdf.PdfColors.grey),
-          ),
-        ],
-      ),
-    );
+    final year = "${enrollment['annee_academique'] ?? ''}";
+    final asset = await rootBundle.load('assets/fiche_inscription_vierge.png');
+    final document = pw.Document(theme: await gnuPdfTheme(),
+      title: "Fiche académique - ${enrollment['matricule'] ?? profile['matricule'] ?? ''}");
+    addAcademicRegistration(document,
+      pw.MemoryImage(asset.buffer.asUint8List(asset.offsetInBytes, asset.lengthInBytes)),
+      {...profile, ...student, ...enrollment}, chosen,
+      status: submitted ? 'Fiche soumise à validation' : 'Document préparatoire');
     final bytes = await document.save();
     try {
       if (annual || submitted) {
@@ -1680,21 +1285,6 @@ class LiveStudentPageState extends State<LiveStudentPage> {
       PageHeading(
         'Notes & bulletins',
         'Consultez les bulletins officiels publiés pour votre inscription.',
-        action: Wrap(
-          spacing: 8,
-          children: [
-            OutlinedButton.icon(
-              onPressed: _printResultsPdf,
-              icon: const Icon(Icons.print_outlined),
-              label: const Text('Imprimer'),
-            ),
-            OutlinedButton.icon(
-              onPressed: _downloadResultsPdf,
-              icon: const Icon(Icons.download_outlined),
-              label: const Text('Télécharger le PDF'),
-            ),
-          ],
-        ),
       ),
       Wrap(
         spacing: 8,
@@ -1721,6 +1311,7 @@ class LiveStudentPageState extends State<LiveStudentPage> {
       _publishedEvaluationMinutes(),
       const SizedBox(height: 16),
       FutureBuilder<List<Map<String, dynamic>>>(
+        key: ValueKey(period),
         future: resultsFuture,
         builder: (context, snapshot) {
           if (snapshot.hasError) return _error(snapshot.error!);
@@ -1760,7 +1351,7 @@ class LiveStudentPageState extends State<LiveStudentPage> {
                             spacing: 24,
                             children: [
                               Text(
-                                'MGP : ${contentMap['mgp_total'] ?? contentMap['mgp_s1'] ?? contentMap['mgp_s2'] ?? '—'} / 4',
+                                'MGP : ${contentMap[period == 'ANNUELLE' ? 'mgp_total' : 'mgp_${period.toLowerCase()}'] ?? '—'} / 4',
                               ),
                               Text(
                                 'Décision : ${contentMap['decision_admission'] ?? 'EN COURS'}',
@@ -1823,12 +1414,18 @@ class LiveStudentPageState extends State<LiveStudentPage> {
                             subtitle:
                                 'Publié le ${bulletin['publie_le'] ?? ''} · ${bulletin['credits'] ?? 0} crédits',
                           ),
+                          Wrap(children: [
+                            TextButton.icon(onPressed: () => _openPublishedPdf(bulletin, print: false),
+                              icon: const Icon(Icons.download_outlined), label: const Text('Télécharger le PDF')),
+                            TextButton.icon(onPressed: () => _openPublishedPdf(bulletin, print: true),
+                              icon: const Icon(Icons.print_outlined), label: const Text('Imprimer')),
+                          ]),
                           Wrap(
                             spacing: 24,
                             runSpacing: 8,
                             children: [
                               Text(
-                                'MGP : ${bulletin['mgp_total'] ?? bulletin['mgp_s1'] ?? '—'} / 4',
+                                'MGP : ${bulletin[bulletin['periode'] == 'ANNUELLE' ? 'mgp_total' : 'mgp_${bulletin['periode'].toString().toLowerCase()}'] ?? '—'} / 4',
                               ),
                               Text('Décision : ${bulletin['decision'] ?? '—'}'),
                             ],
@@ -1847,10 +1444,10 @@ class LiveStudentPageState extends State<LiveStudentPage> {
                                   '${row['code'] ?? row['code_ue'] ?? ''} · ${row['intitule'] ?? row['intitule_ue'] ?? row['title'] ?? ''}',
                                 ),
                                 subtitle: Text(
-                                  '${row['credits'] ?? row['credit_ue'] ?? ''} crédits',
+                                  '${row['credit'] ?? row['credits'] ?? row['credit_ue'] ?? ''} crédits',
                                 ),
                                 trailing: Text(
-                                  '${row['note_sur_100'] ?? row['note_finale'] ?? row['note'] ?? row['mark'] ?? ''} /100',
+                                  _publishedMark(row),
                                 ),
                               ),
                             ),
@@ -2149,6 +1746,13 @@ class LiveStudentPageState extends State<LiveStudentPage> {
     }
   }
 
+  String _publishedMark(Map<String, dynamic> row) {
+    if (row['en_attente'] == true) return 'En attente';
+    if (row['el'] == true || row['grade'] == 'EL') return 'EL';
+    final mark = row['arrondi'] ?? row['note_sur_100'] ?? row['note_finale'] ?? row['note'] ?? row['mark'];
+    return mark == null ? '—' : '$mark /100';
+  }
+
   List<Map<String, dynamic>> _resultRows(Object? snapshot) {
     if (snapshot is! Map) return [];
     for (final key in ['ues', 'resultats_ue', 'resultats', 'lignes']) {
@@ -2234,93 +1838,18 @@ class LiveStudentPageState extends State<LiveStudentPage> {
     );
   }
 
-  Future<void> _downloadResultsPdf() async {
+  Future<void> _openPublishedPdf(Map<String, dynamic> bulletin, {required bool print}) async {
     try {
-      final bytes = await _resultsPdf();
-      if (bytes == null) return;
-      await downloadFile('releve-$period.pdf', bytes);
-      if (mounted) toast(context, 'Bulletin PDF téléchargé.');
+      final bytes = await widget.api.studentBulletinPdf((bulletin['id'] as num).toInt());
+      final name = "${bulletin['reference_officielle'] ?? 'releve'}.pdf";
+      if (print) {
+        await Printing.layoutPdf(onLayout: (_) async => bytes, name: name);
+      } else {
+        await downloadFile(name, bytes);
+      }
     } catch (error) {
       if (mounted) toast(context, _message(error));
     }
-  }
-
-  Future<void> _printResultsPdf() async {
-    try {
-      final bytes = await _resultsPdf();
-      if (bytes == null) return;
-      await Printing.layoutPdf(
-        onLayout: (_) async => bytes,
-        name: 'releve-$period.pdf',
-      );
-    } catch (error) {
-      if (mounted)
-        toast(
-          context,
-          'Impression impossible sur cet appareil : ${_message(error)}',
-        );
-    }
-  }
-
-  Future<Uint8List?> _resultsPdf() async {
-    final bulletins = await widget.api.results(period: period);
-    if (bulletins.isEmpty) {
-      if (mounted) {
-        toast(
-          context,
-          'Veuillez attendre la publication d’une note ou la génération du tableau pour obtenir votre extrait.',
-        );
-      }
-      return null;
-    }
-    final bulletinId = (bulletins.first['id'] as num?)?.toInt();
-    if (bulletinId != null && bulletins.first['document_archive_id'] is num) {
-      return widget.api.studentBulletinPdf(bulletinId);
-    }
-    final first = bulletins.first;
-    final structure = first['structure'] is Map
-        ? Map<String, dynamic>.from(first['structure'] as Map)
-        : <String, dynamic>{};
-    final student = widget.api.user ?? <String, dynamic>{};
-    final profile = student['profil'] is Map
-        ? Map<String, dynamic>.from(student['profil'] as Map)
-        : <String, dynamic>{};
-    final logoData = structure['logo'] is Map
-        ? Map<String, dynamic>.from(structure['logo'] as Map)
-        : <String, dynamic>{};
-    Uint8List? logoBytes;
-    if (logoData['base64'] is String) {
-      logoBytes = base64Decode(logoData['base64'] as String);
-    } else if ('${structure['universite'] ?? ''}'.toUpperCase().contains('YAOUNDÉ I') ||
-        '${structure['universite'] ?? ''}'.toUpperCase().contains('YAOUNDE I')) {
-      logoBytes = (await rootBundle.load('assets/uy1_crest.png'))
-          .buffer
-          .asUint8List();
-    }
-    final transcriptRows = bulletins.map((bulletin) => <String, dynamic>{
-      ...bulletin,
-      'nom': student['nom'] ?? bulletin['nom'],
-      'prenom': student['prenom'] ?? bulletin['prenom'],
-      'matricule': profile['matricule'] ?? bulletin['matricule'],
-    }).toList();
-
-    final bytes = await buildAcademicBulletinsPdf(
-      bulletins: transcriptRows,
-      structure: structure,
-      period: period,
-      academicYear: '${structure['annee'] ?? '—'}',
-      official: true,
-      crest: logoBytes == null ? null : pw.MemoryImage(logoBytes),
-      studentProfile: profile,
-    );
-    if (bulletinId != null) {
-      await widget.api.archiveBulletinPdf(
-        bulletinId,
-        filename: '${bulletins.first['reference_officielle'] ?? 'releve'}.pdf',
-        file: bytes,
-      );
-    }
-    return bytes;
   }
 
   Widget _requests() => Column(

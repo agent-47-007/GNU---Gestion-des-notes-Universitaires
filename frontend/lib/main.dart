@@ -1238,10 +1238,12 @@ class _WelcomePageState extends State<WelcomePage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 12,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       const Brand(),
-                      const Spacer(),
                       StatusBadge('ACCÈS SÉCURISÉ'),
                     ],
                   ),

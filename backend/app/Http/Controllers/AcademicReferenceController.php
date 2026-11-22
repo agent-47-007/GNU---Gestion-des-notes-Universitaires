@@ -11,6 +11,7 @@ class AcademicReferenceController extends Controller
     public function years(): JsonResponse
     {
         return response()->json(['data' => DB::table('gnu.annee_academique')
+            ->where('libelle', config('academic.active_year'))
             ->select(['id', 'libelle', 'date_debut', 'date_fin'])
             ->orderByDesc('date_debut')->get()]);
     }
@@ -65,6 +66,7 @@ class AcademicReferenceController extends Controller
             ->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
             ->join('gnu.filiere as f', 'f.id', '=', 'n.filiere_id')
             ->join('gnu.annee_academique as a', 'a.id', '=', 'c.annee_id')
+            ->where('a.libelle', config('academic.active_year'))
             ->select(['c.id', 'c.code_classe', 'c.niveau_id', 'n.code_niv', 'f.code_f', 'c.annee_id', 'a.libelle'])
             ->orderByDesc('a.date_debut')->orderBy('c.code_classe');
         foreach (['annee_id', 'niveau_id'] as $field) {

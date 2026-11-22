@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gnu_frontend/main.dart';
@@ -8,6 +12,66 @@ import 'package:gnu_frontend/features.dart';
 import 'package:gnu_frontend/ui.dart';
 
 void main() {
+  testWidgets('inscription filtre les départements par établissement', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildTheme(),
+        home: WelcomePage(
+          onRoleLogin: (_, __, ___, ____) async {},
+          accountApiFactory: () => StudentApiClient(
+            client: MockClient(
+              (_) async => http.Response(
+                jsonEncode({
+                  'data': {
+                    'etablissements': [
+                      {'id': 1, 'nom_fac': 'Sciences'},
+                      {'id': 2, 'nom_fac': 'ENS'},
+                    ],
+                    'departements': [
+                      {'id': 10, 'nom_depart': 'Informatique', 'faculte_id': 1},
+                      {'id': 20, 'nom_depart': 'Anglais ENS', 'faculte_id': 2},
+                    ],
+                    'filieres': [],
+                    'specialites': [],
+                    'classes': [],
+                    'annees': [
+                      {'id': 7, 'libelle': '2026-2027'},
+                    ],
+                  },
+                }),
+                200,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('S’inscrire'));
+    await tester.tap(find.text('S’inscrire'));
+    await tester.pumpAndSettle();
+    final establishment = find.byKey(
+      const ValueKey('registration-establishment'),
+    );
+    await tester.ensureVisible(establishment);
+    await tester.tap(establishment);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ENS').last);
+    await tester.pumpAndSettle();
+    final department = find.byKey(const ValueKey('department-2'));
+    await tester.ensureVisible(department);
+    await tester.tap(department);
+    await tester.pumpAndSettle();
+    expect(find.text('Anglais ENS'), findsWidgets);
+    expect(find.text('Informatique'), findsNothing);
+    expect(find.text('2025-2026'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('accueil dirige vers la connexion étudiante réelle', (
     tester,
   ) async {
@@ -19,17 +83,14 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-    'aucune inscription libre n’est proposée',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1000, 1000));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      await tester.pumpWidget(GnuApp(sessionStorage: _MemorySessionStorage()));
-      await tester.pumpAndSettle();
-      expect(find.text('Créer un compte étudiant'), findsNothing);
-      expect(tester.takeException(), isNull);
-    },
-  );
+  testWidgets('aucune inscription libre n’est proposée', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1000, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(GnuApp(sessionStorage: _MemorySessionStorage()));
+    await tester.pumpAndSettle();
+    expect(find.text('Créer un compte étudiant'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 
   for (final width in [390.0, 1440.0]) {
     for (final role in UserRole.values) {

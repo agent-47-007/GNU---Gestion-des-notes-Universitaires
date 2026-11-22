@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'active_year' => '2026-2027',
     'local_test_account_portal' => env('GNU_ENABLE_LOCAL_TEST_ACCOUNT_PORTAL', false),
     'evaluation_total_weight' => 100,
     'mark_scale' => 20,

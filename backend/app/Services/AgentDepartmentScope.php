@@ -26,6 +26,8 @@ class AgentDepartmentScope
         return DB::table('gnu.classe as c')
             ->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
             ->join('gnu.filiere as f', 'f.id', '=', 'n.filiere_id')
+            ->join('gnu.annee_academique as active_year', 'active_year.id', '=', 'c.annee_id')
+            ->where('active_year.libelle', config('academic.active_year'))
             ->where('c.id', $classId)
             ->whereIn('f.departement_id', $departmentIds)
             ->exists();

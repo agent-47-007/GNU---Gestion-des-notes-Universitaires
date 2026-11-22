@@ -525,7 +525,7 @@ class AgentPortalController extends Controller
         ]);
         $departments = $this->departmentIds($request);
         abort_unless($this->scope->hasLevel($departments, (int) $data['niveau_id']), 404);
-        abort_unless(DB::table('gnu.annee_academique')->where('id', $data['annee_id'])->exists(), 422, 'Année académique inconnue.');
+        abort_unless(DB::table('gnu.annee_academique')->where('id', $data['annee_id'])->where('libelle', config('academic.active_year'))->exists(), 422, 'Année académique inconnue.');
 
         // Every class uses the single, canonical syllabus set for its level.
         $hasActiveUnits = DB::table('gnu.ue')->where('niveau_id', $data['niveau_id'])
@@ -763,6 +763,7 @@ class AgentPortalController extends Controller
             ->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
             ->join('gnu.filiere as f', 'f.id', '=', 'n.filiere_id')
             ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->whereIn('ic.etudiant_id', $studentIds)->whereIn('f.departement_id', $departments)
             ->when($request->filled('annee_id'), fn ($query) => $query->where('c.annee_id', $request->integer('annee_id')))
             ->orderByDesc('an.date_debut')->orderBy('c.code_classe')
@@ -778,6 +779,7 @@ class AgentPortalController extends Controller
             ->join('gnu.matiere as m', 'm.id', '=', 'a.matiere_id')
             ->join('gnu.ue as ue', 'ue.id', '=', 'm.ue_id')
             ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->whereIn('a.enseignant_id', $teacherIds)
             ->when($request->filled('annee_id'), fn ($query) => $query->where('c.annee_id', $request->integer('annee_id')))
             ->orderBy('d.nom_depart')->orderByDesc('an.date_debut')->orderBy('c.code_classe')->orderBy('ue.code_ue')->orderBy('m.rang_ec')
@@ -982,6 +984,8 @@ class AgentPortalController extends Controller
                 $requestedClass = DB::table('gnu.classe as c')
                     ->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
                     ->join('gnu.filiere as fi', 'fi.id', '=', 'n.filiere_id')
+                    ->join('gnu.annee_academique as active_year', 'active_year.id', '=', 'c.annee_id')
+                    ->where('active_year.libelle', config('academic.active_year'))
                     ->where('c.id', $application->classe_id)
                     ->first(['c.id', 'fi.departement_id']);
                 abort_unless(
@@ -1108,6 +1112,7 @@ class AgentPortalController extends Controller
             ->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
             ->join('gnu.filiere as f', 'f.id', '=', 'n.filiere_id')
             ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->join('gnu.matiere as m', 'm.id', '=', 'a.matiere_id')
             ->join('gnu.ue as u', 'u.id', '=', 'm.ue_id')
             ->leftJoin('gnu.utilisateur as decideur', 'decideur.id', '=', 'p.decidee_par')
@@ -1223,6 +1228,7 @@ class AgentPortalController extends Controller
             ->join('gnu.faculte as fac', 'fac.id', '=', 'd.faculte_id')
             ->join('gnu.universite as un', 'un.id', '=', 'fac.universite_id')
             ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->leftJoin('gnu.responsable_note_ue as rnu', fn ($join) => $join->on('rnu.classe_id', '=', 'a.classe_id')->on('rnu.ue_id', '=', 'ue.id'))
             ->leftJoin('gnu.enseignant as rnue', 'rnue.id', '=', 'rnu.enseignant_id')
             ->leftJoin('gnu.utilisateur as rnuu', 'rnuu.id', '=', 'rnue.utilisateur_id')
@@ -1578,6 +1584,7 @@ class AgentPortalController extends Controller
             ->where('ic.classe_id', $classe)->where('ic.statut_inscription', 'VALIDEE')
             ->orderBy('e.matricule')->get(['ic.id', 'e.matricule', 'e.date_naissance', 'e.lieu_naissance', 'u.nom', 'u.prenom']);
         $class = DB::table('gnu.classe as c')->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
             ->join('gnu.filiere as f', 'f.id', '=', 'n.filiere_id')
             ->join('gnu.departement as d', 'd.id', '=', 'f.departement_id')
@@ -1662,6 +1669,7 @@ class AgentPortalController extends Controller
         abort_unless(in_array($period, ['S1', 'S2'], true), 422, 'Le procès-verbal UE est semestriel.');
 
         $class = DB::table('gnu.classe as c')->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')->join('gnu.filiere as f', 'f.id', '=', 'n.filiere_id')
             ->join('gnu.departement as d', 'd.id', '=', 'f.departement_id')->join('gnu.faculte as fac', 'fac.id', '=', 'd.faculte_id')
             ->join('gnu.universite as un', 'un.id', '=', 'fac.universite_id')->leftJoin('gnu.specialite as sp', 'sp.id', '=', 'n.specialite_id')
@@ -1812,6 +1820,7 @@ class AgentPortalController extends Controller
 
         $class = DB::table('gnu.classe as c')
             ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
             ->join('gnu.filiere as f', 'f.id', '=', 'n.filiere_id')
             ->join('gnu.departement as dpt', 'dpt.id', '=', 'f.departement_id')
@@ -1920,6 +1929,7 @@ class AgentPortalController extends Controller
         $departments = $this->departmentIds($request);
         abort_unless($this->scope->hasClass($departments, $classe), 404);
         $class = DB::table('gnu.classe as c')->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
             ->where('c.id', $classe)->first(['c.code_classe', 'an.libelle as annee_academique', 'n.code_niv', 'n.libelle_niv']);
         abort_unless($class !== null, 404, 'Classe introuvable.');
@@ -2063,6 +2073,7 @@ class AgentPortalController extends Controller
             ->orderByDesc('version_publication')->first(['id', 'version_publication', 'date_publication']);
         abort_unless($publication !== null, 404, 'Aucune publication officielle n’existe pour cette période.');
         $class = DB::table('gnu.classe as c')->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
             ->join('gnu.filiere as f', 'f.id', '=', 'n.filiere_id')
             ->join('gnu.departement as d', 'd.id', '=', 'f.departement_id')
@@ -2258,6 +2269,7 @@ class AgentPortalController extends Controller
             ->join('gnu.departement as d', 'd.id', '=', 'f.departement_id')
             ->leftJoin('gnu.specialite as sp', 'sp.id', '=', 'n.specialite_id')
             ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->join('gnu.matiere as m', 'm.id', '=', 'a.matiere_id')
             ->join('gnu.ue as ue', 'ue.id', '=', 'm.ue_id')
             ->leftJoin('gnu.plan_evaluation as pe', function ($join): void {
@@ -2777,6 +2789,7 @@ class AgentPortalController extends Controller
             ->join('gnu.matiere as m', 'm.id', '=', 'a.matiere_id')
             ->join('gnu.ue as u', 'u.id', '=', 'm.ue_id')
             ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->whereIn('f.departement_id', $departments)
             ->where('ev.type_eval', 'SN')->where('ev.mode_evaluation', 'NORMALE')
             ->where('a.actif', true)
@@ -3162,6 +3175,7 @@ class AgentPortalController extends Controller
             ->join('gnu.faculte as fac', 'fac.id', '=', 'd.faculte_id')
             ->join('gnu.universite as un', 'un.id', '=', 'fac.universite_id')
             ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->whereIn('f.departement_id', $departments);
     }
 

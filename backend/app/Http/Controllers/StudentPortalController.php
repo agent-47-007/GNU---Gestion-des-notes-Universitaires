@@ -412,6 +412,7 @@ class StudentPortalController extends Controller
         abort_unless($context->statut_inscription === 'VALIDEE', 403, 'Votre inscription de classe doit être validée pour consulter vos bulletins.');
         $period = $request->query('periode');
         abort_if($period !== null && ! in_array($period, ['S1', 'S2', 'ANNUELLE'], true), 422, 'Période invalide.');
+
         return response()->json(['data' => $this->publishedRows($context, $period)]);
     }
 
@@ -493,6 +494,7 @@ class StudentPortalController extends Controller
                 ->whereColumn('b.periode', 'p.periode')->exists();
             abort_unless($owned, 404, 'Bulletin publié introuvable.');
             DB::select('SELECT pg_advisory_xact_lock(?)', [$bulletin]);
+
             return $transcripts->archive($bulletin, (int) $request->user()->id,
                 fn () => $this->publishedRows($context, null, $bulletin)[0] ?? abort(404));
         });
@@ -1151,6 +1153,7 @@ class StudentPortalController extends Controller
             ->join('gnu.universite as un', 'un.id', '=', 'fac.universite_id')
             ->leftJoin('gnu.specialite as sp', 'sp.id', '=', 'n.specialite_id')
             ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->where('e.utilisateur_id', $request->user()->id)
             ->where('ic.statut_inscription', '!=', 'ANNULEE')
             ->when($request->filled('annee_id'), fn ($query) => $query->where('c.annee_id', $request->integer('annee_id')))
@@ -1212,6 +1215,7 @@ class StudentPortalController extends Controller
             ->join('gnu.inscription_classe as ic', 'ic.id', '=', 'b.inscription_classe_id')
             ->join('gnu.classe as c', 'c.id', '=', 'ic.classe_id')
             ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->where('ic.etudiant_id', $context->etudiant_id)
             ->where('ic.statut_inscription', 'VALIDEE')
             ->where('c.niveau_id', $context->niveau_id)

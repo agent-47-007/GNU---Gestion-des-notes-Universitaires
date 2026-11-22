@@ -210,7 +210,12 @@ String _apiRole(UserRole role) => switch (role) {
 };
 
 class WelcomePage extends StatefulWidget {
-  const WelcomePage({super.key, required this.onRoleLogin});
+  const WelcomePage({
+    super.key,
+    required this.onRoleLogin,
+    this.accountApiFactory,
+  });
+  final StudentApiClient Function()? accountApiFactory;
   final Future<void> Function(
     UserRole role,
     String login,
@@ -240,6 +245,8 @@ class _WelcomePageState extends State<WelcomePage> {
     8,
     (_) => TextEditingController(),
   );
+  int? registrationFacultyId;
+  int? registrationLevelId;
   int? registrationDepartmentId;
   int? registrationProgramId;
   int? registrationSpecialtyId;
@@ -301,10 +308,12 @@ class _WelcomePageState extends State<WelcomePage> {
   }
 
   Future<void> _requestAccount() async {
-    final api = StudentApiClient(
-      baseUrl: _apiBaseUrl,
-      expectedRole: _apiRole(selectedRole),
-    );
+    final api =
+        widget.accountApiFactory?.call() ??
+        StudentApiClient(
+          baseUrl: _apiBaseUrl,
+          expectedRole: _apiRole(selectedRole),
+        );
     setState(() {
       registrationLoading = true;
       registrationError = null;
@@ -353,11 +362,9 @@ class _WelcomePageState extends State<WelcomePage> {
               )
           ? registrationSpecialtyId
           : null;
-      final yearId = registrationYearId != null &&
-              years.any((item) => item['id'] == registrationYearId)
-          ? registrationYearId
-          : null;
-      final classId = registrationClassId != null &&
+      final yearId = years.isEmpty ? null : years.first['id'] as int;
+      final classId =
+          registrationClassId != null &&
               classes.any(
                 (item) =>
                     item['id'] == registrationClassId &&
@@ -407,10 +414,12 @@ class _WelcomePageState extends State<WelcomePage> {
       UserRole.teacher => registrationSpecialtyId,
       UserRole.agent => null,
     };
-    final api = StudentApiClient(
-      baseUrl: _apiBaseUrl,
-      expectedRole: _apiRole(selectedRole),
-    );
+    final api =
+        widget.accountApiFactory?.call() ??
+        StudentApiClient(
+          baseUrl: _apiBaseUrl,
+          expectedRole: _apiRole(selectedRole),
+        );
     setState(() {
       registrationSending = true;
       registrationError = null;
@@ -448,12 +457,9 @@ class _WelcomePageState extends State<WelcomePage> {
         registrationYearId = null;
         registrationClassId = null;
         registrationNotice = switch (selectedRole) {
-          UserRole.student =>
-            'Votre demande et la classe choisie ont été reçues. Après approbation, votre compte et votre inscription de classe seront activés.',
-          UserRole.teacher =>
-            'Votre demande de compte enseignant a été reçue. L’administration vérifiera votre identité et votre rattachement avant activation.',
-          UserRole.agent =>
-            'Votre demande d’accès agent a été reçue. Un administrateur vérifiera votre identité et votre service avant activation.',
+          UserRole.student => 'Votre demande et la classe choisie ont été reçues. Après approbation, votre compte et votre inscription de classe seront activés.',
+          UserRole.teacher => 'Votre demande de compte enseignant a été reçue. L’administration vérifiera votre identité et votre rattachement avant activation.',
+          UserRole.agent => 'Votre demande d’accès agent a été reçue. Un administrateur vérifiera votre identité et votre service avant activation.',
         };
         registrationError = null;
       });
@@ -472,7 +478,11 @@ class _WelcomePageState extends State<WelcomePage> {
       registrationControllers[3].clear();
       registrationProgramId = null;
       registrationSpecialtyId = null;
-      registrationYearId = null;
+      registrationYearId =
+          ((registrationStructure?['annees'] as List?)?.firstOrNull
+                  as Map?)?['id']
+              as int?;
+      registrationLevelId = null;
       registrationClassId = null;
       registrationError = null;
       registrationNotice = null;
@@ -570,6 +580,11 @@ class _WelcomePageState extends State<WelcomePage> {
         .cast<Map<String, dynamic>>();
     final classes = (structure['classes'] as List? ?? [])
         .cast<Map<String, dynamic>>();
+    final faculties = (structure['etablissements'] as List? ?? [])
+        .cast<Map<String, dynamic>>();
+    final visibleDepartments = departments
+        .where((d) => d['faculte_id'] == registrationFacultyId)
+        .toList();
     final departmentId = registrationDepartmentId;
     final programId = registrationProgramId;
     final isBusy = registrationSending;
@@ -577,7 +592,9 @@ class _WelcomePageState extends State<WelcomePage> {
         .where(
           (item) =>
               item['annee_id'] == registrationYearId &&
-              item['departement_id'] == departmentId,
+              item['departement_id'] == departmentId &&
+              item['filiere_id'] == registrationProgramId &&
+              item['niveau_id'] == registrationLevelId,
         )
         .toList();
     final identityReady =
@@ -621,12 +638,9 @@ class _WelcomePageState extends State<WelcomePage> {
       UserRole.agent => 'Demande d’accès agent',
     };
     final roleDescription = switch (selectedRole) {
-      UserRole.student =>
-        'Choisissez le département, l’année académique et la classe demandés. L’inscription à cette classe sera créée après approbation administrative.',
-      UserRole.teacher =>
-        'Indiquez votre département et, si vous le connaissez, votre domaine d’enseignement. Vos UE et classes seront attribuées par l’administration après validation.',
-      UserRole.agent =>
-        'Indiquez le département où vous exercez. Les droits d’administration système sont attribués séparément par un administrateur.',
+      UserRole.student => 'Choisissez le département, l’année académique et la classe demandés. L’inscription à cette classe sera créée après approbation administrative.',
+      UserRole.teacher => 'Indiquez votre département et, si vous le connaissez, votre domaine d’enseignement. Vos UE et classes seront attribuées par l’administration après validation.',
+      UserRole.agent => 'Indiquez le département où vous exercez. Les droits d’administration système sont attribués séparément par un administrateur.',
     };
     final affiliationTitle = switch (selectedRole) {
       UserRole.student => '2 · Année et classe demandées',
@@ -636,12 +650,9 @@ class _WelcomePageState extends State<WelcomePage> {
     const programLabel = 'Filière / domaine d’enseignement (facultatif)';
     const specialtyLabel = 'Spécialité d’enseignement (facultative)';
     final roleGuidance = switch (selectedRole) {
-      UserRole.student =>
-        'Après vérification, l’approbation de la demande créera aussi votre inscription à cette classe.',
-      UserRole.teacher =>
-        'Ce choix aide à orienter votre demande; il ne crée pas d’affectation pédagogique.',
-      UserRole.agent =>
-        'Le département sélectionné détermine votre rattachement initial; il ne donne pas automatiquement les droits de publication.',
+      UserRole.student => 'Après vérification, l’approbation de la demande créera aussi votre inscription à cette classe.',
+      UserRole.teacher => 'Ce choix aide à orienter votre demande; il ne crée pas d’affectation pédagogique.',
+      UserRole.agent => 'Le département sélectionné détermine votre rattachement initial; il ne donne pas automatiquement les droits de publication.',
     };
     final profileLabel = switch (selectedRole) {
       UserRole.student => 'Matricule étudiant',
@@ -649,9 +660,12 @@ class _WelcomePageState extends State<WelcomePage> {
       UserRole.agent => 'Identifiant professionnel',
     };
     final profileHint = switch (selectedRole) {
-      UserRole.student => 'Saisissez le matricule communiqué par l’établissement.',
-      UserRole.teacher => 'Saisissez votre matricule ou identifiant enseignant officiel.',
-      UserRole.agent => 'Saisissez votre matricule ou identifiant professionnel.',
+      UserRole.student =>
+        'Saisissez le matricule communiqué par l’établissement.',
+      UserRole.teacher =>
+        'Saisissez votre matricule ou identifiant enseignant officiel.',
+      UserRole.agent =>
+        'Saisissez votre matricule ou identifiant professionnel.',
     };
     final accountSectionTitle = switch (selectedRole) {
       UserRole.student => '3 · Création de votre compte étudiant',
@@ -664,13 +678,14 @@ class _WelcomePageState extends State<WelcomePage> {
       UserRole.agent => 'Envoyer ma demande d’accès',
     };
     final affiliationPrompt = switch (selectedRole) {
-      UserRole.student => departmentId == null
-          ? 'Choisissez votre département.'
-          : registrationYearId == null
-          ? 'Choisissez l’année académique demandée.'
-          : registrationClassId == null
-          ? 'Choisissez la classe dans laquelle vous demandez l’inscription.'
-          : 'Votre rattachement est renseigné.',
+      UserRole.student =>
+        departmentId == null
+            ? 'Choisissez votre département.'
+            : registrationYearId == null
+            ? 'Choisissez l’année académique demandée.'
+            : registrationClassId == null
+            ? 'Choisissez la classe dans laquelle vous demandez l’inscription.'
+            : 'Votre rattachement est renseigné.',
       UserRole.teacher => 'Choisissez votre département de rattachement.',
       UserRole.agent => 'Choisissez votre département de rattachement.',
     };
@@ -799,19 +814,59 @@ class _WelcomePageState extends State<WelcomePage> {
                 validator: _validateIdentityReference,
               ),
               sectionTitle(affiliationTitle),
+              const Text('Année académique 2026–2027'),
+              const SizedBox(height: 10),
               DropdownButtonFormField<int>(
                 isExpanded: true,
+                key: const ValueKey('registration-establishment'),
+                initialValue: registrationFacultyId,
+                decoration: field(
+                  'Faculté / École / Institut',
+                  Icons.school_outlined,
+                ),
+                validator: (v) =>
+                    v == null ? 'Choisissez votre établissement.' : null,
+                items: faculties
+                    .map(
+                      (f) => DropdownMenuItem<int>(
+                        value: f['id'] as int,
+                        child: Text(
+                          '${f['nom_fac']}',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: isBusy
+                    ? null
+                    : (v) => setState(() {
+                        registrationFacultyId = v;
+                        registrationDepartmentId = null;
+                        registrationProgramId = null;
+                        registrationSpecialtyId = null;
+                        registrationLevelId = null;
+                        registrationClassId = null;
+                      }),
+              ),
+              const SizedBox(height: 10),
+              if (registrationFacultyId != null && visibleDepartments.isEmpty)
+                const Text(
+                  'Les départements de cet établissement doivent être validés par l’administration.',
+                ),
+              DropdownButtonFormField<int>(
+                isExpanded: true,
+                key: ValueKey('department-$registrationFacultyId'),
                 initialValue: departmentId,
                 decoration: field('Département', Icons.account_tree_outlined),
                 autovalidateMode: AutovalidateMode.onUserInteraction,
                 validator: (value) =>
                     value == null ? 'Choisissez votre département.' : null,
-                items: departments
+                items: visibleDepartments
                     .map(
                       (item) => DropdownMenuItem<int>(
                         value: item['id'] as int,
                         child: Text(
-                          '${item['nom_fac']} · ${item['nom_depart']}',
+                          '${item['nom_depart']}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -822,6 +877,7 @@ class _WelcomePageState extends State<WelcomePage> {
                     ? null
                     : (value) => setState(() {
                         registrationDepartmentId = value;
+                        registrationLevelId = null;
                         registrationProgramId = null;
                         registrationSpecialtyId = null;
                         registrationClassId = null;
@@ -837,32 +893,77 @@ class _WelcomePageState extends State<WelcomePage> {
                     ),
                   )
                 else
-                  DropdownButtonFormField<int>(
-                    isExpanded: true,
-                    initialValue: registrationYearId,
-                    decoration: field(
-                      'Année académique',
-                      Icons.calendar_month_outlined,
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'Inscriptions ouvertes uniquement pour 2026–2027.',
                     ),
-                    autovalidateMode: AutovalidateMode.onUserInteraction,
-                    validator: (value) => value == null
-                        ? 'Choisissez l’année académique.'
-                        : null,
-                    items: years
+                  ),
+                if (departmentId != null) ...[
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<int>(
+                    key: ValueKey('student-program-$departmentId'),
+                    isExpanded: true,
+                    initialValue: registrationProgramId,
+                    decoration: field('Filière', Icons.menu_book_outlined),
+                    validator: (v) =>
+                        v == null ? 'Choisissez votre filière.' : null,
+                    items: programs
+                        .where((f) => f['departement_id'] == departmentId)
                         .map(
-                          (item) => DropdownMenuItem<int>(
-                            value: item['id'] as int,
-                            child: Text('${item['libelle']}'),
+                          (f) => DropdownMenuItem<int>(
+                            value: f['id'] as int,
+                            child: Text(
+                              '${f['nom_f']}',
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         )
                         .toList(),
                     onChanged: isBusy
                         ? null
-                        : (value) => setState(() {
-                            registrationYearId = value;
+                        : (v) => setState(() {
+                            registrationProgramId = v;
+                            registrationLevelId = null;
                             registrationClassId = null;
                           }),
                   ),
+                ],
+                if (registrationProgramId != null) ...[
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<int>(
+                    key: ValueKey('student-level-$registrationProgramId'),
+                    isExpanded: true,
+                    initialValue: registrationLevelId,
+                    decoration: field('Niveau', Icons.stairs_outlined),
+                    validator: (v) =>
+                        v == null ? 'Choisissez votre niveau.' : null,
+                    items:
+                        {
+                              for (final c in classes.where(
+                                (c) =>
+                                    c['filiere_id'] == registrationProgramId &&
+                                    c['annee_id'] == registrationYearId,
+                              ))
+                                c['niveau_id']: c,
+                            }.values
+                            .map(
+                              (c) => DropdownMenuItem<int>(
+                                value: c['niveau_id'] as int,
+                                child: Text(
+                                  '${c['libelle_niv'] ?? c['code_niv']}',
+                                ),
+                              ),
+                            )
+                            .toList(),
+                    onChanged: isBusy
+                        ? null
+                        : (v) => setState(() {
+                            registrationLevelId = v;
+                            registrationClassId = null;
+                          }),
+                  ),
+                ],
                 if (registrationYearId != null && departmentId != null) ...[
                   const SizedBox(height: 10),
                   if (requestedClasses.isEmpty)
@@ -875,14 +976,14 @@ class _WelcomePageState extends State<WelcomePage> {
                   else
                     DropdownButtonFormField<int>(
                       isExpanded: true,
-                      initialValue: registrationClassId,
-                      decoration: field(
-                        'Classe / salle',
-                        Icons.groups_outlined,
-                      ).copyWith(
-                        helperText:
-                            'La classe détermine le niveau, la filière et l’année de votre inscription.',
+                      key: ValueKey(
+                        'class-$registrationProgramId-$registrationLevelId',
                       ),
+                      initialValue: registrationClassId,
+                      decoration: field('Classe / salle', Icons.groups_outlined)
+                          .copyWith(
+                            helperText: 'La classe détermine le niveau, la filière et l’année de votre inscription.',
+                          ),
                       autovalidateMode: AutovalidateMode.onUserInteraction,
                       validator: (value) => value == null
                           ? 'Choisissez la classe demandée.'
@@ -892,11 +993,10 @@ class _WelcomePageState extends State<WelcomePage> {
                             item['libelle_niv'] ?? item['code_niv'] ?? 'Niveau';
                         final program = item['nom_f'] ?? item['code_f'] ?? '';
                         final specialty = item['libelle_specialite'];
-                        final details = [
-                          level,
-                          program,
-                          if (specialty != null) specialty,
-                        ].where((value) => '$value'.trim().isNotEmpty).join(' · ');
+                        final details =
+                            [level, program, if (specialty != null) specialty]
+                                .where((value) => '$value'.trim().isNotEmpty)
+                                .join(' · ');
 
                         return DropdownMenuItem<int>(
                           value: item['id'] as int,
@@ -918,12 +1018,10 @@ class _WelcomePageState extends State<WelcomePage> {
                 const SizedBox(height: 10),
                 DropdownButtonFormField<int>(
                   isExpanded: true,
+                  key: ValueKey('teacher-program-$departmentId'),
                   initialValue: programId,
-                  decoration:
-                      field(
-                        programLabel,
-                        Icons.school_outlined,
-                      ).copyWith(
+                  decoration: field(programLabel, Icons.school_outlined)
+                      .copyWith(
                         helperText: selectedRole == UserRole.teacher
                             ? 'Choisissez votre principal domaine d’enseignement, si vous le connaissez.'
                             : 'Choisissez votre principal domaine d’enseignement, si vous le connaissez.',
@@ -949,19 +1047,18 @@ class _WelcomePageState extends State<WelcomePage> {
                         }),
                 ),
               ],
-              if (programId != null &&
+              if (selectedRole == UserRole.teacher &&
+                  programId != null &&
                   specialities.any(
                     (item) => item['filiere_id'] == programId,
                   )) ...[
                 const SizedBox(height: 10),
                 DropdownButtonFormField<int>(
                   isExpanded: true,
+                  key: ValueKey('teacher-specialty-$programId'),
                   initialValue: registrationSpecialtyId,
-                  decoration:
-                      field(
-                        specialtyLabel,
-                        Icons.account_tree_outlined,
-                      ).copyWith(
+                  decoration: field(specialtyLabel, Icons.account_tree_outlined)
+                      .copyWith(
                         helperText: selectedRole == UserRole.teacher
                             ? 'Précisez votre domaine de spécialité si nécessaire.'
                             : 'Précisez votre domaine de spécialité si nécessaire.',
@@ -1093,17 +1190,11 @@ class _WelcomePageState extends State<WelcomePage> {
                       .withValues(alpha: 0.45),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
-                  switch (selectedRole) {
-                    UserRole.student =>
-        'Votre demande sera enregistrée dans GNU. Après approbation, votre compte et votre inscription à la classe demandée seront activés.',
-                    UserRole.teacher =>
-                      'Votre demande sera enregistrée dans GNU. L’administration vérifiera votre identité et votre rattachement avant activation.',
-                    UserRole.agent =>
-                      'Votre demande sera enregistrée dans GNU. Un administrateur vérifiera votre identité et votre service avant activation.',
-                  },
-                  style: TextStyle(height: 1.45, fontSize: 12),
-                ),
+                child: Text(switch (selectedRole) {
+                  UserRole.student => 'Votre demande sera enregistrée dans GNU. Après approbation, votre compte et votre inscription à la classe demandée seront activés.',
+                  UserRole.teacher => 'Votre demande sera enregistrée dans GNU. L’administration vérifiera votre identité et votre rattachement avant activation.',
+                  UserRole.agent => 'Votre demande sera enregistrée dans GNU. Un administrateur vérifiera votre identité et votre service avant activation.',
+                }, style: TextStyle(height: 1.45, fontSize: 12)),
               ),
               if (registrationError != null)
                 Padding(
@@ -1119,9 +1210,7 @@ class _WelcomePageState extends State<WelcomePage> {
               FilledButton.icon(
                 onPressed: isBusy ? null : _submitAccountRegistration,
                 icon: const Icon(Icons.person_add_alt_1_outlined),
-                label: Text(
-                  isBusy ? 'Enregistrement…' : submitLabel,
-                ),
+                label: Text(isBusy ? 'Enregistrement…' : submitLabel),
               ),
               TextButton(
                 onPressed: isBusy
@@ -1242,10 +1331,7 @@ class _WelcomePageState extends State<WelcomePage> {
                     spacing: 16,
                     runSpacing: 12,
                     crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      const Brand(),
-                      StatusBadge('ACCÈS SÉCURISÉ'),
-                    ],
+                    children: [const Brand(), StatusBadge('ACCÈS SÉCURISÉ')],
                   ),
                   const SizedBox(height: 38),
                   StatusBadge('PORTAIL ${selectedRole.label.toUpperCase()}'),
@@ -1254,6 +1340,8 @@ class _WelcomePageState extends State<WelcomePage> {
                     'Bienvenue sur GNU',
                     style: Theme.of(context).textTheme.headlineLarge,
                   ),
+                  const SizedBox(height: 8),
+                  const Text('Université de Yaoundé I · 2026–2027'),
                   const SizedBox(height: 12),
                   Text(
                     'Choisissez votre espace, puis connectez-vous avec les identifiants fournis pour votre compte ${selectedRole.label.toLowerCase()}.',
@@ -1283,7 +1371,9 @@ class _WelcomePageState extends State<WelcomePage> {
                       ],
                       selected: {selectedRole},
                       onSelectionChanged:
-                          loggingIn || registrationLoading || registrationSending
+                          loggingIn ||
+                              registrationLoading ||
+                              registrationSending
                           ? null
                           : (selection) =>
                                 _selectRegistrationRole(selection.first),

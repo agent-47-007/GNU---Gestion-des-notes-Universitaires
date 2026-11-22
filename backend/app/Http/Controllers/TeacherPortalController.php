@@ -20,7 +20,7 @@ class TeacherPortalController extends Controller
     public function rooms(Request $request): JsonResponse
     {
         $teacherId = $this->teacherId($request);
-        $years = DB::table('gnu.annee_academique')->orderByDesc('date_debut')
+        $years = DB::table('gnu.annee_academique')->where('libelle', config('academic.active_year'))->orderByDesc('date_debut')
             ->get(['id', 'libelle', 'date_debut', 'date_fin']);
         abort_if($years->isEmpty(), 404, 'Aucune année académique n’est configurée.');
         $currentYearId = (int) $years->first()->id;
@@ -29,6 +29,7 @@ class TeacherPortalController extends Controller
 
         $rooms = DB::table('gnu.classe as c')
             ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
             ->join('gnu.filiere as f', 'f.id', '=', 'n.filiere_id')
             ->join('gnu.departement as d', 'd.id', '=', 'f.departement_id')
@@ -62,7 +63,7 @@ class TeacherPortalController extends Controller
     public function joinRoom(Request $request, int $classe): JsonResponse
     {
         $teacherId = $this->teacherId($request);
-        $currentYearId = DB::table('gnu.annee_academique')->orderByDesc('date_debut')->value('id');
+        $currentYearId = DB::table('gnu.annee_academique')->where('libelle', config('academic.active_year'))->orderByDesc('date_debut')->value('id');
         abort_unless($currentYearId !== null, 404, 'Aucune année académique n’est configurée.');
         abort_unless(DB::table('gnu.classe')->where('id', $classe)->where('annee_id', $currentYearId)->exists(), 404, 'Cette salle n’est pas ouverte pour l’année académique en cours.');
         abort_if(DB::table('gnu.adhesion_salle_enseignant')->where('enseignant_id', $teacherId)->where('classe_id', $classe)->exists(), 409, 'Vous avez déjà rejoint cette salle.');
@@ -87,6 +88,7 @@ class TeacherPortalController extends Controller
         abort_unless(DB::table('gnu.adhesion_salle_enseignant')->where('enseignant_id', $teacherId)->where('classe_id', $classe)->exists(), 403, 'Rejoignez cette salle pour consulter ses élèves.');
         $room = DB::table('gnu.classe as c')
             ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->where('c.id', $classe)->first(['c.id', 'c.code_classe', 'an.libelle as annee_academique']);
         abort_unless($room !== null, 404);
         $students = DB::table('gnu.inscription_classe as ic')
@@ -108,6 +110,7 @@ class TeacherPortalController extends Controller
         $room = DB::table('gnu.classe as c')
             ->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
             ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->where('c.id', $classe)
             ->first(['c.code_classe', 'n.code_niv', 'n.libelle_niv', 'an.libelle as annee_academique']);
         abort_if($room === null, 404, 'Salle introuvable.');
@@ -219,6 +222,7 @@ class TeacherPortalController extends Controller
             ->join('gnu.affectation as a', 'a.id', '=', 'p.affectation_id')
             ->join('gnu.classe as c', 'c.id', '=', 'a.classe_id')
             ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->join('gnu.matiere as m', 'm.id', '=', 'a.matiere_id')
             ->join('gnu.ue as u', 'u.id', '=', 'm.ue_id')
             ->leftJoin('gnu.utilisateur as decisionnaire', 'decisionnaire.id', '=', 'p.decidee_par')
@@ -244,7 +248,7 @@ class TeacherPortalController extends Controller
         $teacherId = $this->teacherId($request);
         abort_unless(DB::table('gnu.adhesion_salle_enseignant')
             ->where('enseignant_id', $teacherId)->where('classe_id', $classe)->exists(), 403, 'Rejoignez cette salle avant de proposer une matière.');
-        $yearId = DB::table('gnu.annee_academique')->orderByDesc('date_debut')->value('id');
+        $yearId = DB::table('gnu.annee_academique')->where('libelle', config('academic.active_year'))->orderByDesc('date_debut')->value('id');
         $class = DB::table('gnu.classe')->where('id', $classe)->where('annee_id', $yearId)->first(['id', 'niveau_id']);
         abort_unless($class !== null, 422, 'Les propositions ne sont ouvertes que pour une classe de l’année académique courante.');
         $elements = DB::table('gnu.matiere as m')->join('gnu.ue as u', 'u.id', '=', 'm.ue_id')
@@ -327,6 +331,7 @@ class TeacherPortalController extends Controller
             ->join('gnu.matiere as m', 'm.id', '=', 'a.matiere_id')
             ->join('gnu.ue as u', 'u.id', '=', 'm.ue_id')
             ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->leftJoin('gnu.responsable_note_ue as rnu', function ($join): void {
                 $join->on('rnu.classe_id', '=', 'a.classe_id')->on('rnu.ue_id', '=', 'u.id');
             })
@@ -1491,6 +1496,7 @@ class TeacherPortalController extends Controller
         $book = $this->gradebook($request, $affectation)->getData(true)['data'];
         $class = DB::table('gnu.classe as c')->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
             ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->where('c.id', $assignment->classe_id)->first(['c.code_classe', 'n.code_niv', 'n.libelle_niv', 'an.libelle as annee_academique']);
         abort_unless($class !== null, 404, 'Classe introuvable.');
         $roster = DB::table('gnu.inscription_classe as ic')
@@ -1876,6 +1882,7 @@ class TeacherPortalController extends Controller
 
         $class = DB::table('gnu.classe as c')->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
             ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->where('c.id', $assignment->classe_id)->first(['c.code_classe', 'n.code_niv', 'n.libelle_niv', 'an.libelle as annee_academique']);
         $classRoster = DB::table('gnu.inscription_classe as ic')
             ->join('gnu.etudiant as e', 'e.id', '=', 'ic.etudiant_id')
@@ -2370,6 +2377,7 @@ class TeacherPortalController extends Controller
         $assignment = DB::table('gnu.affectation as a')
             ->join('gnu.classe as c', 'c.id', '=', 'a.classe_id')
             ->join('gnu.annee_academique as an', 'an.id', '=', 'c.annee_id')
+            ->where('an.libelle', config('academic.active_year'))
             ->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
             ->leftJoin('gnu.specialite as sp', 'sp.id', '=', 'n.specialite_id')
             ->join('gnu.filiere as f', 'f.id', '=', 'n.filiere_id')

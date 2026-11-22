@@ -15,19 +15,20 @@ class AccountRequestController extends Controller
         $departments = DB::table('gnu.departement as d')
             ->join('gnu.faculte as f', 'f.id', '=', 'd.faculte_id')
             ->orderBy('f.nom_fac')->orderBy('d.nom_depart')
-            ->get(['d.id', 'd.code_de', 'd.nom_depart', 'f.nom_fac']);
+            ->get(['d.id', 'd.code_de', 'd.nom_depart', 'f.nom_fac', 'f.id as faculte_id']);
         $programs = DB::table('gnu.filiere as fi')->join('gnu.departement as d', 'd.id', '=', 'fi.departement_id')->orderBy('fi.nom_f')->get(['fi.id', 'fi.code_f', 'fi.nom_f', 'fi.departement_id']);
         $specialities = DB::table('gnu.specialite as s')->join('gnu.filiere as fi', 'fi.id', '=', 's.filiere_id')->where('s.actif', true)->orderBy('s.libelle_specialite')->get(['s.id', 's.code_specialite', 's.libelle_specialite', 's.filiere_id']);
         $years = DB::table('gnu.annee_academique as a')
             ->join('gnu.classe as c', 'c.annee_id', '=', 'a.id')
             ->select(['a.id', 'a.libelle', 'a.date_debut'])
-            ->distinct()->orderByDesc('a.date_debut')->get();
+            ->where('a.libelle', config('academic.active_year'))->distinct()->orderByDesc('a.date_debut')->get();
         $classes = DB::table('gnu.classe as c')
             ->join('gnu.niveau as n', 'n.id', '=', 'c.niveau_id')
             ->join('gnu.filiere as fi', 'fi.id', '=', 'n.filiere_id')
             ->join('gnu.departement as d', 'd.id', '=', 'fi.departement_id')
             ->join('gnu.annee_academique as a', 'a.id', '=', 'c.annee_id')
             ->leftJoin('gnu.specialite as sp', 'sp.id', '=', 'n.specialite_id')
+            ->where('a.libelle', config('academic.active_year'))
             ->orderByDesc('a.date_debut')->orderBy('c.code_classe')
             ->get([
                 'c.id', 'c.code_classe', 'c.annee_id', 'a.libelle as annee_academique',
@@ -37,6 +38,8 @@ class AccountRequestController extends Controller
             ]);
 
         return response()->json(['data' => [
+            'annee_active' => config('academic.active_year'),
+            'etablissements' => DB::table('gnu.faculte')->orderBy('nom_fac')->get(['id', 'code_fac', 'nom_fac']),
             'departements' => $departments,
             'filieres' => $programs,
             'specialites' => $specialities,
@@ -59,7 +62,7 @@ class AccountRequestController extends Controller
             'departement_id' => ['required', 'integer', Rule::exists('departement', 'id')],
             'filiere_id' => ['nullable', 'integer', Rule::exists('filiere', 'id')],
             'specialite_id' => ['nullable', 'integer', Rule::exists('specialite', 'id')],
-            'annee_id' => ['nullable', 'required_if:role,ETUDIANT', 'integer', Rule::exists('annee_academique', 'id')],
+            'annee_id' => ['nullable', 'required_if:role,ETUDIANT', 'integer', Rule::exists('annee_academique', 'id')->where('libelle', config('academic.active_year'))],
             'classe_id' => ['nullable', 'required_if:role,ETUDIANT', 'integer', Rule::exists('classe', 'id')],
             'reference_identite' => ['required', 'string', 'min:4', 'max:160'],
             'password' => ['required', 'string', 'min:12', 'confirmed'],

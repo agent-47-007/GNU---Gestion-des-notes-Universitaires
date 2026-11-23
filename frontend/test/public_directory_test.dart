@@ -163,9 +163,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Voir la fiche'));
+    await tester.ensureVisible(find.text('Voir la vitrine'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Voir la fiche'));
+    await tester.tap(find.text('Voir la vitrine'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Faculté des Sciences'));
     await tester.pumpAndSettle();

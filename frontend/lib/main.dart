@@ -121,6 +121,9 @@ class _GnuAppState extends State<GnuApp> {
   final store = DemoStore();
   UserRole? role;
   bool showLogin = false;
+  UserRole loginRole = UserRole.student;
+  int? portalUniversityId;
+  String? portalUniversityName;
   StudentApiClient? directoryApi;
   bool darkMode = false;
   StudentApiClient? liveStudentApi;
@@ -161,6 +164,9 @@ class _GnuAppState extends State<GnuApp> {
         ? showLogin
               ? WelcomePage(
                   onRoleLogin: _loginRole,
+                  initialRole: loginRole,
+                  universityId: portalUniversityId,
+                  universityName: portalUniversityName,
                   onBrowseDirectory: () => setState(() => showLogin = false),
                 )
               : PublicDirectoryPage(
@@ -171,7 +177,24 @@ class _GnuAppState extends State<GnuApp> {
                         ? Uri.base.resolve('/api/v1').toString()
                         : 'http://127.0.0.1:8000/api/v1',
                   ),
-                  onSignIn: () => setState(() => showLogin = true),
+                  onTeacherSignIn: () => setState(() {
+                    loginRole = UserRole.teacher;
+                    portalUniversityId = null;
+                    portalUniversityName = null;
+                    showLogin = true;
+                  }),
+                  onSignIn: () => setState(() {
+                    loginRole = UserRole.student;
+                    portalUniversityId = null;
+                    portalUniversityName = null;
+                    showLogin = true;
+                  }),
+                  onInstitutionSignIn: (id, name) => setState(() {
+                    loginRole = UserRole.student;
+                    portalUniversityId = id;
+                    portalUniversityName = name;
+                    showLogin = true;
+                  }),
                 )
         : Portal(
             key: ValueKey(role),
@@ -231,11 +254,17 @@ class WelcomePage extends StatefulWidget {
   const WelcomePage({
     super.key,
     required this.onRoleLogin,
+    this.initialRole = UserRole.student,
     this.accountApiFactory,
     this.onBrowseDirectory,
+    this.universityId,
+    this.universityName,
   });
+  final UserRole initialRole;
   final StudentApiClient Function()? accountApiFactory;
   final VoidCallback? onBrowseDirectory;
+  final int? universityId;
+  final String? universityName;
   final Future<void> Function(
     UserRole role,
     String login,
@@ -248,7 +277,7 @@ class WelcomePage extends StatefulWidget {
 }
 
 class _WelcomePageState extends State<WelcomePage> {
-  UserRole selectedRole = UserRole.student;
+  late UserRole selectedRole = widget.initialRole;
   final loginController = TextEditingController();
   final passwordController = TextEditingController();
   late final TextEditingController apiBaseUrlController;
@@ -396,6 +425,11 @@ class _WelcomePageState extends State<WelcomePage> {
           : null;
       setState(() {
         registrationStructure = structure;
+        final universities = (structure['universites'] as List? ?? [])
+            .whereType<Map>();
+        if (universities.any((u) => u['id'] == widget.universityId)) {
+          registrationUniversityId = widget.universityId;
+        }
         registrationDepartmentId = departmentId;
         registrationProgramId = programId;
         registrationSpecialtyId = specialtyId;
@@ -1409,7 +1443,10 @@ class _WelcomePageState extends State<WelcomePage> {
                     style: Theme.of(context).textTheme.headlineLarge,
                   ),
                   const SizedBox(height: 8),
-                  const Text('Gestion des notes universitaires · 2026–2027'),
+                  Text(
+                    widget.universityName ??
+                        'Gestion des notes universitaires · 2026–2027',
+                  ),
                   if (widget.onBrowseDirectory != null)
                     TextButton.icon(
                       onPressed: widget.onBrowseDirectory,
@@ -1418,7 +1455,9 @@ class _WelcomePageState extends State<WelcomePage> {
                     ),
                   const SizedBox(height: 12),
                   Text(
-                    'Choisissez votre espace, puis connectez-vous avec les identifiants fournis pour votre compte ${selectedRole.label.toLowerCase()}.',
+                    selectedRole == UserRole.teacher
+                        ? 'Connectez-vous pour retrouver vos enseignements et saisir les notes. Pour un premier accès, demandez un compte enseignant.'
+                        : 'Connectez-vous avec les identifiants de votre compte ${selectedRole.label.toLowerCase()}.',
                     style: TextStyle(color: muted, height: 1.7),
                   ),
                   const SizedBox(height: 24),
@@ -1471,6 +1510,8 @@ class _WelcomePageState extends State<WelcomePage> {
                   ],
                   TextField(
                     controller: loginController,
+                    autofillHints: const [AutofillHints.username],
+                    autocorrect: false,
                     textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'Identifiant de connexion',
@@ -1480,6 +1521,7 @@ class _WelcomePageState extends State<WelcomePage> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: passwordController,
+                    autofillHints: const [AutofillHints.password],
                     obscureText: !showPassword,
                     onSubmitted: (_) => _submitLogin(),
                     decoration: InputDecoration(

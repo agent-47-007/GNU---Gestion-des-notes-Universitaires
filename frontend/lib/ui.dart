@@ -135,6 +135,7 @@ class Brand extends StatelessWidget {
   final bool dark;
   @override
   Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
     children: [
       Container(
         width: 42,
@@ -406,12 +407,7 @@ class SectionTitle extends StatelessWidget {
 }
 
 class EmptyState extends StatelessWidget {
-  const EmptyState(
-    this.title,
-    this.message, {
-    super.key,
-    this.compact = false,
-  });
+  const EmptyState(this.title, this.message, {super.key, this.compact = false});
   final String title, message;
   final bool compact;
   @override

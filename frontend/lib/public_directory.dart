@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import 'local_portal_navigation.dart';
 
 import 'api_client.dart';
 import 'ui.dart';
@@ -10,10 +13,14 @@ class PublicDirectoryPage extends StatefulWidget {
     super.key,
     required this.api,
     required this.onSignIn,
+    this.onInstitutionSignIn,
+    this.onTeacherSignIn,
   });
 
   final StudentApiClient api;
   final VoidCallback onSignIn;
+  final VoidCallback? onTeacherSignIn;
+  final void Function(int universityId, String name)? onInstitutionSignIn;
 
   @override
   State<PublicDirectoryPage> createState() => _PublicDirectoryPageState();
@@ -58,6 +65,8 @@ class _PublicDirectoryPageState extends State<PublicDirectoryPage> {
   void dispose() {
     debounce?.cancel();
     search.dispose();
+    _scroll.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -137,6 +146,27 @@ class _PublicDirectoryPageState extends State<PublicDirectoryPage> {
     );
   }
 
+  Uri? officialSite(Map row) {
+    final raw = row['site_web'];
+    final uri = raw is String ? Uri.tryParse(raw) : null;
+    return uri != null &&
+            uri.scheme == 'https' &&
+            uri.host.isNotEmpty &&
+            uri.userInfo.isEmpty
+        ? uri
+        : null;
+  }
+
+  Future<void> visitSite(Uri site) async {
+    if (openInstitutionSite(site.toString())) return;
+    await Clipboard.setData(ClipboardData(text: site.toString()));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Adresse du site officiel copiée.')),
+      );
+    }
+  }
+
   Future<void> details(Map<String, dynamic> row) async {
     final data = widget.api.publicInstitution((row['id'] as num).toInt());
     await showDialog<void>(
@@ -178,14 +208,22 @@ class _PublicDirectoryPageState extends State<PublicDirectoryPage> {
                       ].where((v) => v != null).join(' · '),
                     ),
                     const SizedBox(height: 16),
-                    if (institution['site_web'] != null) ...[
+                    if (officialSite(institution) case final site?) ...[
                       const Text(
                         'Site institutionnel',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      SelectableText('${institution['site_web']}'),
+                      TextButton.icon(
+                        onPressed: () => visitSite(site),
+                        icon: const Icon(Icons.open_in_new),
+                        label: const Text('Ouvrir le site officiel'),
+                      ),
                       const SizedBox(height: 12),
                     ],
+                    if (officialSite(institution) == null)
+                      const Text(
+                        'Vitrine GNU · Aucun site officiel renseigné.',
+                      ),
                     const Text(
                       'Source de la fiche',
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -278,8 +316,127 @@ class _PublicDirectoryPageState extends State<PublicDirectoryPage> {
           ),
         ),
         actions: [
+          if (row['universite_id'] case final num universityId)
+            if (widget.onInstitutionSignIn != null)
+              FilledButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  widget.onInstitutionSignIn!(
+                    universityId.toInt(),
+                    '${row['nom']}',
+                  );
+                },
+                child: const Text('Portail de cet établissement'),
+              ),
+
           TextButton(
             onPressed: () => Navigator.pop(context),
+            child: const Text('Fermer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  final _scroll = ScrollController();
+  final _searchKey = GlobalKey();
+  final _searchFocus = FocusNode();
+  static const _contactEmail = 'fitzgerald.ngue@facsciences-uy1.cm';
+  static const _contactPhones = ['+237 651 542 214', '+237 593 338 107'];
+
+  void _focusDirectory() {
+    final field = _searchKey.currentContext;
+    if (field != null) {
+      Scrollable.ensureVisible(
+        field,
+        duration: const Duration(milliseconds: 250),
+      );
+      _searchFocus.requestFocus();
+    }
+  }
+
+  void _showInformation(String section) {
+    final isContact = section == 'Contact';
+    final isHelp = section == 'Aide';
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(section),
+        content: SizedBox(
+          width: 480,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (isHelp) ...[
+                  const Text(
+                    'Accéder au portail enseignant',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const Text(
+                    'Connectez-vous avec votre identifiant GNU. Si vous n’avez pas de compte, ouvrez une demande et sélectionnez votre établissement.',
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Consulter une formation',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const Text(
+                    'Recherchez l’établissement par son nom ou sa ville, puis ouvrez sa fiche publique.',
+                  ),
+                ] else ...[
+                  if (!isContact) ...[
+                    const Text(
+                      'GNU — Gestion des notes universitaires',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'GNU rassemble un annuaire des établissements camerounais et un portail de gestion académique. Les enseignants saisissent les notes de leurs enseignements. Les agents habilités vérifient les résultats et préparent leur transmission à la cellule informatique.',
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  const Text(
+                    'Fitzgerald Ngue · Contact du projet',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  const SelectableText(_contactEmail),
+                  const SizedBox(height: 12),
+                  for (final phone in _contactPhones) SelectableText(phone),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      await Clipboard.setData(
+                        const ClipboardData(text: _contactEmail),
+                      );
+                      if (!dialogContext.mounted) return;
+                      Navigator.pop(dialogContext);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Adresse courriel copiée.'),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.copy_outlined),
+                    label: const Text('Copier le courriel'),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          if (isHelp)
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                (widget.onTeacherSignIn ?? widget.onSignIn)();
+              },
+              child: const Text('Connexion enseignant'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Fermer'),
           ),
         ],
@@ -292,10 +449,11 @@ class _PublicDirectoryPageState extends State<PublicDirectoryPage> {
     backgroundColor: const Color(0xFFF3F7F6),
     body: SafeArea(
       child: CustomScrollView(
+        controller: _scroll,
         slivers: [
           SliverToBoxAdapter(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Color(0xFF102B36), Color(0xFF125C51)],
@@ -316,23 +474,34 @@ class _PublicDirectoryPageState extends State<PublicDirectoryPage> {
                         runSpacing: 16,
                         children: [
                           const Brand(dark: true),
-                          FilledButton.icon(
-                            onPressed: widget.onSignIn,
-                            icon: const Icon(Icons.login),
-                            label: const Text('Espace académique'),
-                          ),
+                          for (final section in [
+                            'Accueil',
+                            'Annuaire',
+                            'Aide',
+                            'À propos',
+                            'Contact',
+                          ])
+                            TextButton(
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: switch (section) {
+                                'Accueil' => () {
+                                  _searchFocus.unfocus();
+                                  _scroll.animateTo(
+                                    0,
+                                    duration: const Duration(milliseconds: 220),
+                                    curve: Curves.easeOut,
+                                  );
+                                },
+                                'Annuaire' => _focusDirectory,
+                                _ => () => _showInformation(section),
+                              },
+                              child: Text(section),
+                            ),
                         ],
                       ),
-                      const SizedBox(height: 36),
-                      const Text(
-                        'DÉCOUVRIR · COMPARER · S’ORIENTER',
-                        style: TextStyle(
-                          color: Color(0xFF8CDEC5),
-                          letterSpacing: 1.5,
-                          fontSize: 11,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 24),
                       const Text(
                         'Universités et établissements du Cameroun',
                         style: TextStyle(
@@ -351,11 +520,36 @@ class _PublicDirectoryPageState extends State<PublicDirectoryPage> {
                           height: 1.6,
                         ),
                       ),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 8,
+                        children: [
+                          FilledButton.icon(
+                            onPressed:
+                                widget.onTeacherSignIn ?? widget.onSignIn,
+                            icon: const Icon(Icons.cast_for_education_outlined),
+                            label: const Text('Connexion enseignant'),
+                          ),
+                          OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(color: Colors.white54),
+                            ),
+                            onPressed: widget.onSignIn,
+                            child: const Text('Espace académique'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
                       TextField(
+                        key: _searchKey,
+                        focusNode: _searchFocus,
                         controller: search,
                         decoration: const InputDecoration(
-                          labelText: 'Rechercher un établissement ou une ville',
+                          hintText: 'Nom de l’établissement ou ville',
+                          labelText: 'Rechercher',
+                          floatingLabelBehavior: FloatingLabelBehavior.never,
                           prefixIcon: Icon(Icons.search),
                           fillColor: Colors.white,
                           filled: true,
@@ -593,6 +787,18 @@ class _PublicDirectoryPageState extends State<PublicDirectoryPage> {
                                                 ),
                                               ),
                                               const SizedBox(height: 12),
+                                              if (officialSite(row)
+                                                  case final site?)
+                                                FilledButton.icon(
+                                                  onPressed: () =>
+                                                      visitSite(site),
+                                                  icon: const Icon(
+                                                    Icons.open_in_new,
+                                                  ),
+                                                  label: const Text(
+                                                    'Site officiel',
+                                                  ),
+                                                ),
                                               OutlinedButton.icon(
                                                 onPressed: () => details(
                                                   Map<String, dynamic>.from(
@@ -603,8 +809,10 @@ class _PublicDirectoryPageState extends State<PublicDirectoryPage> {
                                                   Icons.arrow_forward,
                                                   size: 18,
                                                 ),
-                                                label: const Text(
-                                                  'Voir la fiche',
+                                                label: Text(
+                                                  officialSite(row) == null
+                                                      ? 'Voir la vitrine'
+                                                      : 'Voir la fiche',
                                                 ),
                                               ),
                                             ],

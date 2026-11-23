@@ -85,6 +85,18 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('accueil ouvre directement le portail enseignant', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const GnuApp());
+    await tester.pump();
+    await tester.ensureVisible(find.text('Connexion enseignant'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Connexion enseignant'));
+    await tester.pumpAndSettle();
+    expect(find.text('PORTAIL ENSEIGNANT'), findsOneWidget);
+  });
+
   testWidgets('aucune inscription libre n’est proposée', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1000, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));

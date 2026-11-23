@@ -5,12 +5,17 @@ use App\Http\Controllers\AccountRequestController;
 use App\Http\Controllers\AgentPortalController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PublicDirectoryController;
 use App\Http\Controllers\StudentPortalController;
 use App\Http\Controllers\SystemAdministratorController;
 use App\Http\Controllers\TeacherPortalController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('api.v1.')->group(function (): void {
+    Route::middleware('throttle:public-directory')->prefix('public')->group(function (): void {
+        Route::get('institutions', [PublicDirectoryController::class, 'index']);
+        Route::get('institutions/{institution}', [PublicDirectoryController::class, 'show'])->whereNumber('institution');
+    });
     Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:login')->name('login');
     Route::get('auth/demandes-compte/departements', [AccountRequestController::class, 'departments'])->name('account-requests.departments');
     Route::post('auth/demandes-compte', [AccountRequestController::class, 'submit'])->middleware('throttle:login')->name('account-requests.submit');

@@ -39,7 +39,8 @@ class AccountRequestController extends Controller
 
         return response()->json(['data' => [
             'annee_active' => config('academic.active_year'),
-            'etablissements' => DB::table('gnu.faculte')->orderBy('nom_fac')->get(['id', 'code_fac', 'nom_fac']),
+            'universites' => DB::table('gnu.universite')->orderBy('nom_univ')->get(['id', 'code_univ', 'nom_univ']),
+            'etablissements' => DB::table('gnu.faculte')->orderBy('nom_fac')->get(['id', 'code_fac', 'nom_fac', 'universite_id']),
             'departements' => $departments,
             'filieres' => $programs,
             'specialites' => $specialities,

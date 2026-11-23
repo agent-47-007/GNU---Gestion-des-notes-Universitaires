@@ -53,12 +53,46 @@ class StudentApiClient {
   Future<void> Function()? onUnauthorized;
   bool get isAuthenticated => token != null;
 
+  Future<Map<String, dynamic>> publicInstitutions({
+    String query = '',
+    String? region,
+    String? category,
+    int page = 1,
+  }) async {
+    final parameters = Uri(
+      queryParameters: {
+        if (query.isNotEmpty) 'q': query,
+        if (region != null) 'region': region,
+        if (category != null) 'categorie': category,
+        'page': '$page',
+      },
+    ).query;
+    return _send(
+      'GET',
+      '/public/institutions?$parameters',
+      authenticated: false,
+    );
+  }
+
+  Future<Map<String, dynamic>> publicInstitution(int id) async =>
+      _map(
+        (await _send(
+          'GET',
+          '/public/institutions/$id',
+          authenticated: false,
+        ))['data'],
+      ) ??
+      {};
+
   Future<Map<String, dynamic>> accountRequestStructure() async =>
-      _map((await _send(
-        'GET',
-        '/auth/demandes-compte/departements',
-        authenticated: false,
-      ))['data']) ?? {};
+      _map(
+        (await _send(
+          'GET',
+          '/auth/demandes-compte/departements',
+          authenticated: false,
+        ))['data'],
+      ) ??
+      {};
 
   Future<void> submitAccountRequest(Map<String, dynamic> data) async {
     await _send(
@@ -660,11 +694,7 @@ class StudentApiClient {
   }
 
   Future<void> agentDeleteAccount(int userId, {required String reason}) async {
-    await _send(
-      'DELETE',
-      '/agent/comptes/$userId',
-      body: {'motif': reason},
-    );
+    await _send('DELETE', '/agent/comptes/$userId', body: {'motif': reason});
   }
 
   Future<void> agentUpdateAccount(int userId, Map<String, dynamic> data) async {
@@ -840,10 +870,7 @@ class StudentApiClient {
 
   Future<Map<String, dynamic>> agentPublicationHistory(int classId) async =>
       _map(
-        (await _send(
-          'GET',
-          '/agent/classes/$classId/publications',
-        ))['data'],
+        (await _send('GET', '/agent/classes/$classId/publications'))['data'],
       ) ??
       {};
 
@@ -1152,8 +1179,7 @@ class StudentApiClient {
       method,
       uri,
       abortTrigger: abort.future,
-    )
-      ..headers.addAll(_headers(authenticated: authenticated));
+    )..headers.addAll(_headers(authenticated: authenticated));
     if (body != null) {
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode(body);
@@ -1162,9 +1188,8 @@ class StudentApiClient {
       final streamed = await _client
           .send(request)
           .timeout(const Duration(seconds: 30));
-      final response = await http.Response.fromStream(
-        streamed,
-      ).timeout(const Duration(seconds: 30));
+      final response = await http.Response.fromStream(streamed)
+          .timeout(const Duration(seconds: 30));
       return _decodeAuthenticated(response, authenticated);
     } on TimeoutException {
       if (!abort.isCompleted) abort.complete();

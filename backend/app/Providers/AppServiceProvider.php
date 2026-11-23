@@ -24,6 +24,7 @@ class AppServiceProvider extends ServiceProvider
 
             return [Limit::perMinute(30)->by('ip:'.$request->ip()), Limit::perMinute(5)->by('login:'.$key.':'.$request->ip())];
         });
+        RateLimiter::for('public-directory', fn (Request $request) => Limit::perMinute(90)->by('directory:'.$request->ip()));
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(120)->by((string) $request->user()->id));
         RateLimiter::for('password', fn (Request $request) => Limit::perMinute(5)->by((string) $request->user()->id));
     }

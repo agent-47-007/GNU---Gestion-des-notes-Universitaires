@@ -55,7 +55,7 @@ void main() {
     await tester.tap(find.text('S’inscrire'));
     await tester.pumpAndSettle();
     final establishment = find.byKey(
-      const ValueKey('registration-establishment'),
+      const ValueKey('registration-establishment-null'),
     );
     await tester.ensureVisible(establishment);
     await tester.tap(establishment);
@@ -78,6 +78,8 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1440, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(GnuApp(sessionStorage: _MemorySessionStorage()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Espace académique'));
     await tester.pumpAndSettle();
     expect(find.text('Bienvenue sur GNU'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -102,6 +104,12 @@ void main() {
         await tester.pumpWidget(
           GnuApp(sessionStorage: _MemorySessionStorage()),
         );
+        await tester.pumpAndSettle();
+        expect(
+          find.text('Universités et établissements du Cameroun'),
+          findsOneWidget,
+        );
+        await tester.tap(find.text('Espace académique'));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
         expect(find.text('Bienvenue sur GNU'), findsOneWidget);

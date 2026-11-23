@@ -100,7 +100,8 @@ class PublishedTranscriptTest extends TestCase
         DB::beginTransaction();
         try {
             DB::unprepared(file_get_contents(__DIR__.'/../Fixtures/transcript.sql'));
-            DB::unprepared("ALTER TABLE gnu.faculte ADD code_fac text;
+            DB::unprepared("ALTER TABLE gnu.universite ADD code_univ text;
+                ALTER TABLE gnu.faculte ADD code_fac text;
                 ALTER TABLE gnu.departement ADD code_de text;
                 ALTER TABLE gnu.filiere ADD code_f text;
                 ALTER TABLE gnu.specialite ADD code_specialite text, ADD filiere_id int, ADD actif boolean;

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'agent_portal.dart';
+import 'public_directory.dart';
 import 'api_client.dart';
 import 'domain.dart';
 import 'ui.dart';
@@ -119,6 +120,8 @@ class GnuApp extends StatefulWidget {
 class _GnuAppState extends State<GnuApp> {
   final store = DemoStore();
   UserRole? role;
+  bool showLogin = false;
+  StudentApiClient? directoryApi;
   bool darkMode = false;
   StudentApiClient? liveStudentApi;
 
@@ -142,6 +145,7 @@ class _GnuAppState extends State<GnuApp> {
 
   @override
   void dispose() {
+    directoryApi?.dispose();
     store.dispose();
     super.dispose();
   }
@@ -154,7 +158,21 @@ class _GnuAppState extends State<GnuApp> {
     darkTheme: buildTheme(dark: true),
     themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
     home: role == null
-        ? WelcomePage(onRoleLogin: _loginRole)
+        ? showLogin
+              ? WelcomePage(
+                  onRoleLogin: _loginRole,
+                  onBrowseDirectory: () => setState(() => showLogin = false),
+                )
+              : PublicDirectoryPage(
+                  api: directoryApi ??= StudentApiClient(
+                    baseUrl: _compiledApiBaseUrl.isNotEmpty
+                        ? _compiledApiBaseUrl
+                        : kIsWeb
+                        ? Uri.base.resolve('/api/v1').toString()
+                        : 'http://127.0.0.1:8000/api/v1',
+                  ),
+                  onSignIn: () => setState(() => showLogin = true),
+                )
         : Portal(
             key: ValueKey(role),
             role: role!,
@@ -214,8 +232,10 @@ class WelcomePage extends StatefulWidget {
     super.key,
     required this.onRoleLogin,
     this.accountApiFactory,
+    this.onBrowseDirectory,
   });
   final StudentApiClient Function()? accountApiFactory;
+  final VoidCallback? onBrowseDirectory;
   final Future<void> Function(
     UserRole role,
     String login,
@@ -245,6 +265,7 @@ class _WelcomePageState extends State<WelcomePage> {
     8,
     (_) => TextEditingController(),
   );
+  int? registrationUniversityId;
   int? registrationFacultyId;
   int? registrationLevelId;
   int? registrationDepartmentId;
@@ -580,8 +601,16 @@ class _WelcomePageState extends State<WelcomePage> {
         .cast<Map<String, dynamic>>();
     final classes = (structure['classes'] as List? ?? [])
         .cast<Map<String, dynamic>>();
-    final faculties = (structure['etablissements'] as List? ?? [])
+    final universities = (structure['universites'] as List? ?? [])
         .cast<Map<String, dynamic>>();
+    final faculties = (structure['etablissements'] as List? ?? [])
+        .cast<Map<String, dynamic>>()
+        .where(
+          (f) =>
+              universities.isEmpty ||
+              f['universite_id'] == registrationUniversityId,
+        )
+        .toList();
     final visibleDepartments = departments
         .where((d) => d['faculte_id'] == registrationFacultyId)
         .toList();
@@ -814,11 +843,50 @@ class _WelcomePageState extends State<WelcomePage> {
                 validator: _validateIdentityReference,
               ),
               sectionTitle(affiliationTitle),
+              if (universities.isNotEmpty) ...[
+                DropdownButtonFormField<int>(
+                  key: const ValueKey('registration-university'),
+                  isExpanded: true,
+                  initialValue: registrationUniversityId,
+                  decoration: field('Université', Icons.public),
+                  validator: (v) =>
+                      v == null ? 'Choisissez votre université.' : null,
+                  items: universities
+                      .map(
+                        (u) => DropdownMenuItem<int>(
+                          value: u['id'] as int,
+                          child: Text(
+                            '${u['nom_univ']}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: isBusy
+                      ? null
+                      : (v) => setState(() {
+                          registrationUniversityId = v;
+                          registrationFacultyId = null;
+                          registrationDepartmentId = null;
+                          registrationProgramId = null;
+                          registrationSpecialtyId = null;
+                          registrationLevelId = null;
+                          registrationClassId = null;
+                        }),
+                ),
+                const SizedBox(height: 10),
+                if (registrationUniversityId != null && faculties.isEmpty)
+                  const Text(
+                    'La structure académique de cette université doit être configurée par son administration.',
+                  ),
+              ],
               const Text('Année académique 2026–2027'),
               const SizedBox(height: 10),
               DropdownButtonFormField<int>(
                 isExpanded: true,
-                key: const ValueKey('registration-establishment'),
+                key: ValueKey(
+                  'registration-establishment-$registrationUniversityId',
+                ),
                 initialValue: registrationFacultyId,
                 decoration: field(
                   'Faculté / École / Institut',
@@ -1341,7 +1409,13 @@ class _WelcomePageState extends State<WelcomePage> {
                     style: Theme.of(context).textTheme.headlineLarge,
                   ),
                   const SizedBox(height: 8),
-                  const Text('Université de Yaoundé I · 2026–2027'),
+                  const Text('Gestion des notes universitaires · 2026–2027'),
+                  if (widget.onBrowseDirectory != null)
+                    TextButton.icon(
+                      onPressed: widget.onBrowseDirectory,
+                      icon: const Icon(Icons.public),
+                      label: const Text('Consulter l’annuaire public'),
+                    ),
                   const SizedBox(height: 12),
                   Text(
                     'Choisissez votre espace, puis connectez-vous avec les identifiants fournis pour votre compte ${selectedRole.label.toLowerCase()}.',

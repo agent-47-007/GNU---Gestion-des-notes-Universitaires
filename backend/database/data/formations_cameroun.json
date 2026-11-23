@@ -9159,6 +9159,166 @@
           "annee_source": "2026-2027"
         }
       ]
+    },
+    {
+      "code": "BUIB",
+      "etablissements": [
+        {
+          "code": "SHS",
+          "nom": "School of Health Sciences",
+          "source_url": "https://biakahc.org/school-of-health-sciences-shs/",
+          "departements": [],
+          "formations": [
+            {
+              "nom": "Nursing",
+              "cycle": "HND",
+              "duree": "3 ans",
+              "niveaux": [],
+              "source_url": "https://biakahc.org/school-of-health-sciences-shs/"
+            },
+            {
+              "nom": "Medical Laboratory Sciences",
+              "cycle": "HND",
+              "duree": "3 ans",
+              "niveaux": [],
+              "source_url": "https://biakahc.org/school-of-health-sciences-shs/"
+            },
+            {
+              "nom": "Medical Imaging Technology",
+              "cycle": "HND",
+              "duree": "3 ans",
+              "niveaux": [],
+              "source_url": "https://biakahc.org/school-of-health-sciences-shs/"
+            },
+            {
+              "nom": "Pharmacy Technology",
+              "cycle": "HND",
+              "duree": "3 ans",
+              "niveaux": [],
+              "source_url": "https://biakahc.org/school-of-health-sciences-shs/"
+            },
+            {
+              "nom": "Nutrition and Dietetics",
+              "cycle": "HND",
+              "duree": "3 ans",
+              "niveaux": [],
+              "source_url": "https://biakahc.org/school-of-health-sciences-shs/"
+            },
+            {
+              "nom": "Midwifery",
+              "cycle": "HND",
+              "duree": "3 ans",
+              "niveaux": [],
+              "source_url": "https://biakahc.org/school-of-health-sciences-shs/"
+            },
+            {
+              "nom": "Health Care Management",
+              "cycle": "HND",
+              "duree": "3 ans",
+              "niveaux": [],
+              "source_url": "https://biakahc.org/school-of-health-sciences-shs/"
+            },
+            {
+              "nom": "Nursing",
+              "cycle": "B.Sc.",
+              "duree": "4 ans",
+              "niveaux": [],
+              "source_url": "https://biakahc.org/school-of-health-sciences-shs/"
+            },
+            {
+              "nom": "Medical Laboratory Sciences",
+              "cycle": "B.Sc.",
+              "duree": "4 ans",
+              "niveaux": [],
+              "source_url": "https://biakahc.org/school-of-health-sciences-shs/"
+            },
+            {
+              "nom": "Medical Imaging Technology",
+              "cycle": "B.Sc.",
+              "duree": "4 ans",
+              "niveaux": [],
+              "source_url": "https://biakahc.org/school-of-health-sciences-shs/"
+            },
+            {
+              "nom": "Pharmacy Technology",
+              "cycle": "B.Sc.",
+              "duree": "4 ans",
+              "niveaux": [],
+              "source_url": "https://biakahc.org/school-of-health-sciences-shs/"
+            },
+            {
+              "nom": "Nutrition and Dietetics",
+              "cycle": "B.Sc.",
+              "duree": "4 ans",
+              "niveaux": [],
+              "source_url": "https://biakahc.org/school-of-health-sciences-shs/"
+            },
+            {
+              "nom": "Physiotherapy",
+              "cycle": "B.Sc.",
+              "duree": "4 ans",
+              "niveaux": [],
+              "source_url": "https://biakahc.org/school-of-health-sciences-shs/"
+            },
+            {
+              "nom": "Public Health",
+              "cycle": "B.Sc.",
+              "duree": "Plus de 3 ans",
+              "niveaux": [],
+              "source_url": "https://biakahc.org/school-of-health-sciences-shs/"
+            },
+            {
+              "nom": "Midwifery",
+              "cycle": "B.Sc.",
+              "duree": "Plus de 3 ans",
+              "niveaux": [],
+              "source_url": "https://biakahc.org/school-of-health-sciences-shs/"
+            },
+            {
+              "nom": "Nursing",
+              "cycle": "Top-up B.Sc.",
+              "duree": "1 an",
+              "niveaux": [],
+              "source_url": "https://biakahc.org/school-of-health-sciences-shs/"
+            },
+            {
+              "nom": "Medical Laboratory Sciences",
+              "cycle": "Top-up B.Sc.",
+              "duree": "1 an",
+              "niveaux": [],
+              "source_url": "https://biakahc.org/school-of-health-sciences-shs/"
+            },
+            {
+              "nom": "Medical Imaging Technology",
+              "cycle": "Top-up B.Sc.",
+              "duree": "1 an",
+              "niveaux": [],
+              "source_url": "https://biakahc.org/school-of-health-sciences-shs/"
+            },
+            {
+              "nom": "Pharmacy Technology",
+              "cycle": "Top-up B.Sc.",
+              "duree": "1 an",
+              "niveaux": [],
+              "source_url": "https://biakahc.org/school-of-health-sciences-shs/"
+            },
+            {
+              "nom": "Nutrition and Dietetics",
+              "cycle": "Top-up B.Sc.",
+              "duree": "1 an",
+              "niveaux": [],
+              "source_url": "https://biakahc.org/school-of-health-sciences-shs/"
+            },
+            {
+              "nom": "Midwifery",
+              "cycle": "Top-up B.Sc.",
+              "duree": "1 an",
+              "niveaux": [],
+              "source_url": "https://biakahc.org/school-of-health-sciences-shs/"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

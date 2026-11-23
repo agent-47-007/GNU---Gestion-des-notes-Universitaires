@@ -34,12 +34,12 @@
       "nom": "ABEGE Higher Institute (AHI)",
       "categorie": "IPES",
       "region": "Nord-Ouest",
-      "ville": null,
+      "ville": "Bamenda",
       "site_web": null,
-      "source_url": "https://www.minesup.gov.cm/index.php/instituts-prives-denseignement-superieur/",
+      "source_url": "https://www.minesup.gov.cm/wp-content/uploads/2026/10/LISTE-DES-IPES-2026_compressed.pdf",
       "source_liste_url": "https://www.minesup.gov.cm/index.php/instituts-prives-denseignement-superieur/",
       "source_date": null,
-      "verification": "REPERTORIE_SOURCE_WEB",
+      "verification": "REPERTORIE_LISTE_MINESUP_2026",
       "code_universite": null
     },
     {
@@ -437,13 +437,13 @@
       "nom": "Biaka University Institute of Buea (BUIB)",
       "categorie": "IPES",
       "region": "Sud-Ouest",
-      "ville": null,
-      "site_web": null,
+      "ville": "Buéa",
+      "site_web": "https://biakahc.org/",
       "source_url": "https://minesup.gov.cm/?page_id=8109&preview=true",
       "source_liste_url": "https://www.minesup.gov.cm/index.php/instituts-prives-denseignement-superieur/",
       "source_date": null,
       "verification": "REPERTORIE_SOURCE_WEB",
-      "code_universite": null
+      "code_universite": "BUIB"
     },
     {
       "source_key": "ipes-f8446fca8bc8a89839176a5e",
